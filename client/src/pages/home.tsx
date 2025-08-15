@@ -85,9 +85,7 @@ export default function Home() {
                 <a href="#how-it-works" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
                   How it Works
                 </a>
-                <a href="#story" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
-                  Our Story
-                </a>
+
                 <a href="#demo" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
                   Demo
                 </a>
@@ -318,67 +316,6 @@ export default function Home() {
               </Button>
             </div>
           </Card>
-        </div>
-      </section>
-
-      {/* Our Story Section */}
-      <section id="story" className="relative z-10 py-24 px-4 bg-gradient-to-b from-purple-50/30 to-white">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Our Story
-            </h2>
-            <p className="text-xl text-purple-700 font-medium">
-              A Message from Michael Vallee, Founder of Preserving Connections
-            </p>
-          </div>
-
-          <div className="prose prose-lg mx-auto text-gray-700 leading-relaxed">
-            <p className="text-xl mb-8 text-center font-medium text-gray-900">
-              Preserving Connections was born from something deeply personal.
-            </p>
-            
-            <p className="text-lg mb-6">
-              I lost my son.
-            </p>
-            
-            <p className="text-lg mb-8">
-              And while grief changes form over time, what I missed most weren't the big milestones. It was the everyday conversations — the way he said my name, the small jokes, his unique way of seeing me. That longing — to feel close, to stay connected — never went away.
-            </p>
-            
-            <p className="text-lg mb-8">
-              I founded Preserving Connections because we now live in a time where technology can help us preserve what matters most: voice, presence, personality. Not just through photos or videos, but through living, interactive experiences. You can talk, ask questions, hear their voice again — shaped by how they spoke, what they believed, and how they loved.
-            </p>
-            
-            <div className="text-center my-12">
-              <p className="text-xl font-semibold text-gray-900 mb-2">
-                Preserving Connections isn't about replacing anyone.
-              </p>
-              <p className="text-xl font-semibold text-purple-700">
-                It's about continuing the connection, when you need it most.
-              </p>
-            </div>
-            
-            <p className="text-lg mb-8">
-              We work with grief experts, therapists, and ethical AI researchers to make sure every interaction is built with care. Whether you're preserving someone still with you or honoring someone you've lost, this platform exists for one reason: to help you feel close again.
-            </p>
-            
-            <p className="text-lg mb-12">
-              For anyone who's ever said, "I just wish I could talk to them one more time," — Preserving Connections is for you.
-            </p>
-            
-            <div className="text-right border-t border-purple-100 pt-8">
-              <p className="text-lg font-medium text-gray-900 mb-2">
-                With peace,
-              </p>
-              <p className="text-lg font-semibold text-gray-900">
-                Michael Vallee
-              </p>
-              <p className="text-base text-purple-600">
-                Founder, Preserving Connections
-              </p>
-            </div>
-          </div>
         </div>
       </section>
 
