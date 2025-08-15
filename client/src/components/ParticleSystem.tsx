@@ -52,13 +52,13 @@ export default function ParticleSystem() {
       '#c084fc',  // light purple
       '#ddd6fe',  // very light purple
       '#e879f9',  // magenta purple
-      '#fbbf24',  // golden yellow
-      '#f59e0b',  // amber gold
-      '#d97706',  // darker gold
-      '#eab308',  // bright gold
-      '#facc15',  // light gold
-      '#fef3c7',  // pale gold
-      '#fde68a'   // soft gold
+      '#ffffff',  // pure white
+      '#f8fafc',  // very light blue-white
+      '#e2e8f0',  // light silver
+      '#cbd5e1',  // silver-blue
+      '#94a3b8',  // soft silver
+      '#f1f5f9',  // pale silver-white
+      '#e5e7eb'   // light gray-silver
     ];
 
     const createParticle = (): Particle => {
@@ -118,7 +118,7 @@ export default function ParticleSystem() {
       ctx.globalAlpha = particle.opacity;
       
       // Create heavenly sparkling fairy dust with varying effects based on size
-      const isGold = particle.color.includes('f') && (particle.color.includes('b') || particle.color.includes('c') || particle.color.includes('e'));
+      const isSilver = particle.color.includes('f') || particle.color.includes('e') || particle.color.includes('c') || particle.color.includes('9');
       
       // Calculate sparkle intensity based on twinkle phase
       const sparkleIntensity = (Math.sin(particle.sparklePhase) + 1) * 0.5; // 0 to 1
@@ -143,8 +143,8 @@ export default function ParticleSystem() {
         ctx.arc(particle.x, particle.y, particle.size * (1 + sparkleIntensity * 0.5), 0, Math.PI * 2);
         ctx.fill();
         
-        // Add heavenly sparkle rays for gold particles
-        if (isGold && sparkleIntensity > 0.3) {
+        // Add heavenly sparkle rays for silver particles
+        if (isSilver && sparkleIntensity > 0.3) {
           ctx.shadowBlur = sparkleIntensity * 8;
           ctx.shadowColor = '#ffffff';
           ctx.strokeStyle = '#ffffff' + Math.floor(255 * sparkleIntensity).toString(16).padStart(2, '0');
