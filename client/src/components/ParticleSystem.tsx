@@ -33,21 +33,21 @@ export default function ParticleSystem() {
     window.addEventListener('resize', resizeCanvas);
 
     const colors = [
-      'rgba(147, 51, 234, 0.6)', // purple-600
-      'rgba(124, 58, 237, 0.5)', // violet-600  
-      'rgba(99, 102, 241, 0.4)', // indigo-500
-      'rgba(168, 85, 247, 0.6)', // purple-500
-      'rgba(139, 92, 246, 0.5)', // violet-500
-      'rgba(196, 181, 253, 0.7)', // purple-200
-      'rgba(221, 214, 254, 0.6)', // purple-100
-      'rgba(192, 192, 192, 0.8)', // silver
-      'rgba(169, 169, 169, 0.6)', // dark gray (silver)
-      'rgba(211, 211, 211, 0.7)', // light gray (silver)
-      'rgba(220, 220, 220, 0.5)', // gainsboro (light silver)
-      'rgba(128, 0, 128, 0.4)',   // deep purple
-      'rgba(75, 0, 130, 0.3)',    // indigo
-      'rgba(138, 43, 226, 0.5)',  // blue violet
-      'rgba(186, 85, 211, 0.4)'   // medium orchid
+      'rgba(147, 51, 234, 0.9)', // purple-600 - bright
+      'rgba(124, 58, 237, 0.8)', // violet-600 - bright
+      'rgba(168, 85, 247, 0.9)', // purple-500 - bright
+      'rgba(139, 92, 246, 0.8)', // violet-500 - bright
+      'rgba(128, 0, 128, 0.7)',  // deep purple - bright
+      'rgba(138, 43, 226, 0.8)',  // blue violet - bright
+      'rgba(186, 85, 211, 0.7)',  // medium orchid - bright
+      'rgba(147, 51, 234, 1.0)',  // purple-600 - full opacity
+      'rgba(124, 58, 237, 1.0)',  // violet-600 - full opacity
+      'rgba(168, 85, 247, 1.0)',  // purple-500 - full opacity
+      'rgba(75, 0, 130, 0.8)',    // indigo - bright
+      'rgba(102, 51, 153, 0.9)',  // dark purple - bright
+      'rgba(153, 50, 204, 0.8)',  // dark orchid - bright
+      'rgba(148, 0, 211, 0.7)',   // dark violet - bright
+      'rgba(138, 43, 226, 1.0)'   // blue violet - full opacity
     ];
 
     const createParticle = (): Particle => {
@@ -58,7 +58,7 @@ export default function ParticleSystem() {
         vy: -Math.random() * 2 - 0.5,
         life: 0,
         maxLife: Math.random() * 300 + 200,
-        size: Math.random() * 2 + 0.5, // Smaller particles for fairy dust effect
+        size: Math.random() * 3 + 1, // Slightly bigger so they're more visible
         opacity: 0,
         color: colors[Math.floor(Math.random() * colors.length)]
       };
@@ -97,7 +97,7 @@ export default function ParticleSystem() {
       ctx.globalAlpha = particle.opacity;
       
       // Create glow effect
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 15;
       ctx.shadowColor = particle.color;
       
       ctx.fillStyle = particle.color;
