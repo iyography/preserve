@@ -54,22 +54,22 @@ export default function AudioPlayer() {
         variant="ghost"
         size="sm"
         onClick={handlePlayPause}
-        className="flex items-center space-x-2 text-celestial-300 hover:text-white transition-colors duration-200"
+        className="flex items-center space-x-2 text-celestial-800 hover:text-celestial-950 transition-colors duration-200"
       >
         {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
         <span>{isPlaying ? 'Pause' : 'Play'}</span>
       </Button>
       
       <div className="flex-1 max-w-xs">
-        <div className="bg-celestial-800/30 rounded-full h-2 relative overflow-hidden">
+        <div className="bg-celestial-300 rounded-full h-2 relative overflow-hidden">
           <div 
-            className="bg-gradient-to-r from-celestial-500 to-celestial-600 h-2 rounded-full transition-all duration-300"
+            className="bg-gradient-to-r from-celestial-700 to-celestial-800 h-2 rounded-full transition-all duration-300"
             style={{ width: `${progress}%` }}
           />
         </div>
       </div>
       
-      <span className="text-celestial-300 text-sm">
+      <span className="text-celestial-800 text-sm">
         {formatTime(currentTime)} / {formatTime(duration)}
       </span>
     </div>

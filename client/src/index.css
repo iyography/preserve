@@ -41,18 +41,18 @@
   --font-mono: Menlo, monospace;
   --radius: 1.3rem;
   
-  /* Celestial Color System */
-  --celestial-50: hsl(248 100% 98%);
-  --celestial-100: hsl(245 58% 95%);
-  --celestial-200: hsl(240 26% 88%);
-  --celestial-300: hsl(262 46% 87%);
-  --celestial-400: hsl(258 58% 80%);
-  --celestial-500: hsl(258 54% 71%);
-  --celestial-600: hsl(258 90% 66%);
-  --celestial-700: hsl(262 83% 58%);
-  --celestial-800: hsl(237 62% 55%);
-  --celestial-900: hsl(229 66% 53%);
-  --celestial-950: hsl(229 60% 11%);
+  /* Luxury Color System - White, Silver, Gold */
+  --celestial-50: hsl(0 0% 100%);
+  --celestial-100: hsl(0 0% 98%);
+  --celestial-200: hsl(0 0% 94%);
+  --celestial-300: hsl(0 0% 88%);
+  --celestial-400: hsl(0 0% 80%);
+  --celestial-500: hsl(0 0% 70%);
+  --celestial-600: hsl(43 96% 56%);
+  --celestial-700: hsl(38 92% 50%);
+  --celestial-800: hsl(32 81% 45%);
+  --celestial-900: hsl(26 75% 40%);
+  --celestial-950: hsl(20 30% 15%);
 }
 
 .dark {
@@ -107,81 +107,19 @@
 
 @layer components {
   .bg-celestial-gradient {
-    background: linear-gradient(45deg, var(--celestial-950), var(--celestial-700), var(--celestial-800), var(--celestial-600));
-    background-size: 400% 400%;
-    animation: meshGradient 8s ease-in-out infinite;
+    background: linear-gradient(135deg, 
+      hsl(0 0% 100%) 0%,
+      hsl(0 0% 95%) 25%,
+      hsl(43 96% 56%) 50%,
+      hsl(38 92% 50%) 75%,
+      hsl(0 0% 88%) 100%);
   }
   
   .glassmorphism {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.15);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-  }
-  
-  .glow-text {
-    animation: textGlow 2s ease-in-out infinite alternate;
-  }
-  
-  .glow-ring {
-    box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
-  }
-  
-  .hover-glow {
-    transition: all 0.3s ease;
-  }
-  
-  .hover-glow:hover {
-    box-shadow: 0 0 30px rgba(139, 92, 246, 0.6);
-    transform: translateY(-2px);
-  }
-  
-  .floating-card {
-    animation: floatCard 6s ease-in-out infinite;
-  }
-  
-  .floating-card:nth-child(2) {
-    animation-delay: -2s;
-  }
-  
-  .floating-card:nth-child(3) {
-    animation-delay: -4s;
+    border: 1px solid rgba(255, 255, 255, 0.3);
   }
 }
 
-@layer utilities {
-  @keyframes meshGradient {
-    0%, 100% { 
-      background-position: 0% 50%;
-    }
-    25% { 
-      background-position: 100% 50%; 
-    }
-    50% { 
-      background-position: 100% 100%; 
-    }
-    75% { 
-      background-position: 50% 100%; 
-    }
-  }
-  
-  @keyframes textGlow {
-    from { 
-      text-shadow: 0 0 10px rgba(139, 92, 246, 0.5), 0 0 20px rgba(139, 92, 246, 0.3); 
-    }
-    to { 
-      text-shadow: 0 0 20px rgba(139, 92, 246, 0.8), 0 0 30px rgba(139, 92, 246, 0.5); 
-    }
-  }
-  
-  @keyframes floatCard {
-    0%, 100% { 
-      transform: translateY(0px) rotate(0deg); 
-    }
-    33% { 
-      transform: translateY(-10px) rotate(1deg); 
-    }
-    66% { 
-      transform: translateY(-5px) rotate(-1deg); 
-    }
-  }
-}
+
