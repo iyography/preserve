@@ -24,15 +24,15 @@ export default function Home() {
   const faqCategories = {
     general: [
       {
-        question: "What exactly is Evermore?",
-        answer: "Evermore lets you create a digital memory of someone you love. Using audio, video, and written memories, we build an interactive avatar that sounds like them, speaks like them, and reflects how they communicated."
+        question: "What exactly is Preserving Connections?",
+        answer: "Preserving Connections lets you create a digital memory of someone you love. Using audio, video, and written memories, we build an interactive avatar that sounds like them, speaks like them, and reflects how they communicated."
       },
       {
         question: "What can the AI actually do?",
         answer: "You can ask it questions, talk about your day, or simply listen to them speak. The AI is trained on how your loved one spoke — their tone, beliefs, quirks, and phrases — to make the experience feel familiar and comforting."
       },
       {
-        question: "Can I use Evermore for someone who's still alive?",
+        question: "Can I use Preserving Connections for someone who's still alive?",
         answer: "Absolutely. In fact, many families use it before loss to preserve someone's voice, humor, and perspective — especially elderly parents or grandparents — so their presence can be passed down."
       }
     ],
@@ -47,7 +47,7 @@ export default function Home() {
       },
       {
         question: "Isn't this \"playing God\"?",
-        answer: "That's something we've wrestled with, too. But Evermore doesn't create new memories — it simply preserves the presence that already existed. This is no different than watching old videos on loop — only now, the loop listens."
+        answer: "That's something we've wrestled with, too. But Preserving Connections doesn't create new memories — it simply preserves the presence that already existed. This is no different than watching old videos on loop — only now, the loop listens."
       }
     ],
     technical: [
@@ -61,7 +61,7 @@ export default function Home() {
       },
       {
         question: "Is this just a gimmick?",
-        answer: "Not at all. Evermore was created from real loss, not venture capital hype. We don't see this as a product — we see it as a tool for peace, for storytelling, for healing. This isn't about novelty. It's about meaning."
+        answer: "Not at all. Preserving Connections was created from real loss, not venture capital hype. We don't see this as a product — we see it as a tool for peace, for storytelling, for healing. This isn't about novelty. It's about meaning."
       }
     ]
   };
@@ -329,7 +329,7 @@ export default function Home() {
               Our Story
             </h2>
             <p className="text-xl text-purple-700 font-medium">
-              A Message from Michael Vallee, Founder of Evermore
+              A Message from Michael Vallee, Founder of Preserving Connections
             </p>
           </div>
 
@@ -347,12 +347,12 @@ export default function Home() {
             </p>
             
             <p className="text-lg mb-8">
-              I founded Evermore because we now live in a time where technology can help us preserve what matters most: voice, presence, personality. Not just through photos or videos, but through living, interactive experiences. You can talk, ask questions, hear their voice again — shaped by how they spoke, what they believed, and how they loved.
+              I founded Preserving Connections because we now live in a time where technology can help us preserve what matters most: voice, presence, personality. Not just through photos or videos, but through living, interactive experiences. You can talk, ask questions, hear their voice again — shaped by how they spoke, what they believed, and how they loved.
             </p>
             
             <div className="text-center my-12">
               <p className="text-xl font-semibold text-gray-900 mb-2">
-                Evermore isn't about replacing anyone.
+                Preserving Connections isn't about replacing anyone.
               </p>
               <p className="text-xl font-semibold text-purple-700">
                 It's about continuing the connection, when you need it most.
@@ -364,7 +364,7 @@ export default function Home() {
             </p>
             
             <p className="text-lg mb-12">
-              For anyone who's ever said, "I just wish I could talk to them one more time," — Evermore is for you.
+              For anyone who's ever said, "I just wish I could talk to them one more time," — Preserving Connections is for you.
             </p>
             
             <div className="text-right border-t border-purple-100 pt-8">
@@ -375,7 +375,7 @@ export default function Home() {
                 Michael Vallee
               </p>
               <p className="text-base text-purple-600">
-                Founder, Evermore
+                Founder, Preserving Connections
               </p>
             </div>
           </div>
