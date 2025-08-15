@@ -124,6 +124,70 @@
     text-shadow: 0 0 15px rgba(139, 92, 246, 0.6), 0 0 25px rgba(139, 92, 246, 0.4);
   }
   
+  .dramatic-gradient {
+    background: linear-gradient(45deg, 
+      #8b5cf6 0%,     /* vibrant purple */
+      #a855f7 15%,    /* bright purple */
+      #c084fc 30%,    /* light purple */
+      #d8b4fe 45%,    /* very light purple */
+      #f3e8ff 60%,    /* almost white purple */
+      #c084fc 75%,    /* back to light purple */
+      #8b5cf6 90%,    /* vibrant purple */
+      #7c3aed 100%    /* deep purple */
+    );
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: meshGradient 4s ease-in-out infinite;
+    position: relative;
+  }
+  
+  .dramatic-gradient::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, 
+      rgba(139, 92, 246, 0.3) 0%,
+      rgba(168, 85, 247, 0.2) 25%,
+      rgba(192, 132, 252, 0.1) 50%,
+      rgba(139, 92, 246, 0.2) 75%,
+      rgba(124, 58, 237, 0.3) 100%
+    );
+    filter: blur(20px);
+    z-index: -1;
+    animation: meshGlow 3s ease-in-out infinite alternate;
+  }
+  
+  @keyframes meshGradient {
+    0%, 100% {
+      background-position: 0% 50%;
+    }
+    25% {
+      background-position: 100% 50%;
+    }
+    50% {
+      background-position: 50% 100%;
+    }
+    75% {
+      background-position: 50% 0%;
+    }
+  }
+  
+  @keyframes meshGlow {
+    0% {
+      opacity: 0.6;
+      transform: scale(1);
+    }
+    100% {
+      opacity: 0.9;
+      transform: scale(1.05);
+    }
+  }
+  
   .glow-ring {
     box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
   }

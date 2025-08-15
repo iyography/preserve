@@ -139,7 +139,7 @@ export default function Home() {
             <span className="text-black">Talk to Your Loved Ones,</span>
             <br />
             <span className="text-black">
-              <span className="bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 bg-clip-text text-transparent glow-text">
+              <span className="dramatic-gradient">
                 Anytime
               </span>
               {" "}You Miss Them
