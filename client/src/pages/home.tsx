@@ -122,7 +122,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.6 }}
-            className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16"
+            className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-12"
           >
             <Button 
               onClick={() => scrollToSection('pricing')}
@@ -142,40 +142,39 @@ export default function Home() {
               Try Demo with Grandma Rose
             </Button>
           </motion.div>
+
+          {/* Audio Message Section moved to bottom of hero */}
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, delay: 0.9 }}
+            className="max-w-3xl mx-auto"
+          >
+            <Card className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-xl transition-all duration-300 border-purple-100 hover:shadow-2xl hover:bg-white/80">
+              <div className="flex items-center space-x-4">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center shadow-lg">
+                    <Volume2 className="text-white w-5 h-5" />
+                  </div>
+                </div>
+                
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                    A Personal Message from Founder Michael Vallee
+                  </h3>
+                  <p className="text-gray-600 text-sm mb-3">
+                    Hear why we created Preserving Connections and how it can help your family preserve precious memories
+                  </p>
+                  
+                  <AudioPlayer />
+                </div>
+              </div>
+            </Card>
+          </motion.div>
         </div>
       </section>
       
-      {/* Founder Message Section */}
-      <motion.section 
-        initial={{ opacity: 0, y: 50 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        viewport={{ once: true }}
-        className="relative z-10 px-4 pb-20"
-      >
-        <div className="max-w-4xl mx-auto">
-          <Card className="bg-white/70 backdrop-blur-sm rounded-3xl p-8 shadow-xl transition-all duration-300 border-purple-100 hover:shadow-2xl hover:bg-white/80">
-            <div className="flex items-center space-x-6">
-              <div className="flex-shrink-0">
-                <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center shadow-lg">
-                  <Volume2 className="text-white w-6 h-6" />
-                </div>
-              </div>
-              
-              <div className="flex-1">
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  A Personal Message from Founder Michael Vallee
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  Hear why we created Preserving Connections and how it can help your family preserve precious memories
-                </p>
-                
-                <AudioPlayer />
-              </div>
-            </div>
-          </Card>
-        </div>
-      </motion.section>
+
       
       {/* Features Preview Section */}
       <motion.section 
