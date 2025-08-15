@@ -137,10 +137,7 @@ export default function Home() {
             <span className="text-black">Talk to Your Loved Ones,</span>
             <br />
             <span className="text-black">
-              <span className="dramatic-gradient">
-                Anytime
-              </span>
-              {" "}You Miss Them
+              Anytime You Miss Them
             </span>
           </h1>
           
