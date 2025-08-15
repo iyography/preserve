@@ -17,8 +17,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white-ethereal text-gray-900 overflow-x-hidden relative">
-      {/* Particle Animation Layer */}
-      <ParticleSystem />
       
       {/* Navigation */}
       <nav className="fixed w-full z-50 bg-white shadow-md">
@@ -75,6 +73,8 @@ export default function Home() {
 
       {/* Hero Section */}
       <section id="home" className="relative min-h-screen flex items-center justify-center pt-16 px-4 z-10">
+        {/* Particle Animation Layer - Only in Hero */}
+        <ParticleSystem />
         {/* Background ethereal clouds */}
         <div className="absolute inset-0 z-0">
           <div className="absolute top-20 left-10 w-96 h-64 bg-gradient-to-r from-purple-200/30 to-indigo-200/20 rounded-full blur-3xl floating-cloud-1"></div>
