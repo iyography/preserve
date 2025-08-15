@@ -406,10 +406,11 @@ export default function Home() {
               </Button>
               
               <Button 
-                variant="ghost"
-                className="text-gray-600 hover:text-gray-900 px-8 py-4 rounded-xl text-lg font-medium hover:bg-purple-50 transition-all duration-300"
+                variant="outline"
+                className="bg-white/70 backdrop-blur-sm text-purple-700 px-8 py-4 rounded-xl text-lg font-medium border-purple-200 hover:bg-purple-50 hover:border-purple-300 shadow-lg hover:shadow-xl transition-all duration-300"
                 size="lg"
               >
+                <ArrowRight className="w-5 h-5 mr-3" />
                 Learn More
               </Button>
             </div>
