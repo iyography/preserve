@@ -40,18 +40,21 @@ export default function Home() {
             </motion.div>
             
             <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-8">
-                <button 
-                  onClick={() => scrollToSection('home')}
-                  className="text-gray-900 hover:text-purple-600 px-3 py-2 text-sm font-medium transition-colors duration-200"
-                >
-                  Home
-                </button>
-                <a href="#personas" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
-                  Personas
+              <div className="ml-10 flex items-baseline space-x-6">
+                <a href="#how-it-works" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
+                  How It Works
                 </a>
-                <a href="#create" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
-                  Create
+                <a href="#personas" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
+                  Living Memories
+                </a>
+                <a href="#demo" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
+                  Try a Demo
+                </a>
+                <a href="#story" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
+                  Our Story
+                </a>
+                <a href="#faqs" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
+                  FAQs
                 </a>
                 <button 
                   onClick={() => scrollToSection('pricing')}
@@ -59,10 +62,6 @@ export default function Home() {
                 >
                   Pricing
                 </button>
-                <a href="#ambassador" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium flex items-center transition-colors duration-200">
-                  <Heart className="w-4 h-4 mr-1" />
-                  Memory Ambassador
-                </a>
               </div>
             </div>
             
