@@ -8,6 +8,7 @@ import AudioPlayer from "@/components/AudioPlayer";
 export default function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
+  const [activeFAQTab, setActiveFAQTab] = useState('general');
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
@@ -18,6 +19,51 @@ export default function Home() {
 
   const toggleFAQ = (index: number) => {
     setExpandedFAQ(expandedFAQ === index ? null : index);
+  };
+
+  const faqCategories = {
+    general: [
+      {
+        question: "What exactly is Evermore?",
+        answer: "Evermore lets you create a digital memory of someone you love. Using audio, video, and written memories, we build an interactive avatar that sounds like them, speaks like them, and reflects how they communicated."
+      },
+      {
+        question: "What can the AI actually do?",
+        answer: "You can ask it questions, talk about your day, or simply listen to them speak. The AI is trained on how your loved one spoke — their tone, beliefs, quirks, and phrases — to make the experience feel familiar and comforting."
+      },
+      {
+        question: "Can I use Evermore for someone who's still alive?",
+        answer: "Absolutely. In fact, many families use it before loss to preserve someone's voice, humor, and perspective — especially elderly parents or grandparents — so their presence can be passed down."
+      }
+    ],
+    ethics: [
+      {
+        question: "Is this meant to replace someone who's passed away?",
+        answer: "Absolutely not. Evermore is about honoring and preserving. Just like saving voicemails or watching old home videos — except now, those moments can talk back."
+      },
+      {
+        question: "Is this emotionally healthy?",
+        answer: "For many people, yes. We're building this with licensed grief counselors and therapists to ensure it supports — not replaces — the healing process. For some, it's a digital form of remembrance and comfort. For others, it may not be the right fit. And that's okay."
+      },
+      {
+        question: "Isn't this \"playing God\"?",
+        answer: "That's something we've wrestled with, too. But Evermore doesn't create new memories — it simply preserves the presence that already existed. This is no different than watching old videos on loop — only now, the loop listens."
+      }
+    ],
+    technical: [
+      {
+        question: "What about privacy and data security?",
+        answer: "Privacy is sacred. All content you upload is encrypted, never shared, and stays in your control. We don't use your memories to train public AI models. What's yours stays yours."
+      },
+      {
+        question: "What kind of memories can I use to build a persona?",
+        answer: "Voice messages, videos, old podcasts, social posts, interview footage, even casual conversations. The more authentic the source, the more lifelike the digital memory becomes."
+      },
+      {
+        question: "Is this just a gimmick?",
+        answer: "Not at all. Evermore was created from real loss, not venture capital hype. We don't see this as a product — we see it as a tool for peace, for storytelling, for healing. This isn't about novelty. It's about meaning."
+      }
+    ]
   };
 
   return (
@@ -276,74 +322,64 @@ export default function Home() {
       </section>
 
       {/* FAQ Section */}
-      <section className="relative z-10 py-24 px-4 bg-white">
+      <section className="relative z-10 py-20 px-4 bg-white">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-3">
               Frequently Asked Questions
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-lg text-gray-600">
               Everything you need to know about preserving digital memories
             </p>
           </div>
 
-          <div className="space-y-8">
-            {[
-              {
-                question: "What exactly is Evermore?",
-                answer: "Evermore lets you create a digital memory of someone you love. Using audio, video, and written memories, we build an interactive avatar that sounds like them, speaks like them, and reflects how they communicated."
-              },
-              {
-                question: "Is this meant to replace someone who's passed away?",
-                answer: "Absolutely not. Evermore is about honoring and preserving. Just like saving voicemails or watching old home videos — except now, those moments can talk back."
-              },
-              {
-                question: "What can the AI actually do?",
-                answer: "You can ask it questions, talk about your day, or simply listen to them speak. The AI is trained on how your loved one spoke — their tone, beliefs, quirks, and phrases — to make the experience feel familiar and comforting."
-              },
-              {
-                question: "Is this emotionally healthy?",
-                answer: "For many people, yes. We're building this with licensed grief counselors and therapists to ensure it supports — not replaces — the healing process. For some, it's a digital form of remembrance and comfort. For others, it may not be the right fit. And that's okay."
-              },
-              {
-                question: "Isn't this \"playing God\"?",
-                answer: "That's something we've wrestled with, too. But Evermore doesn't create new memories — it simply preserves the presence that already existed. This is no different than watching old videos on loop — only now, the loop listens."
-              },
-              {
-                question: "What about privacy and data security?",
-                answer: "Privacy is sacred. All content you upload is encrypted, never shared, and stays in your control. We don't use your memories to train public AI models. What's yours stays yours."
-              },
-              {
-                question: "Is this just a gimmick?",
-                answer: "Not at all. Evermore was created from real loss, not venture capital hype. We don't see this as a product — we see it as a tool for peace, for storytelling, for healing. This isn't about novelty. It's about meaning."
-              },
-              {
-                question: "Can I use Evermore for someone who's still alive?",
-                answer: "Absolutely. In fact, many families use it before loss to preserve someone's voice, humor, and perspective — especially elderly parents or grandparents — so their presence can be passed down."
-              },
-              {
-                question: "What kind of memories can I use to build a persona?",
-                answer: "Voice messages, videos, old podcasts, social posts, interview footage, even casual conversations. The more authentic the source, the more lifelike the digital memory becomes."
-              }
-            ].map((faq, index) => (
+          {/* FAQ Tabs */}
+          <div className="flex justify-center mb-8">
+            <div className="inline-flex rounded-lg bg-purple-50 p-1">
+              {[
+                { key: 'general', label: 'General' },
+                { key: 'ethics', label: 'Ethics & Health' },
+                { key: 'technical', label: 'Technical' }
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => {
+                    setActiveFAQTab(tab.key);
+                    setExpandedFAQ(null);
+                  }}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                    activeFAQTab === tab.key
+                      ? 'bg-white text-purple-700 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* FAQ Content */}
+          <div className="space-y-3">
+            {faqCategories[activeFAQTab as keyof typeof faqCategories].map((faq, index) => (
               <Card key={index} className="bg-white border-purple-100 shadow-sm hover:shadow-md transition-all duration-300">
                 <CardContent className="p-0">
                   <button
                     onClick={() => toggleFAQ(index)}
-                    className="w-full p-8 text-left flex items-center justify-between hover:bg-purple-50/50 transition-colors duration-200"
+                    className="w-full p-5 text-left flex items-center justify-between hover:bg-purple-50/50 transition-colors duration-200"
                   >
-                    <h3 className="text-xl font-semibold text-gray-900 pr-4">
+                    <h3 className="text-lg font-semibold text-gray-900 pr-4">
                       {faq.question}
                     </h3>
                     <ChevronDown 
-                      className={`w-5 h-5 text-purple-600 transition-transform duration-300 flex-shrink-0 ${
+                      className={`w-4 h-4 text-purple-600 transition-transform duration-300 flex-shrink-0 ${
                         expandedFAQ === index ? 'rotate-180' : ''
                       }`}
                     />
                   </button>
                   {expandedFAQ === index && (
-                    <div className="px-8 pb-8">
-                      <p className="text-gray-600 leading-relaxed">
+                    <div className="px-5 pb-5">
+                      <p className="text-gray-600 leading-relaxed text-sm">
                         {faq.answer}
                       </p>
                     </div>
