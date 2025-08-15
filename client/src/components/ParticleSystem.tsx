@@ -66,7 +66,7 @@ export default function ParticleSystem() {
         vy: -Math.random() * 2 - 0.5,
         life: 0,
         maxLife: Math.random() * 300 + 200,
-        size: Math.random() * 3 + 0.5, // Fairy dust variety - 0.5-3.5px
+        size: (Math.random() * 3 + 0.5) * 0.6, // Fairy dust variety - 0.3-2.1px (40% smaller)
         opacity: 0,
         color: colors[Math.floor(Math.random() * colors.length)]
       };
@@ -108,7 +108,7 @@ export default function ParticleSystem() {
       const isGold = particle.color.includes('f') && (particle.color.includes('b') || particle.color.includes('c') || particle.color.includes('e'));
       
       // Larger particles get more dramatic effects
-      if (particle.size > 2.5) {
+      if (particle.size > 1.5) {
         // Large fairy dust - dramatic glow
         ctx.shadowBlur = 15;
         ctx.shadowColor = particle.color;
@@ -142,7 +142,7 @@ export default function ParticleSystem() {
           ctx.lineTo(particle.x - particle.size * 1.8, particle.y + particle.size * 1.8);
           ctx.stroke();
         }
-      } else if (particle.size > 1.5) {
+      } else if (particle.size > 0.9) {
         // Medium fairy dust - moderate glow
         ctx.shadowBlur = 10;
         ctx.shadowColor = particle.color;
