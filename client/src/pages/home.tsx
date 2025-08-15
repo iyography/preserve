@@ -295,6 +295,8 @@ export default function Home() {
 
       {/* Features Preview Section */}
       <section className="relative z-10 px-4 py-20">
+        {/* Particle Animation Layer - Same as Hero */}
+        <ParticleSystem />
         {/* Background ethereal clouds - Same as hero */}
         <div className="absolute inset-0 z-0">
           <div className="absolute top-20 left-10 w-96 h-64 bg-gradient-to-r from-purple-200/30 to-indigo-200/20 rounded-full blur-3xl floating-cloud-1"></div>
