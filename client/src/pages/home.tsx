@@ -77,10 +77,10 @@ export default function Home() {
       <section id="home" className="relative min-h-screen flex items-center justify-center pt-16 px-4 z-10">
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-            <span className="text-celestial-950">Keep Their Memory</span>
+            <span className="text-celestial-950">Stay Connected to Family,</span>
             <br />
             <span className="bg-gradient-to-r from-celestial-700 via-celestial-800 to-celestial-900 bg-clip-text text-transparent">
-              Alive Forever
+              Keep their memories alive forever
             </span>
           </h1>
           
