@@ -33,18 +33,18 @@ export default function ParticleSystem() {
     window.addEventListener('resize', resizeCanvas);
 
     const colors = [
-      'rgb(147, 51, 234)',  // bright purple
-      'rgb(168, 85, 247)',  // bright violet
-      'rgb(124, 58, 237)',  // deep violet
-      'rgb(139, 92, 246)',  // light violet
-      'rgb(156, 39, 176)',  // vivid purple
-      'rgb(142, 36, 170)',  // deep magenta
-      'rgb(128, 0, 128)',   // pure purple
-      'rgb(75, 0, 130)',    // indigo
-      'rgb(138, 43, 226)',  // blue violet
-      'rgb(153, 50, 204)',  // dark orchid
-      'rgb(186, 85, 211)',  // medium orchid
-      'rgb(221, 160, 221)'  // plum
+      '#9333ea',  // bright purple - highly visible
+      '#a855f7',  // bright violet - highly visible  
+      '#7c3aed',  // deep violet - highly visible
+      '#8b5cf6',  // light violet - highly visible
+      '#c084fc',  // lighter purple - highly visible
+      '#ddd6fe',  // very light purple - highly visible
+      '#8a2be2',  // blue violet - highly visible
+      '#9932cc',  // dark orchid - highly visible
+      '#ba55d3',  // medium orchid - highly visible
+      '#da70d6',  // orchid - highly visible
+      '#ee82ee',  // violet - highly visible
+      '#dda0dd'   // plum - highly visible
     ];
 
     const createParticle = (): Particle => {
@@ -55,7 +55,7 @@ export default function ParticleSystem() {
         vy: -Math.random() * 2 - 0.5,
         life: 0,
         maxLife: Math.random() * 300 + 200,
-        size: Math.random() * 2 + 1, // Slightly bigger so they're more visible
+        size: Math.random() * 4 + 2, // Much bigger dots - 2-6px for visibility
         opacity: 0,
         color: colors[Math.floor(Math.random() * colors.length)]
       };
@@ -93,20 +93,18 @@ export default function ParticleSystem() {
       ctx.save();
       ctx.globalAlpha = particle.opacity;
       
-      // Create glow effect
-      ctx.shadowBlur = 15;
-      ctx.shadowColor = particle.color;
-      
+      // Draw solid purple dot with strong visibility
       ctx.fillStyle = particle.color;
       ctx.beginPath();
       ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
       ctx.fill();
       
-      // Add bright inner core - keep it the same purple color  
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = particle.color; // Same color, full opacity
+      // Add subtle glow for visibility
+      ctx.shadowBlur = 6;
+      ctx.shadowColor = particle.color;
+      ctx.fillStyle = particle.color;
       ctx.beginPath();
-      ctx.arc(particle.x, particle.y, particle.size * 0.5, 0, Math.PI * 2);
+      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
       ctx.fill();
       
       ctx.restore();
@@ -115,18 +113,18 @@ export default function ParticleSystem() {
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Add new particles - much more frequent for fairy dust effect
-      if (Math.random() < 0.8) {
+      // Add new purple dots frequently for visible floating effect  
+      if (Math.random() < 0.9) {
         particlesRef.current.push(createParticle());
       }
       
-      // Add some particles from random positions for fuller effect
-      if (Math.random() < 0.3) {
+      // Add particles from sides for fuller coverage
+      if (Math.random() < 0.4) {
         const sideParticle = createParticle();
         sideParticle.x = Math.random() < 0.5 ? -10 : canvas.width + 10;
         sideParticle.y = Math.random() * canvas.height;
-        sideParticle.vx = sideParticle.x < 0 ? Math.random() * 2 + 0.5 : -(Math.random() * 2 + 0.5);
-        sideParticle.vy = (Math.random() - 0.5) * 1;
+        sideParticle.vx = sideParticle.x < 0 ? Math.random() * 1.5 + 0.3 : -(Math.random() * 1.5 + 0.3);
+        sideParticle.vy = (Math.random() - 0.5) * 0.8;
         particlesRef.current.push(sideParticle);
       }
 
