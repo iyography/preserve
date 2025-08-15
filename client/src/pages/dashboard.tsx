@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, Plus, Upload, MessageCircle, Clock, Shield, Timeline, Settings, Play, Bookmark, Share, Download, Mic, FileText, Video, Camera, Sparkles, Users, BarChart3, CheckCircle, Moon, Sun } from "lucide-react";
+import { Heart, Plus, Upload, MessageCircle, Clock, Shield, Calendar, Settings, Play, Bookmark, Share, Download, Mic, FileText, Video, Camera, Sparkles, Users, BarChart3, CheckCircle, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -446,7 +446,7 @@ export default function Dashboard() {
             <Card className="bg-white/70 backdrop-blur-sm border-purple-100">
               <CardHeader>
                 <CardTitle className="text-xl flex items-center">
-                  <Timeline className="w-5 h-5 mr-2 text-purple-600" />
+                  <Calendar className="w-5 h-5 mr-2 text-purple-600" />
                   Memory Growth Timeline
                 </CardTitle>
               </CardHeader>
