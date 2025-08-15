@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Play, Crown, Heart, Mic, MessageCircle, Volume2, Infinity, Twitter, Facebook, Instagram, Menu, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -134,11 +134,12 @@ export default function Home() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1 }}
-            className="text-3xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight"
+            className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight"
           >
-            <span className="text-white">Stay Connected to Family </span>
+            <span className="text-white">Keep Their Memory</span>
+            <br />
             <span className="bg-gradient-to-r from-celestial-400 via-celestial-500 to-celestial-600 bg-clip-text text-transparent glow-text">
-              Keep their memories alive forever
+              Alive Forever
             </span>
           </motion.h1>
           
