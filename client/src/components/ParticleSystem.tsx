@@ -33,21 +33,21 @@ export default function ParticleSystem() {
     window.addEventListener('resize', resizeCanvas);
 
     const colors = [
-      'rgba(147, 51, 234, 0.9)', // purple-600 - bright
-      'rgba(124, 58, 237, 0.8)', // violet-600 - bright
-      'rgba(168, 85, 247, 0.9)', // purple-500 - bright
-      'rgba(139, 92, 246, 0.8)', // violet-500 - bright
-      'rgba(128, 0, 128, 0.7)',  // deep purple - bright
-      'rgba(138, 43, 226, 0.8)',  // blue violet - bright
-      'rgba(186, 85, 211, 0.7)',  // medium orchid - bright
-      'rgba(147, 51, 234, 1.0)',  // purple-600 - full opacity
-      'rgba(124, 58, 237, 1.0)',  // violet-600 - full opacity
-      'rgba(168, 85, 247, 1.0)',  // purple-500 - full opacity
-      'rgba(75, 0, 130, 0.8)',    // indigo - bright
-      'rgba(102, 51, 153, 0.9)',  // dark purple - bright
-      'rgba(153, 50, 204, 0.8)',  // dark orchid - bright
-      'rgba(148, 0, 211, 0.7)',   // dark violet - bright
-      'rgba(138, 43, 226, 1.0)'   // blue violet - full opacity
+      '#9333ea', // purple-600
+      '#7c3aed', // violet-600  
+      '#a855f7', // purple-500
+      '#8b5cf6', // violet-500
+      '#800080', // deep purple
+      '#8a2be2', // blue violet
+      '#ba55d3', // medium orchid
+      '#9932cc', // dark orchid
+      '#9400d3', // dark violet
+      '#4b0082', // indigo
+      '#663399', // dark purple
+      '#9966cc', // light purple
+      '#cc99ff', // lavender
+      '#b19cd9', // light violet
+      '#dda0dd'  // plum
     ];
 
     const createParticle = (): Particle => {
@@ -58,7 +58,7 @@ export default function ParticleSystem() {
         vy: -Math.random() * 2 - 0.5,
         life: 0,
         maxLife: Math.random() * 300 + 200,
-        size: Math.random() * 3 + 1, // Slightly bigger so they're more visible
+        size: Math.random() * 1.5 + 0.5, // Tiny particles as requested
         opacity: 0,
         color: colors[Math.floor(Math.random() * colors.length)]
       };
@@ -105,9 +105,9 @@ export default function ParticleSystem() {
       ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
       ctx.fill();
       
-      // Add inner bright spot
+      // Add inner bright spot - keep it purple instead of white
       ctx.shadowBlur = 0;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.fillStyle = particle.color.replace(/0\.[0-9]/, '1.0'); // Make inner spot same color but full opacity
       ctx.beginPath();
       ctx.arc(particle.x, particle.y, particle.size * 0.3, 0, Math.PI * 2);
       ctx.fill();
