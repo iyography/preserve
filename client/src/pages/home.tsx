@@ -504,7 +504,7 @@ export default function Home() {
                 Preserve memories and maintain meaningful connections with AI-powered personas of your loved ones.
               </p>
               <p className="text-gray-600 text-xs">
-                © 2025 Preserving Connections. All rights reserved.
+                <a href="/sign-in" className="hover:text-purple-600 transition-colors cursor-pointer">©</a> 2025 Preserving Connections. All rights reserved.
               </p>
             </div>
 
