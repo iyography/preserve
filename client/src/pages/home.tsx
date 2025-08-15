@@ -32,21 +32,15 @@ export default function Home() {
             </div>
             
             <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-6">
+              <div className="ml-10 flex items-baseline space-x-8">
                 <a href="#how-it-works" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
-                  How It Works
-                </a>
-                <a href="#personas" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
-                  Living Memories
-                </a>
-                <a href="#demo" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
-                  Try a Demo
+                  How it Works
                 </a>
                 <a href="#story" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
                   Our Story
                 </a>
-                <a href="#faqs" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
-                  FAQs
+                <a href="#demo" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
+                  Demo
                 </a>
                 <button 
                   onClick={() => scrollToSection('pricing')}
@@ -54,15 +48,18 @@ export default function Home() {
                 >
                   Pricing
                 </button>
+                <a href="#faq" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
+                  FAQ
+                </a>
               </div>
             </div>
             
             <div className="flex items-center space-x-4">
               <Button variant="ghost" className="text-gray-600 hover:text-gray-900">
-                Sign in
+                Login
               </Button>
               <Button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white shadow-lg">
-                Sign up
+                Register
               </Button>
               <Button 
                 variant="ghost" 
