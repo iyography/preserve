@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Play, Crown, Heart, Mic, MessageCircle, Volume2, Infinity, Twitter, Facebook, Instagram, Menu, Star, ChevronDown, ArrowRight, X, Send } from "lucide-react";
+import { Play, Crown, Heart, Mic, MessageCircle, Volume2, Infinity, Twitter, Facebook, Instagram, Menu, Star, ChevronDown, ArrowRight, X, Send, Upload, FileText, MessageSquare, Settings, ChevronDown as ChevronDownIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import ParticleSystem from "@/components/ParticleSystem";
 import AudioPlayer from "@/components/AudioPlayer";
@@ -20,6 +21,7 @@ export default function Home() {
   const [isDemoOpen, setIsDemoOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
@@ -54,6 +56,27 @@ export default function Home() {
       
       setNewMessage('');
     }
+  };
+
+  const handleImprovePersona = (method: string) => {
+    // Simulate different improvement methods
+    const responses = {
+      'upload-texts': "Great! Upload text files to help me learn more about Grandma Rose's writing style and personality.",
+      'paste-facebook': "Perfect! Paste Facebook posts and messages to capture her social interactions and voice.",
+      'voice-recordings': "Wonderful! Voice recordings will help me understand her speech patterns and tone.",
+      'family-stories': "Excellent! Family stories will add depth to her personality and memories.",
+      'photo-context': "Amazing! Adding context to photos will help me understand her experiences and relationships."
+    };
+    
+    const responseText = responses[method as keyof typeof responses] || "This will help improve Grandma Rose's persona!";
+    
+    const systemMessage: ChatMessage = {
+      id: Date.now(),
+      sender: 'grandma',
+      text: responseText + " For now, let's continue our chat - but imagine I'm getting more personalized with each message you add!"
+    };
+    
+    setChatMessages(prev => [...prev, systemMessage]);
   };
 
   const faqCategories = {
@@ -461,14 +484,50 @@ export default function Home() {
       <Dialog open={isDemoOpen} onOpenChange={setIsDemoOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] p-0 bg-white">
           <DialogHeader className="p-6 pb-4 border-b border-purple-100">
-            <DialogTitle className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center">
-                <Heart className="text-white w-6 h-6" />
+            <DialogTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center">
+                  <Heart className="text-white w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">Chat with Grandma Rose</h3>
+                  <p className="text-sm text-purple-600">Demo conversation - Experience the magic</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900">Chat with Grandma Rose</h3>
-                <p className="text-sm text-purple-600">Demo conversation - Experience the magic</p>
-              </div>
+              
+              {/* Improve Persona Button */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="border-purple-200 hover:bg-purple-50">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Improve Persona
+                    <ChevronDownIcon className="w-4 h-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => handleImprovePersona('upload-texts')} className="cursor-pointer">
+                    <FileText className="w-4 h-4 mr-3" />
+                    Upload Text Files
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleImprovePersona('paste-facebook')} className="cursor-pointer">
+                    <Facebook className="w-4 h-4 mr-3" />
+                    Paste Facebook Posts
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleImprovePersona('voice-recordings')} className="cursor-pointer">
+                    <Mic className="w-4 h-4 mr-3" />
+                    Voice Recordings
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handleImprovePersona('family-stories')} className="cursor-pointer">
+                    <MessageSquare className="w-4 h-4 mr-3" />
+                    Family Stories
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleImprovePersona('photo-context')} className="cursor-pointer">
+                    <Upload className="w-4 h-4 mr-3" />
+                    Photo Context
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </DialogTitle>
           </DialogHeader>
           
