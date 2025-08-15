@@ -5,6 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import ParticleSystem from "@/components/ParticleSystem";
 import AudioPlayer from "@/components/AudioPlayer";
 
@@ -21,7 +23,14 @@ export default function Home() {
   const [isDemoOpen, setIsDemoOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [currentImproveModule, setCurrentImproveModule] = useState<string | null>(null);
+  const [improveData, setImproveData] = useState({
+    facebookUrl: '',
+    textContent: '',
+    voiceFile: null as File | null,
+    familyStory: '',
+    photoContext: ''
+  });
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
@@ -59,24 +68,44 @@ export default function Home() {
   };
 
   const handleImprovePersona = (method: string) => {
-    // Simulate different improvement methods
+    setCurrentImproveModule(method);
+  };
+
+  const handleSubmitImprovement = () => {
     const responses = {
-      'upload-texts': "Great! Upload text files to help me learn more about Grandma Rose's writing style and personality.",
-      'paste-facebook': "Perfect! Paste Facebook posts and messages to capture her social interactions and voice.",
-      'voice-recordings': "Wonderful! Voice recordings will help me understand her speech patterns and tone.",
-      'family-stories': "Excellent! Family stories will add depth to her personality and memories.",
-      'photo-context': "Amazing! Adding context to photos will help me understand her experiences and relationships."
+      'upload-texts': "Perfect! I've processed your text content. This will help me understand the writing style and personality better.",
+      'paste-facebook': "Excellent! I've analyzed the Facebook content. This gives me great insight into social interactions and communication patterns.",
+      'voice-recordings': "Wonderful! The voice recording has been processed. I can now better match speech patterns and tone.",
+      'family-stories': "Beautiful! This family story adds so much depth to my understanding of personality and memories.",
+      'photo-context': "Amazing! The photo context helps me understand experiences and relationships much better."
     };
     
-    const responseText = responses[method as keyof typeof responses] || "This will help improve Grandma Rose's persona!";
+    const responseText = responses[currentImproveModule as keyof typeof responses] || "This improvement has been processed successfully!";
     
     const systemMessage: ChatMessage = {
       id: Date.now(),
       sender: 'grandma',
-      text: responseText + " For now, let's continue our chat - but imagine I'm getting more personalized with each message you add!"
+      text: responseText + " You can see how I'm getting more personalized now! Try asking me something specific."
     };
     
     setChatMessages(prev => [...prev, systemMessage]);
+    setCurrentImproveModule(null);
+    
+    // Reset form data
+    setImproveData({
+      facebookUrl: '',
+      textContent: '',
+      voiceFile: null,
+      familyStory: '',
+      photoContext: ''
+    });
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setImproveData(prev => ({ ...prev, voiceFile: file }));
+    }
   };
 
   const faqCategories = {
@@ -582,6 +611,161 @@ export default function Home() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Improve Persona Module Dialogs */}
+      <Dialog open={currentImproveModule !== null} onOpenChange={() => setCurrentImproveModule(null)}>
+        <DialogContent className="max-w-2xl bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center">
+                <Settings className="text-white w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  {currentImproveModule === 'paste-facebook' && 'Add Facebook Content'}
+                  {currentImproveModule === 'upload-texts' && 'Upload Text Content'}
+                  {currentImproveModule === 'voice-recordings' && 'Upload Voice Recording'}
+                  {currentImproveModule === 'family-stories' && 'Share Family Story'}
+                  {currentImproveModule === 'photo-context' && 'Add Photo Context'}
+                </h3>
+                <p className="text-sm text-purple-600">Help improve Grandma Rose's personality</p>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="p-6 space-y-6">
+            {currentImproveModule === 'paste-facebook' && (
+              <div className="space-y-4">
+                <Label htmlFor="facebook-url" className="text-sm font-medium text-gray-700">
+                  Facebook Profile or Post URL
+                </Label>
+                <Input
+                  id="facebook-url"
+                  placeholder="https://facebook.com/profile or post link"
+                  value={improveData.facebookUrl}
+                  onChange={(e) => setImproveData(prev => ({ ...prev, facebookUrl: e.target.value }))}
+                  className="w-full"
+                />
+                <p className="text-sm text-gray-600">
+                  Paste a link to Facebook posts, profile, or content to help us understand communication style and personality.
+                </p>
+              </div>
+            )}
+
+            {currentImproveModule === 'upload-texts' && (
+              <div className="space-y-4">
+                <Label htmlFor="text-content" className="text-sm font-medium text-gray-700">
+                  Text Content
+                </Label>
+                <Textarea
+                  id="text-content"
+                  placeholder="Paste letters, emails, messages, or any written content..."
+                  value={improveData.textContent}
+                  onChange={(e) => setImproveData(prev => ({ ...prev, textContent: e.target.value }))}
+                  className="min-h-[200px] w-full"
+                />
+                <p className="text-sm text-gray-600">
+                  Share written content like letters, emails, or messages to capture writing style and personality.
+                </p>
+              </div>
+            )}
+
+            {currentImproveModule === 'voice-recordings' && (
+              <div className="space-y-4">
+                <Label htmlFor="voice-upload" className="text-sm font-medium text-gray-700">
+                  Voice Recording File
+                </Label>
+                <div className="border-2 border-dashed border-purple-200 rounded-lg p-8 text-center">
+                  <Mic className="mx-auto w-12 h-12 text-purple-400 mb-4" />
+                  <input
+                    id="voice-upload"
+                    type="file"
+                    accept="audio/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <Button 
+                    variant="outline" 
+                    onClick={() => document.getElementById('voice-upload')?.click()}
+                    className="border-purple-200 hover:bg-purple-50"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Choose Audio File
+                  </Button>
+                  {improveData.voiceFile && (
+                    <p className="mt-2 text-sm text-green-600">
+                      Selected: {improveData.voiceFile.name}
+                    </p>
+                  )}
+                  <p className="text-sm text-gray-600 mt-4">
+                    Upload audio recordings, voicemails, or conversations to capture speech patterns and tone.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {currentImproveModule === 'family-stories' && (
+              <div className="space-y-4">
+                <Label htmlFor="family-story" className="text-sm font-medium text-gray-700">
+                  Family Story or Memory
+                </Label>
+                <Textarea
+                  id="family-story"
+                  placeholder="Share a meaningful story, memory, or anecdote about your loved one..."
+                  value={improveData.familyStory}
+                  onChange={(e) => setImproveData(prev => ({ ...prev, familyStory: e.target.value }))}
+                  className="min-h-[200px] w-full"
+                />
+                <p className="text-sm text-gray-600">
+                  Share stories, memories, or experiences that showcase personality, values, and cherished moments.
+                </p>
+              </div>
+            )}
+
+            {currentImproveModule === 'photo-context' && (
+              <div className="space-y-4">
+                <Label htmlFor="photo-context" className="text-sm font-medium text-gray-700">
+                  Photo Context & Description
+                </Label>
+                <Textarea
+                  id="photo-context"
+                  placeholder="Describe photos, the context behind them, and what they meant to your loved one..."
+                  value={improveData.photoContext}
+                  onChange={(e) => setImproveData(prev => ({ ...prev, photoContext: e.target.value }))}
+                  className="min-h-[200px] w-full"
+                />
+                <p className="text-sm text-gray-600">
+                  Add context to photos by describing the situation, people involved, and emotional significance.
+                </p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+              <Button 
+                variant="outline" 
+                onClick={() => setCurrentImproveModule(null)}
+                className="border-gray-300 hover:bg-gray-50"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSubmitImprovement}
+                className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white"
+                disabled={
+                  (currentImproveModule === 'paste-facebook' && !improveData.facebookUrl.trim()) ||
+                  (currentImproveModule === 'upload-texts' && !improveData.textContent.trim()) ||
+                  (currentImproveModule === 'voice-recordings' && !improveData.voiceFile) ||
+                  (currentImproveModule === 'family-stories' && !improveData.familyStory.trim()) ||
+                  (currentImproveModule === 'photo-context' && !improveData.photoContext.trim())
+                }
+              >
+                Process & Improve Persona
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
