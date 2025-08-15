@@ -108,14 +108,10 @@
 @layer components {
   .bg-celestial-gradient {
     background: linear-gradient(45deg, #fefefe, #f8f9ff, #f0f2ff, #e8ebff);
-    background-size: 400% 400%;
-    animation: meshGradient 8s ease-in-out infinite;
   }
   
   .bg-white-ethereal {
     background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 25%, #f0f2ff 50%, #e8ebff 75%, #f8f9ff 100%);
-    background-size: 400% 400%;
-    animation: etherealMotion 12s ease-in-out infinite;
   }
   
   .glassmorphism {
@@ -125,7 +121,7 @@
   }
   
   .glow-text {
-    animation: textGlow 2s ease-in-out infinite alternate;
+    text-shadow: 0 0 15px rgba(139, 92, 246, 0.6), 0 0 25px rgba(139, 92, 246, 0.4);
   }
   
   .glow-ring {
@@ -138,129 +134,17 @@
   
   .hover-glow:hover {
     box-shadow: 0 0 30px rgba(139, 92, 246, 0.6);
-    transform: translateY(-2px);
   }
   
   .floating-card {
-    animation: floatCard 6s ease-in-out infinite;
+    /* No animation */
   }
   
-  .floating-card:nth-child(2) {
-    animation-delay: -2s;
-  }
-  
-  .floating-card:nth-child(3) {
-    animation-delay: -4s;
-  }
-  
-  .floating-cloud-1 {
-    animation: floatCloud1 8s ease-in-out infinite;
-  }
-  
-  .floating-cloud-2 {
-    animation: floatCloud2 10s ease-in-out infinite;
-    animation-delay: -2s;
-  }
-  
-  .floating-cloud-3 {
-    animation: floatCloud3 12s ease-in-out infinite;
-    animation-delay: -4s;
-  }
-  
-  .floating-cloud-4 {
-    animation: floatCloud4 15s linear infinite;
-    animation-delay: -1s;
+  .floating-cloud-1, .floating-cloud-2, .floating-cloud-3, .floating-cloud-4 {
+    /* No animation */
   }
 }
 
 @layer utilities {
-  @keyframes meshGradient {
-    0%, 100% { 
-      background-position: 0% 50%;
-    }
-    25% { 
-      background-position: 100% 50%; 
-    }
-    50% { 
-      background-position: 100% 100%; 
-    }
-    75% { 
-      background-position: 50% 100%; 
-    }
-  }
-  
-  @keyframes etherealMotion {
-    0%, 100% { 
-      background-position: 0% 50%;
-    }
-    33% { 
-      background-position: 100% 30%; 
-    }
-    66% { 
-      background-position: 30% 100%; 
-    }
-  }
-  
-  @keyframes textGlow {
-    from { 
-      text-shadow: 0 0 10px rgba(139, 92, 246, 0.5), 0 0 20px rgba(139, 92, 246, 0.3); 
-    }
-    to { 
-      text-shadow: 0 0 20px rgba(139, 92, 246, 0.8), 0 0 30px rgba(139, 92, 246, 0.5); 
-    }
-  }
-  
-  @keyframes floatCard {
-    0%, 100% { 
-      transform: translateY(0px) rotate(0deg); 
-    }
-    33% { 
-      transform: translateY(-10px) rotate(1deg); 
-    }
-    66% { 
-      transform: translateY(-5px) rotate(-1deg); 
-    }
-  }
-  
-  @keyframes floatCloud1 {
-    0%, 100% { 
-      transform: translate(0px, 0px); 
-    }
-    50% { 
-      transform: translate(10px, -20px); 
-    }
-  }
-  
-  @keyframes floatCloud2 {
-    0%, 100% { 
-      transform: translate(0px, 0px); 
-    }
-    50% { 
-      transform: translate(-8px, -15px); 
-    }
-  }
-  
-  @keyframes floatCloud3 {
-    0%, 100% { 
-      transform: translate(0px, 0px); 
-    }
-    50% { 
-      transform: translate(15px, -25px); 
-    }
-  }
-  
-  @keyframes floatCloud4 {
-    0% { 
-      transform: rotate(0deg); 
-      opacity: 0.3;
-    }
-    50% { 
-      transform: rotate(180deg); 
-      opacity: 0.5;
-    }
-    100% { 
-      transform: rotate(360deg); 
-      opacity: 0.3;
-    }
-  }
+  /* All animations removed for static display */
 }
