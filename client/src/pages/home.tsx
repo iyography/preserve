@@ -87,8 +87,11 @@ export default function Home() {
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
             <span className="text-black">Talk to Your Loved Ones,</span>
             <br />
-            <span className="bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 bg-clip-text text-transparent glow-text">
-              Anytime You Miss Them
+            <span className="text-black">
+              <span className="bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 bg-clip-text text-transparent glow-text">
+                Anytime
+              </span>
+              {" "}You Miss Them
             </span>
           </h1>
           
