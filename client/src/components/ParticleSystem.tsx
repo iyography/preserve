@@ -33,18 +33,18 @@ export default function ParticleSystem() {
     window.addEventListener('resize', resizeCanvas);
 
     const colors = [
-      '#9333ea',  // bright purple - highly visible
-      '#a855f7',  // bright violet - highly visible  
-      '#7c3aed',  // deep violet - highly visible
-      '#8b5cf6',  // light violet - highly visible
-      '#c084fc',  // lighter purple - highly visible
-      '#ddd6fe',  // very light purple - highly visible
-      '#8a2be2',  // blue violet - highly visible
-      '#9932cc',  // dark orchid - highly visible
-      '#ba55d3',  // medium orchid - highly visible
-      '#da70d6',  // orchid - highly visible
-      '#ee82ee',  // violet - highly visible
-      '#dda0dd'   // plum - highly visible
+      '#ffffff',  // pure white - heavenly
+      '#f8fafc',  // very light blue-white
+      '#f1f5f9',  // soft white with hint of blue
+      '#e2e8f0',  // light silver
+      '#cbd5e1',  // subtle silver-blue
+      '#94a3b8',  // soft gray-blue
+      '#e0f2fe',  // very light sky blue
+      '#bae6fd',  // light celestial blue
+      '#7dd3fc',  // soft sky blue
+      '#38bdf8',  // bright celestial blue
+      '#0ea5e9',  // vivid sky blue
+      '#0284c7'   // deep celestial blue
     ];
 
     const createParticle = (): Particle => {
@@ -55,7 +55,7 @@ export default function ParticleSystem() {
         vy: -Math.random() * 2 - 0.5,
         life: 0,
         maxLife: Math.random() * 300 + 200,
-        size: Math.random() * 4 + 2, // Much bigger dots - 2-6px for visibility
+        size: Math.random() * 1.5 + 0.3, // Tiny fairy dust - 0.3-1.8px
         opacity: 0,
         color: colors[Math.floor(Math.random() * colors.length)]
       };
@@ -93,19 +93,42 @@ export default function ParticleSystem() {
       ctx.save();
       ctx.globalAlpha = particle.opacity;
       
-      // Draw solid purple dot with strong visibility
-      ctx.fillStyle = particle.color;
+      // Create heavenly fairy dust effect with sparkly glow
+      
+      // Outer ethereal glow - large and soft
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, particle.size * 4, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Medium celestial glow
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = particle.color;
+      ctx.fillStyle = particle.color.includes('rgb') ? particle.color.replace('rgb', 'rgba').replace(')', ', 0.6)') : particle.color + '99';
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, particle.size * 2, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Bright center - tiny sparkle
+      ctx.shadowBlur = 5;
+      ctx.shadowColor = '#ffffff';
+      ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
       ctx.fill();
       
-      // Add subtle glow for visibility
-      ctx.shadowBlur = 6;
-      ctx.shadowColor = particle.color;
-      ctx.fillStyle = particle.color;
+      // Add tiny star twinkle effect
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.lineWidth = 0.5;
       ctx.beginPath();
-      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(particle.x - particle.size * 2, particle.y);
+      ctx.lineTo(particle.x + particle.size * 2, particle.y);
+      ctx.moveTo(particle.x, particle.y - particle.size * 2);
+      ctx.lineTo(particle.x, particle.y + particle.size * 2);
+      ctx.stroke();
       
       ctx.restore();
     };
@@ -113,13 +136,13 @@ export default function ParticleSystem() {
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Add new purple dots frequently for visible floating effect  
-      if (Math.random() < 0.9) {
+      // Add new fairy dust occasionally for subtle heavenly effect  
+      if (Math.random() < 0.3) {
         particlesRef.current.push(createParticle());
       }
       
-      // Add particles from sides for fuller coverage
-      if (Math.random() < 0.4) {
+      // Add occasional sparkles from sides
+      if (Math.random() < 0.1) {
         const sideParticle = createParticle();
         sideParticle.x = Math.random() < 0.5 ? -10 : canvas.width + 10;
         sideParticle.y = Math.random() * canvas.height;
