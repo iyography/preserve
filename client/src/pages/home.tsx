@@ -85,7 +85,7 @@ export default function Home() {
         
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-            <span className="text-gray-900">Talk to Your Loved Ones,</span>
+            <span className="text-black">Talk to Your Loved Ones,</span>
             <br />
             <span className="bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 bg-clip-text text-transparent glow-text">
               Anytime You Miss Them
