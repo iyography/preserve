@@ -117,108 +117,33 @@ export default function ParticleSystem() {
       ctx.save();
       ctx.globalAlpha = particle.opacity;
       
-      // Create heavenly sparkling fairy dust with varying effects based on size
-      const isSilver = particle.color.includes('f') || particle.color.includes('e') || particle.color.includes('c') || particle.color.includes('9');
-      
-      // Calculate sparkle intensity based on twinkle phase
+      // Calculate sparkle intensity for twinkling
       const sparkleIntensity = (Math.sin(particle.sparklePhase) + 1) * 0.5; // 0 to 1
-      const twinkleGlow = (Math.cos(particle.twinkle * 2) + 1) * 0.3 + 0.4; // 0.4 to 1.0
+      const twinkleGlow = (Math.cos(particle.twinkle * 2) + 1) * 0.4 + 0.6; // 0.6 to 1.0
       
-      // Larger particles get more dramatic effects
-      if (particle.size > 1.5) {
-        // Large fairy dust - heavenly dramatic glow with sparkle
-        const glowSize = 15 + sparkleIntensity * 10; // 15-25 blur
-        ctx.shadowBlur = glowSize;
-        ctx.shadowColor = particle.color;
-        ctx.fillStyle = particle.color + Math.floor(128 * twinkleGlow).toString(16).padStart(2, '0');
-        ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.size * (3 + sparkleIntensity), 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Bright twinkling core
-        ctx.shadowBlur = 8 + sparkleIntensity * 12;
+      // Simple glowing star - just one circle with soft glow
+      ctx.shadowBlur = 8 + sparkleIntensity * 12;
+      ctx.shadowColor = particle.color;
+      ctx.fillStyle = particle.color;
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, particle.size * twinkleGlow, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Add star rays for larger particles
+      if (particle.size > 1.2 && sparkleIntensity > 0.4) {
+        ctx.shadowBlur = sparkleIntensity * 6;
         ctx.shadowColor = '#ffffff';
-        ctx.fillStyle = particle.color;
+        ctx.strokeStyle = particle.color + Math.floor(180 * sparkleIntensity).toString(16).padStart(2, '0');
+        ctx.lineWidth = 0.3 + sparkleIntensity * 0.4;
         ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.size * (1 + sparkleIntensity * 0.5), 0, Math.PI * 2);
-        ctx.fill();
         
-        // Add heavenly sparkle rays for silver particles
-        if (isSilver && sparkleIntensity > 0.3) {
-          ctx.shadowBlur = sparkleIntensity * 8;
-          ctx.shadowColor = '#ffffff';
-          ctx.strokeStyle = '#ffffff' + Math.floor(255 * sparkleIntensity).toString(16).padStart(2, '0');
-          ctx.lineWidth = 0.5 + sparkleIntensity;
-          ctx.beginPath();
-          // Four-point star with sparkle variation
-          const rayLength = particle.size * (2.5 + sparkleIntensity);
-          ctx.moveTo(particle.x - rayLength, particle.y);
-          ctx.lineTo(particle.x + rayLength, particle.y);
-          ctx.moveTo(particle.x, particle.y - rayLength);
-          ctx.lineTo(particle.x, particle.y + rayLength);
-          // Diagonal rays
-          const diagLength = particle.size * (1.8 + sparkleIntensity * 0.8);
-          ctx.moveTo(particle.x - diagLength, particle.y - diagLength);
-          ctx.lineTo(particle.x + diagLength, particle.y + diagLength);
-          ctx.moveTo(particle.x + diagLength, particle.y - diagLength);
-          ctx.lineTo(particle.x - diagLength, particle.y + diagLength);
-          ctx.stroke();
-        }
-      } else if (particle.size > 0.9) {
-        // Medium fairy dust - moderate glow with sparkle
-        ctx.shadowBlur = 10 + sparkleIntensity * 6;
-        ctx.shadowColor = particle.color;
-        ctx.fillStyle = particle.color + Math.floor(153 * twinkleGlow).toString(16).padStart(2, '0');
-        ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.size * (2 + sparkleIntensity * 0.5), 0, Math.PI * 2);
-        ctx.fill();
-        
-        ctx.shadowBlur = 5 + sparkleIntensity * 8;
-        ctx.shadowColor = '#ffffff';
-        ctx.fillStyle = particle.color;
-        ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.size * (1 + sparkleIntensity * 0.3), 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Simple cross sparkle with heavenly twinkle
-        if (sparkleIntensity > 0.2) {
-          ctx.shadowBlur = sparkleIntensity * 5;
-          ctx.shadowColor = '#ffffff';
-          ctx.strokeStyle = '#ffffff' + Math.floor(170 * sparkleIntensity).toString(16).padStart(2, '0');
-          ctx.lineWidth = 0.5 + sparkleIntensity * 0.5;
-          ctx.beginPath();
-          const rayLength = particle.size * (1.5 + sparkleIntensity * 0.5);
-          ctx.moveTo(particle.x - rayLength, particle.y);
-          ctx.lineTo(particle.x + rayLength, particle.y);
-          ctx.moveTo(particle.x, particle.y - rayLength);
-          ctx.lineTo(particle.x, particle.y + rayLength);
-          ctx.stroke();
-        }
-      } else {
-        // Small fairy dust - subtle glow with gentle twinkle
-        ctx.shadowBlur = 6 + sparkleIntensity * 4;
-        ctx.shadowColor = particle.color;
-        ctx.fillStyle = particle.color + Math.floor(187 * twinkleGlow).toString(16).padStart(2, '0');
-        ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.size * (1.5 + sparkleIntensity * 0.3), 0, Math.PI * 2);
-        ctx.fill();
-        
-        ctx.shadowBlur = 3 + sparkleIntensity * 6;
-        ctx.shadowColor = '#ffffff';
-        ctx.fillStyle = particle.color;
-        ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.size * (1 + sparkleIntensity * 0.2), 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Tiny sparkle dot for smallest particles
-        if (sparkleIntensity > 0.4) {
-          ctx.shadowBlur = sparkleIntensity * 3;
-          ctx.shadowColor = '#ffffff';
-          ctx.fillStyle = '#ffffff' + Math.floor(100 * sparkleIntensity).toString(16).padStart(2, '0');
-          ctx.beginPath();
-          ctx.arc(particle.x, particle.y, particle.size * 0.3, 0, Math.PI * 2);
-          ctx.fill();
-        }
+        // Simple four-point star
+        const rayLength = particle.size * (2 + sparkleIntensity);
+        ctx.moveTo(particle.x - rayLength, particle.y);
+        ctx.lineTo(particle.x + rayLength, particle.y);
+        ctx.moveTo(particle.x, particle.y - rayLength);
+        ctx.lineTo(particle.x, particle.y + rayLength);
+        ctx.stroke();
       }
       
       ctx.restore();
