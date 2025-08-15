@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Play, Crown, Heart, Mic, MessageCircle, Volume2, Infinity, Twitter, Facebook, Instagram, Menu, Star, ChevronDown } from "lucide-react";
+import { Play, Crown, Heart, Mic, MessageCircle, Volume2, Infinity, Twitter, Facebook, Instagram, Menu, Star, ChevronDown, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import ParticleSystem from "@/components/ParticleSystem";
@@ -154,7 +154,7 @@ export default function Home() {
               className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
               size="lg"
             >
-              <Crown className="w-5 h-5 mr-3" />
+              <ArrowRight className="w-5 h-5 mr-3" />
               Get Started
             </Button>
             
