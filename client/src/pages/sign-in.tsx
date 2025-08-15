@@ -21,6 +21,11 @@ export default function SignIn() {
     e.preventDefault();
     // Handle sign in logic here
     console.log('Sign in attempt:', { email, password });
+    
+    // For demo purposes, redirect to dashboard on any sign in attempt
+    if (email && password) {
+      window.location.href = '/dashboard';
+    }
   };
 
   return (
