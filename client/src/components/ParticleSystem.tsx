@@ -24,9 +24,18 @@ export default function ParticleSystem() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Get the hero section height instead of full window
+    const heroSection = document.getElementById('home');
+    
     const resizeCanvas = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      if (heroSection) {
+        canvas.width = heroSection.offsetWidth;
+        canvas.height = heroSection.offsetHeight;
+      } else {
+        // Fallback to viewport height if hero section not found
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
     };
 
     resizeCanvas();
@@ -176,8 +185,8 @@ export default function ParticleSystem() {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 pointer-events-none z-0"
-      style={{ mixBlendMode: 'screen' }}
+      className="absolute inset-0 pointer-events-none z-0"
+      style={{ background: 'transparent', width: '100%', height: '100%' }}
     />
   );
 }
