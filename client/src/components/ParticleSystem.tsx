@@ -42,18 +42,20 @@ export default function ParticleSystem() {
     window.addEventListener('resize', resizeCanvas);
 
     const colors = [
-      '#ffffff',  // pure white - heavenly
-      '#f8fafc',  // very light blue-white
-      '#f1f5f9',  // soft white with hint of blue
-      '#e2e8f0',  // light silver
-      '#cbd5e1',  // subtle silver-blue
-      '#94a3b8',  // soft gray-blue
-      '#e0f2fe',  // very light sky blue
-      '#bae6fd',  // light celestial blue
-      '#7dd3fc',  // soft sky blue
-      '#38bdf8',  // bright celestial blue
-      '#0ea5e9',  // vivid sky blue
-      '#0284c7'   // deep celestial blue
+      '#9333ea',  // vibrant purple
+      '#a855f7',  // bright violet
+      '#7c3aed',  // deep purple
+      '#8b5cf6',  // medium purple
+      '#c084fc',  // light purple
+      '#ddd6fe',  // very light purple
+      '#e879f9',  // magenta purple
+      '#fbbf24',  // golden yellow
+      '#f59e0b',  // amber gold
+      '#d97706',  // darker gold
+      '#eab308',  // bright gold
+      '#facc15',  // light gold
+      '#fef3c7',  // pale gold
+      '#fde68a'   // soft gold
     ];
 
     const createParticle = (): Particle => {
@@ -64,7 +66,7 @@ export default function ParticleSystem() {
         vy: -Math.random() * 2 - 0.5,
         life: 0,
         maxLife: Math.random() * 300 + 200,
-        size: Math.random() * 1.5 + 0.3, // Tiny fairy dust - 0.3-1.8px
+        size: Math.random() * 3 + 0.5, // Fairy dust variety - 0.5-3.5px
         opacity: 0,
         color: colors[Math.floor(Math.random() * colors.length)]
       };
@@ -102,42 +104,86 @@ export default function ParticleSystem() {
       ctx.save();
       ctx.globalAlpha = particle.opacity;
       
-      // Create heavenly fairy dust effect with sparkly glow
+      // Create magical fairy dust with varying effects based on size
+      const isGold = particle.color.includes('f') && (particle.color.includes('b') || particle.color.includes('c') || particle.color.includes('e'));
       
-      // Outer ethereal glow - large and soft
-      ctx.shadowBlur = 20;
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-      ctx.beginPath();
-      ctx.arc(particle.x, particle.y, particle.size * 4, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Medium celestial glow
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = particle.color;
-      ctx.fillStyle = particle.color.includes('rgb') ? particle.color.replace('rgb', 'rgba').replace(')', ', 0.6)') : particle.color + '99';
-      ctx.beginPath();
-      ctx.arc(particle.x, particle.y, particle.size * 2, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Bright center - tiny sparkle
-      ctx.shadowBlur = 5;
-      ctx.shadowColor = '#ffffff';
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Add tiny star twinkle effect
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-      ctx.lineWidth = 0.5;
-      ctx.beginPath();
-      ctx.moveTo(particle.x - particle.size * 2, particle.y);
-      ctx.lineTo(particle.x + particle.size * 2, particle.y);
-      ctx.moveTo(particle.x, particle.y - particle.size * 2);
-      ctx.lineTo(particle.x, particle.y + particle.size * 2);
-      ctx.stroke();
+      // Larger particles get more dramatic effects
+      if (particle.size > 2.5) {
+        // Large fairy dust - dramatic glow
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = particle.color;
+        ctx.fillStyle = particle.color + '80'; // Semi-transparent
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size * 3, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Bright core
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = particle.color;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Add sparkle rays for gold particles
+        if (isGold) {
+          ctx.shadowBlur = 0;
+          ctx.strokeStyle = particle.color + 'CC';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          // Four-point star
+          ctx.moveTo(particle.x - particle.size * 2.5, particle.y);
+          ctx.lineTo(particle.x + particle.size * 2.5, particle.y);
+          ctx.moveTo(particle.x, particle.y - particle.size * 2.5);
+          ctx.lineTo(particle.x, particle.y + particle.size * 2.5);
+          // Diagonal rays
+          ctx.moveTo(particle.x - particle.size * 1.8, particle.y - particle.size * 1.8);
+          ctx.lineTo(particle.x + particle.size * 1.8, particle.y + particle.size * 1.8);
+          ctx.moveTo(particle.x + particle.size * 1.8, particle.y - particle.size * 1.8);
+          ctx.lineTo(particle.x - particle.size * 1.8, particle.y + particle.size * 1.8);
+          ctx.stroke();
+        }
+      } else if (particle.size > 1.5) {
+        // Medium fairy dust - moderate glow
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = particle.color;
+        ctx.fillStyle = particle.color + '99';
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size * 2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.shadowBlur = 5;
+        ctx.fillStyle = particle.color;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Simple cross sparkle
+        if (isGold) {
+          ctx.shadowBlur = 0;
+          ctx.strokeStyle = particle.color + 'AA';
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.moveTo(particle.x - particle.size * 1.5, particle.y);
+          ctx.lineTo(particle.x + particle.size * 1.5, particle.y);
+          ctx.moveTo(particle.x, particle.y - particle.size * 1.5);
+          ctx.lineTo(particle.x, particle.y + particle.size * 1.5);
+          ctx.stroke();
+        }
+      } else {
+        // Small fairy dust - subtle glow
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = particle.color;
+        ctx.fillStyle = particle.color + 'BB';
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.shadowBlur = 3;
+        ctx.fillStyle = particle.color;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
       
       ctx.restore();
     };
