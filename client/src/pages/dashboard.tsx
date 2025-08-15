@@ -184,28 +184,79 @@ export default function Dashboard() {
               </Card>
             </div>
 
-            {/* Emotional Categories */}
-            <Card className="bg-white/70 backdrop-blur-sm border-purple-100">
-              <CardHeader>
-                <CardTitle className="text-xl">Emotional Memory Distribution</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-4 gap-4">
-                  {[
-                    { category: 'Love', count: 18, color: 'bg-pink-500', icon: '💕' },
-                    { category: 'Wisdom', count: 12, color: 'bg-blue-500', icon: '🧠' },
-                    { category: 'Humor', count: 10, color: 'bg-yellow-500', icon: '😄' },
-                    { category: 'Faith', count: 7, color: 'bg-purple-500', icon: '🙏' }
-                  ].map((item) => (
-                    <div key={item.category} className="text-center p-4 bg-gray-50 rounded-lg">
-                      <div className="text-2xl mb-2">{item.icon}</div>
-                      <div className="text-2xl font-bold text-gray-900">{item.count}</div>
-                      <div className="text-sm text-gray-600">{item.category}</div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            {/* Top Personas Created */}
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card className="bg-white/70 backdrop-blur-sm border-purple-100">
+                <CardHeader>
+                  <CardTitle className="text-xl">Top Personas Created</CardTitle>
+                  <p className="text-gray-600 text-sm">Most cherished digital connections</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {[
+                      { name: 'Grandpa Joe', avatar: '👴', relationship: 'Grandfather', completeness: 95, interactions: 127, badge: 'Most Active' },
+                      { name: 'Mom Sarah', avatar: '👩', relationship: 'Mother', completeness: 88, interactions: 89, badge: 'Most Loved' },
+                      { name: 'Uncle Mike', avatar: '👨', relationship: 'Uncle', completeness: 76, interactions: 45, badge: 'Newest' },
+                      { name: 'Grandma Rose', avatar: '👵', relationship: 'Grandmother', completeness: 85, interactions: 67, badge: 'Current' }
+                    ].map((persona, index) => (
+                      <div key={persona.name} className={`flex items-center justify-between p-3 rounded-lg ${persona.badge === 'Current' ? 'bg-purple-50 border-2 border-purple-200' : 'bg-gray-50'}`}>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full flex items-center justify-center text-lg">
+                            {persona.avatar}
+                          </div>
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <p className="font-semibold text-gray-900">{persona.name}</p>
+                              <Badge variant="secondary" className="text-xs">
+                                {persona.badge}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-gray-600">{persona.relationship} • {persona.interactions} conversations</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-medium text-purple-700">{persona.completeness}%</div>
+                          <Progress value={persona.completeness} className="w-16 h-1" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <Button variant="outline" className="w-full mt-4">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create New Persona
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Emotional Categories */}
+              <Card className="bg-white/70 backdrop-blur-sm border-purple-100">
+                <CardHeader>
+                  <CardTitle className="text-xl">Emotional Memory Distribution</CardTitle>
+                  <p className="text-gray-600 text-sm">Current persona's emotional profile</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    {[
+                      { category: 'Love', count: 18, color: 'bg-pink-500', icon: '💕' },
+                      { category: 'Wisdom', count: 12, color: 'bg-blue-500', icon: '🧠' },
+                      { category: 'Humor', count: 10, color: 'bg-yellow-500', icon: '😄' },
+                      { category: 'Faith', count: 7, color: 'bg-purple-500', icon: '🙏' }
+                    ].map((item) => (
+                      <div key={item.category} className="text-center p-4 bg-gray-50 rounded-lg">
+                        <div className="text-2xl mb-2">{item.icon}</div>
+                        <div className="text-2xl font-bold text-gray-900">{item.count}</div>
+                        <div className="text-sm text-gray-600">{item.category}</div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="mt-4 p-3 bg-purple-50 rounded-lg">
+                    <p className="text-sm text-purple-700 font-medium">Emotional Balance</p>
+                    <p className="text-xs text-purple-600">Your persona shows strong emotional depth across all categories</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Memory Builder Tab */}
