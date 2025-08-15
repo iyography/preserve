@@ -488,25 +488,56 @@ export default function Home() {
       </section>
       
       {/* Footer */}
-      <footer className="relative z-10 px-4 py-12 border-t border-purple-100">
-        <div className="max-w-6xl mx-auto text-center">
-          <div className="flex items-center justify-center space-x-2 mb-6">
-            <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center shadow-lg">
-              <Infinity className="text-white w-4 h-4" />
+      <footer className="bg-purple-500 px-6 py-12">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-8 text-white">
+            {/* Left Column - Brand & Description */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                  <Infinity className="text-purple-500 w-4 h-4" />
+                </div>
+                <span className="text-white font-semibold text-lg">Preserving Connections</span>
+              </div>
+              <p className="text-purple-100 text-sm leading-relaxed">
+                Preserve memories and maintain meaningful connections with AI-powered personas of your loved ones.
+              </p>
+              <p className="text-purple-200 text-xs">
+                © 2025 Preserving Connections. All rights reserved.
+              </p>
             </div>
-            <span className="text-gray-900 font-semibold text-lg">Preserving Connections</span>
+
+            {/* Middle Column - Product */}
+            <div className="space-y-4">
+              <h3 className="text-white font-semibold text-base">Product</h3>
+              <ul className="space-y-2 text-sm text-purple-100">
+                <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">My Personas</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Create Persona</a></li>
+                <li><a href="#demo" className="hover:text-white transition-colors">Try Demo</a></li>
+              </ul>
+            </div>
+
+            {/* Right Column - Legal */}
+            <div className="space-y-4">
+              <h3 className="text-white font-semibold text-base">Legal</h3>
+              <ul className="space-y-2 text-sm text-purple-100">
+                <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Legal Contact</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Support</a></li>
+              </ul>
+            </div>
           </div>
-          <p className="text-gray-600 mb-4">Keeping memories alive through the power of AI</p>
-          <div className="flex justify-center space-x-6">
-            {[Twitter, Facebook, Instagram].map((Icon, index) => (
-              <a 
-                key={index}
-                href="#" 
-                className="text-purple-500 hover:text-purple-700 transition-colors duration-200"
-              >
-                <Icon className="w-5 h-5" />
-              </a>
-            ))}
+
+          {/* Bottom Section */}
+          <div className="mt-8 pt-6 border-t border-purple-400 flex flex-col md:flex-row justify-between items-center text-xs text-purple-200">
+            <p className="mb-2 md:mb-0">
+              <span className="font-medium">Important:</span> This service provides AI-generated responses and does not guarantee actual communication with deceased persons.
+            </p>
+            <p className="text-right">
+              Governed by Arizona State Law
+            </p>
           </div>
         </div>
       </footer>
