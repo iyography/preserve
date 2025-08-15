@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Play, Crown, Heart, Mic, MessageCircle, Volume2, Infinity, Twitter, Facebook, Instagram, Menu, Star } from "lucide-react";
+import { Play, Crown, Heart, Mic, MessageCircle, Volume2, Infinity, Twitter, Facebook, Instagram, Menu, Star, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import ParticleSystem from "@/components/ParticleSystem";
@@ -7,12 +7,17 @@ import AudioPlayer from "@/components/AudioPlayer";
 
 export default function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  const toggleFAQ = (index: number) => {
+    setExpandedFAQ(expandedFAQ === index ? null : index);
   };
 
   return (
@@ -322,13 +327,27 @@ export default function Home() {
               }
             ].map((faq, index) => (
               <Card key={index} className="bg-white border-purple-100 shadow-sm hover:shadow-md transition-all duration-300">
-                <CardContent className="p-8">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                    {faq.question}
-                  </h3>
-                  <p className="text-gray-600 leading-relaxed">
-                    {faq.answer}
-                  </p>
+                <CardContent className="p-0">
+                  <button
+                    onClick={() => toggleFAQ(index)}
+                    className="w-full p-8 text-left flex items-center justify-between hover:bg-purple-50/50 transition-colors duration-200"
+                  >
+                    <h3 className="text-xl font-semibold text-gray-900 pr-4">
+                      {faq.question}
+                    </h3>
+                    <ChevronDown 
+                      className={`w-5 h-5 text-purple-600 transition-transform duration-300 flex-shrink-0 ${
+                        expandedFAQ === index ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                  {expandedFAQ === index && (
+                    <div className="px-8 pb-8">
+                      <p className="text-gray-600 leading-relaxed">
+                        {faq.answer}
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
