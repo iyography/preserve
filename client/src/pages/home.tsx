@@ -7,18 +7,18 @@ import { Input } from "@/components/ui/input";
 import ParticleSystem from "@/components/ParticleSystem";
 import AudioPlayer from "@/components/AudioPlayer";
 
+type ChatMessage = {
+  id: number;
+  sender: 'user' | 'grandma';
+  text: string;
+};
+
 export default function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
   const [activeFAQTab, setActiveFAQTab] = useState('general');
   const [isDemoOpen, setIsDemoOpen] = useState(false);
-  const [chatMessages, setChatMessages] = useState([
-    { id: 1, sender: 'grandma', text: "Oh sweetheart! I'm so happy to see you! How have you been, my dear? I was just thinking about you this morning while I was having my coffee." },
-    { id: 2, sender: 'user', text: "Hi Grandma Rose! I've been okay, just working a lot lately." },
-    { id: 3, sender: 'grandma', text: "Oh honey, you work too hard! You know, when your grandfather was your age, he used to work long hours too. But I always made sure he took time to rest. Are you eating enough? You know how worried I get about you not eating properly!" },
-    { id: 4, sender: 'user', text: "I miss our Sunday dinners together." },
-    { id: 5, sender: 'grandma', text: "Oh my precious child, I miss those too! Remember how you used to help me make those chocolate chip cookies? You always tried to sneak extra chocolate chips when you thought I wasn't looking. But I saw you every time and just pretended not to notice because it made you so happy. Those were such beautiful times, weren't they?" }
-  ]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
 
   const scrollToSection = (sectionId: string) => {
@@ -34,20 +34,21 @@ export default function Home() {
 
   const handleSendMessage = () => {
     if (newMessage.trim()) {
-      const userMessage = { id: chatMessages.length + 1, sender: 'user' as const, text: newMessage };
+      const userMessage = { id: Date.now(), sender: 'user' as const, text: newMessage };
       setChatMessages(prev => [...prev, userMessage]);
       
       // Simulate grandma's empathetic response after a short delay
       setTimeout(() => {
         const responses = [
-          "Oh darling, that sounds wonderful! You always were so thoughtful. I remember when you were little, you had that same caring spirit.",
+          "Oh sweetheart! I'm so happy to hear from you! How have you been, my dear? I was just thinking about you this morning.",
+          "Oh honey, you work too hard! You know, when your grandfather was your age, he used to work long hours too. Are you eating enough? You know how worried I get!",
+          "My precious child, that brings back such lovely memories! You've always been such a blessing in my life.",
           "Sweet child, I'm so proud of you! You know, you remind me so much of your grandfather - he had that same gentle heart.",
-          "Oh honey, come here and give your grandma a hug! You always know just what to say to make my heart full.",
-          "My dear, that brings back such lovely memories! You've always been such a blessing in my life.",
-          "Oh sweetheart, you're going to make me cry happy tears! I love you so much, you precious thing."
+          "Oh darling, that sounds wonderful! You always were so thoughtful. I remember when you were little, you had that same caring spirit.",
+          "Oh honey, come here and give your grandma a hug! You always know just what to say to make my heart full."
         ];
         const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-        const grandmaMessage = { id: chatMessages.length + 2, sender: 'grandma' as const, text: randomResponse };
+        const grandmaMessage = { id: Date.now() + 1, sender: 'grandma' as const, text: randomResponse };
         setChatMessages(prev => [...prev, grandmaMessage]);
       }, 1500);
       
@@ -474,17 +475,29 @@ export default function Home() {
           <div className="flex flex-col h-[500px]">
             {/* Chat Messages */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {chatMessages.map((message) => (
-                <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[75%] rounded-2xl px-4 py-3 ${
-                    message.sender === 'user' 
-                      ? 'bg-purple-600 text-white' 
-                      : 'bg-purple-50 text-gray-800 border border-purple-100'
-                  }`}>
-                    <p className="text-sm leading-relaxed">{message.text}</p>
+              {chatMessages.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-center">
+                  <div className="space-y-3">
+                    <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center mx-auto">
+                      <Heart className="text-white w-8 h-8" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900">Start chatting with Grandma Rose</h3>
+                    <p className="text-gray-600 max-w-sm">Type your first message below to begin a warm conversation with our AI persona demo.</p>
                   </div>
                 </div>
-              ))}
+              ) : (
+                chatMessages.map((message) => (
+                  <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[75%] rounded-2xl px-4 py-3 ${
+                      message.sender === 'user' 
+                        ? 'bg-purple-600 text-white' 
+                        : 'bg-purple-50 text-gray-800 border border-purple-100'
+                    }`}>
+                      <p className="text-sm leading-relaxed">{message.text}</p>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
             
             {/* Chat Input */}
