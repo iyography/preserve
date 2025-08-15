@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Play, Crown, Heart, Mic, MessageCircle, Volume2, Infinity, Twitter, Facebook, Instagram, Menu, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import ParticleSystem from "@/components/ParticleSystem";
 import AudioPlayer from "@/components/AudioPlayer";
 
@@ -264,6 +264,72 @@ export default function Home() {
               </Button>
             </div>
           </Card>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="relative z-10 py-24 px-4 bg-white">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Everything you need to know about preserving digital memories
+            </p>
+          </div>
+
+          <div className="space-y-8">
+            {[
+              {
+                question: "What exactly is Evermore?",
+                answer: "Evermore lets you create a digital memory of someone you love. Using audio, video, and written memories, we build an interactive avatar that sounds like them, speaks like them, and reflects how they communicated."
+              },
+              {
+                question: "Is this meant to replace someone who's passed away?",
+                answer: "Absolutely not. Evermore is about honoring and preserving. Just like saving voicemails or watching old home videos — except now, those moments can talk back."
+              },
+              {
+                question: "What can the AI actually do?",
+                answer: "You can ask it questions, talk about your day, or simply listen to them speak. The AI is trained on how your loved one spoke — their tone, beliefs, quirks, and phrases — to make the experience feel familiar and comforting."
+              },
+              {
+                question: "Is this emotionally healthy?",
+                answer: "For many people, yes. We're building this with licensed grief counselors and therapists to ensure it supports — not replaces — the healing process. For some, it's a digital form of remembrance and comfort. For others, it may not be the right fit. And that's okay."
+              },
+              {
+                question: "Isn't this \"playing God\"?",
+                answer: "That's something we've wrestled with, too. But Evermore doesn't create new memories — it simply preserves the presence that already existed. This is no different than watching old videos on loop — only now, the loop listens."
+              },
+              {
+                question: "What about privacy and data security?",
+                answer: "Privacy is sacred. All content you upload is encrypted, never shared, and stays in your control. We don't use your memories to train public AI models. What's yours stays yours."
+              },
+              {
+                question: "Is this just a gimmick?",
+                answer: "Not at all. Evermore was created from real loss, not venture capital hype. We don't see this as a product — we see it as a tool for peace, for storytelling, for healing. This isn't about novelty. It's about meaning."
+              },
+              {
+                question: "Can I use Evermore for someone who's still alive?",
+                answer: "Absolutely. In fact, many families use it before loss to preserve someone's voice, humor, and perspective — especially elderly parents or grandparents — so their presence can be passed down."
+              },
+              {
+                question: "What kind of memories can I use to build a persona?",
+                answer: "Voice messages, videos, old podcasts, social posts, interview footage, even casual conversations. The more authentic the source, the more lifelike the digital memory becomes."
+              }
+            ].map((faq, index) => (
+              <Card key={index} className="bg-white border-purple-100 shadow-sm hover:shadow-md transition-all duration-300">
+                <CardContent className="p-8">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                    {faq.question}
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    {faq.answer}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </section>
       
