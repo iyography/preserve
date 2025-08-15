@@ -17,7 +17,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-celestial-gradient text-white overflow-x-hidden relative">
+    <div className="min-h-screen bg-white-ethereal text-gray-900 overflow-x-hidden relative">
       {/* Particle Animation Layer */}
       <ParticleSystem />
       
@@ -25,7 +25,7 @@ export default function Home() {
       <motion.nav 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="fixed w-full z-50 glassmorphism"
+        className="fixed w-full z-50 bg-white/90 backdrop-blur-md border-b border-purple-100"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -33,33 +33,33 @@ export default function Home() {
               className="flex items-center space-x-2"
               whileHover={{ scale: 1.05 }}
             >
-              <div className="w-8 h-8 bg-gradient-to-r from-celestial-500 to-celestial-700 rounded-full flex items-center justify-center glow-ring">
+              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center shadow-lg">
                 <Infinity className="text-white w-4 h-4" />
               </div>
-              <span className="text-white font-semibold text-lg">Preserving Connections</span>
+              <span className="text-gray-900 font-semibold text-lg">Preserving Connections</span>
             </motion.div>
             
             <div className="hidden md:block">
               <div className="ml-10 flex items-baseline space-x-8">
                 <button 
                   onClick={() => scrollToSection('home')}
-                  className="text-white hover:text-celestial-300 px-3 py-2 text-sm font-medium transition-colors duration-200"
+                  className="text-gray-900 hover:text-purple-600 px-3 py-2 text-sm font-medium transition-colors duration-200"
                 >
                   Home
                 </button>
-                <a href="#personas" className="text-celestial-200 hover:text-white px-3 py-2 text-sm font-medium transition-colors duration-200">
+                <a href="#personas" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
                   Personas
                 </a>
-                <a href="#create" className="text-celestial-200 hover:text-white px-3 py-2 text-sm font-medium transition-colors duration-200">
+                <a href="#create" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
                   Create
                 </a>
                 <button 
                   onClick={() => scrollToSection('pricing')}
-                  className="text-celestial-200 hover:text-white px-3 py-2 text-sm font-medium transition-colors duration-200"
+                  className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200"
                 >
                   Pricing
                 </button>
-                <a href="#ambassador" className="text-celestial-200 hover:text-white px-3 py-2 text-sm font-medium flex items-center transition-colors duration-200">
+                <a href="#ambassador" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium flex items-center transition-colors duration-200">
                   <Heart className="w-4 h-4 mr-1" />
                   Memory Ambassador
                 </a>
@@ -67,15 +67,15 @@ export default function Home() {
             </div>
             
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" className="text-celestial-200 hover:text-white">
+              <Button variant="ghost" className="text-gray-600 hover:text-gray-900">
                 Sign in
               </Button>
-              <Button className="bg-gradient-to-r from-celestial-600 to-celestial-700 hover:from-celestial-500 hover:to-celestial-600 text-white hover-glow">
+              <Button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white shadow-lg">
                 Sign up
               </Button>
               <Button 
                 variant="ghost" 
-                className="md:hidden text-white hover:text-celestial-300"
+                className="md:hidden text-gray-900 hover:text-purple-600"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
               >
                 <Menu className="w-5 h-5" />
@@ -89,44 +89,10 @@ export default function Home() {
       <section id="home" className="relative min-h-screen flex items-center justify-center pt-16 px-4 z-10">
         {/* Background ethereal clouds */}
         <div className="absolute inset-0 z-0">
-          <motion.div 
-            className="absolute top-20 left-10 w-96 h-64 bg-gradient-to-r from-white/10 to-celestial-300/20 rounded-full blur-3xl"
-            animate={{ 
-              y: [0, -20, 0],
-              rotate: [0, 180, 360] 
-            }}
-            transition={{ 
-              duration: 6, 
-              repeat: Infinity, 
-              ease: "easeInOut" 
-            }}
-          />
-          <motion.div 
-            className="absolute top-40 right-20 w-80 h-48 bg-gradient-to-l from-celestial-400/15 to-white/10 rounded-full blur-3xl"
-            animate={{ 
-              y: [0, -20, 0],
-              rotate: [0, 180, 360] 
-            }}
-            transition={{ 
-              duration: 6, 
-              repeat: Infinity, 
-              ease: "easeInOut",
-              delay: 2
-            }}
-          />
-          <motion.div 
-            className="absolute bottom-40 left-1/3 w-72 h-40 bg-gradient-to-r from-celestial-500/10 to-white/15 rounded-full blur-3xl"
-            animate={{ 
-              y: [0, -20, 0],
-              rotate: [0, 180, 360] 
-            }}
-            transition={{ 
-              duration: 6, 
-              repeat: Infinity, 
-              ease: "easeInOut",
-              delay: 4
-            }}
-          />
+          <div className="absolute top-20 left-10 w-96 h-64 bg-gradient-to-r from-purple-200/30 to-indigo-200/20 rounded-full blur-3xl floating-cloud-1"></div>
+          <div className="absolute top-40 right-20 w-80 h-48 bg-gradient-to-l from-violet-200/25 to-purple-300/15 rounded-full blur-3xl floating-cloud-2"></div>
+          <div className="absolute bottom-40 left-1/3 w-72 h-40 bg-gradient-to-r from-indigo-200/20 to-purple-200/25 rounded-full blur-3xl floating-cloud-3"></div>
+          <div className="absolute top-60 left-1/2 w-60 h-60 bg-gradient-to-br from-purple-100/15 to-indigo-100/20 rounded-full blur-3xl floating-cloud-4"></div>
         </div>
         
         <div className="max-w-4xl mx-auto text-center relative z-10">
@@ -136,10 +102,10 @@ export default function Home() {
             transition={{ duration: 1 }}
             className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight"
           >
-            <span className="text-white">Keep Their Memory</span>
+            <span className="text-gray-900">Talk to Your Loved Ones,</span>
             <br />
-            <span className="bg-gradient-to-r from-celestial-400 via-celestial-500 to-celestial-600 bg-clip-text text-transparent glow-text">
-              Alive Forever
+            <span className="bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 bg-clip-text text-transparent glow-text">
+              Anytime You Miss Them
             </span>
           </motion.h1>
           
@@ -147,7 +113,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.3 }}
-            className="text-xl md:text-2xl text-celestial-100 mb-12 leading-relaxed max-w-3xl mx-auto"
+            className="text-xl md:text-2xl text-gray-700 mb-12 leading-relaxed max-w-3xl mx-auto"
           >
             Create an AI persona of your loved one that preserves their personality, stories, and wisdom. Continue meaningful conversations and share new memories with them.
           </motion.p>
@@ -160,7 +126,7 @@ export default function Home() {
           >
             <Button 
               onClick={() => scrollToSection('pricing')}
-              className="bg-gradient-to-r from-celestial-600 to-celestial-700 hover:from-celestial-500 hover:to-celestial-600 text-white px-8 py-4 rounded-xl text-lg font-semibold hover-glow"
+              className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
               size="lg"
             >
               <Crown className="w-5 h-5 mr-3" />
@@ -169,7 +135,7 @@ export default function Home() {
             
             <Button 
               variant="outline"
-              className="glassmorphism text-white px-8 py-4 rounded-xl text-lg font-medium border-celestial-300/30 hover-glow"
+              className="bg-white/70 backdrop-blur-sm text-purple-700 px-8 py-4 rounded-xl text-lg font-medium border-purple-200 hover:bg-purple-50 hover:border-purple-300 shadow-lg transition-all duration-300"
               size="lg"
             >
               <Play className="w-5 h-5 mr-3" />
@@ -188,19 +154,19 @@ export default function Home() {
         className="relative z-10 px-4 pb-20"
       >
         <div className="max-w-4xl mx-auto">
-          <Card className="glassmorphism rounded-3xl p-8 hover-glow transition-all duration-300 border-celestial-300/20">
+          <Card className="bg-white/70 backdrop-blur-sm rounded-3xl p-8 shadow-xl transition-all duration-300 border-purple-100 hover:shadow-2xl hover:bg-white/80">
             <div className="flex items-center space-x-6">
               <div className="flex-shrink-0">
-                <div className="w-16 h-16 bg-gradient-to-r from-celestial-500 to-celestial-700 rounded-full flex items-center justify-center glow-ring">
+                <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center shadow-lg">
                   <Volume2 className="text-white w-6 h-6" />
                 </div>
               </div>
               
               <div className="flex-1">
-                <h3 className="text-xl font-semibold text-white mb-2">
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
                   A Personal Message from Founder Michael Vallee
                 </h3>
-                <p className="text-celestial-200 mb-4">
+                <p className="text-gray-600 mb-4">
                   Hear why we created Preserving Connections and how it can help your family preserve precious memories
                 </p>
                 
@@ -226,17 +192,17 @@ export default function Home() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
               viewport={{ once: true }}
-              className="text-3xl md:text-4xl font-bold text-white mb-6"
+              className="text-3xl md:text-4xl font-bold text-gray-900 mb-6"
             >
               Experience the Magic of
-              <span className="bg-gradient-to-r from-celestial-400 to-celestial-600 bg-clip-text text-transparent"> Digital Immortality</span>
+              <span className="bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent"> Digital Immortality</span>
             </motion.h2>
             <motion.p 
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
               viewport={{ once: true }}
-              className="text-xl text-celestial-200 max-w-3xl mx-auto"
+              className="text-xl text-gray-700 max-w-3xl mx-auto"
             >
               Our advanced AI technology captures the essence of your loved ones, creating lasting connections that transcend time
             </motion.p>
@@ -270,13 +236,13 @@ export default function Home() {
                 transition={{ duration: 0.8, delay: feature.delay }}
                 viewport={{ once: true }}
                 whileHover={{ y: -10 }}
-                className="glassmorphism rounded-2xl p-8 text-center hover-glow transition-all duration-300 border-celestial-300/20 floating-card"
+                className="bg-white/70 backdrop-blur-sm rounded-2xl p-8 text-center shadow-lg hover:shadow-xl transition-all duration-300 border-purple-100 floating-card hover:bg-white/80"
               >
-                <div className="w-16 h-16 bg-gradient-to-r from-celestial-500 to-celestial-700 rounded-full flex items-center justify-center mx-auto mb-6 glow-ring">
+                <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
                   <feature.icon className="text-white w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-4">{feature.title}</h3>
-                <p className="text-celestial-200">{feature.description}</p>
+                <h3 className="text-xl font-semibold text-gray-900 mb-4">{feature.title}</h3>
+                <p className="text-gray-600">{feature.description}</p>
               </motion.div>
             ))}
           </div>
@@ -293,18 +259,18 @@ export default function Home() {
         id="pricing"
       >
         <div className="max-w-4xl mx-auto text-center">
-          <Card className="glassmorphism rounded-3xl p-12 hover-glow transition-all duration-300 border-celestial-300/20">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+          <Card className="bg-white/70 backdrop-blur-sm rounded-3xl p-12 shadow-xl transition-all duration-300 border-purple-100 hover:shadow-2xl hover:bg-white/80">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
               Begin Your Journey of
-              <span className="bg-gradient-to-r from-celestial-400 to-celestial-600 bg-clip-text text-transparent"> Eternal Connection</span>
+              <span className="bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent"> Eternal Connection</span>
             </h2>
-            <p className="text-xl text-celestial-200 mb-8">
+            <p className="text-xl text-gray-700 mb-8">
               Start preserving precious memories today and keep your loved ones close forever
             </p>
             
             <div className="flex flex-col sm:flex-row gap-6 justify-center">
               <Button 
-                className="bg-gradient-to-r from-celestial-600 to-celestial-700 hover:from-celestial-500 hover:to-celestial-600 text-white px-8 py-4 rounded-xl text-lg font-semibold hover-glow"
+                className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
                 size="lg"
               >
                 <Star className="w-5 h-5 mr-3" />
@@ -313,7 +279,7 @@ export default function Home() {
               
               <Button 
                 variant="ghost"
-                className="text-celestial-300 hover:text-white px-8 py-4 rounded-xl text-lg font-medium"
+                className="text-gray-600 hover:text-gray-900 px-8 py-4 rounded-xl text-lg font-medium hover:bg-purple-50 transition-all duration-300"
                 size="lg"
               >
                 Learn More
@@ -324,24 +290,24 @@ export default function Home() {
       </motion.section>
       
       {/* Footer */}
-      <footer className="relative z-10 px-4 py-12 border-t border-celestial-800/30">
+      <footer className="relative z-10 px-4 py-12 border-t border-purple-100">
         <div className="max-w-6xl mx-auto text-center">
           <motion.div 
             className="flex items-center justify-center space-x-2 mb-6"
             whileHover={{ scale: 1.05 }}
           >
-            <div className="w-8 h-8 bg-gradient-to-r from-celestial-500 to-celestial-700 rounded-full flex items-center justify-center glow-ring">
+            <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center shadow-lg">
               <Infinity className="text-white w-4 h-4" />
             </div>
-            <span className="text-white font-semibold text-lg">Preserving Connections</span>
+            <span className="text-gray-900 font-semibold text-lg">Preserving Connections</span>
           </motion.div>
-          <p className="text-celestial-300 mb-4">Keeping memories alive through the power of AI</p>
+          <p className="text-gray-600 mb-4">Keeping memories alive through the power of AI</p>
           <div className="flex justify-center space-x-6">
             {[Twitter, Facebook, Instagram].map((Icon, index) => (
               <motion.a 
                 key={index}
                 href="#" 
-                className="text-celestial-400 hover:text-white transition-colors duration-200"
+                className="text-purple-500 hover:text-purple-700 transition-colors duration-200"
                 whileHover={{ scale: 1.2, rotate: 5 }}
               >
                 <Icon className="w-5 h-5" />

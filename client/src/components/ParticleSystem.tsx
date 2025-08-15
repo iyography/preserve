@@ -33,10 +33,11 @@ export default function ParticleSystem() {
     window.addEventListener('resize', resizeCanvas);
 
     const colors = [
-      'rgba(255, 255, 255, 0.8)',
-      'rgba(139, 92, 246, 0.8)',
-      'rgba(167, 139, 250, 0.6)',
-      'rgba(196, 181, 253, 0.7)'
+      'rgba(147, 51, 234, 0.4)', // purple-600
+      'rgba(124, 58, 237, 0.3)', // violet-600  
+      'rgba(99, 102, 241, 0.3)', // indigo-500
+      'rgba(168, 85, 247, 0.4)', // purple-500
+      'rgba(139, 92, 246, 0.3)'  // violet-500
     ];
 
     const createParticle = (): Particle => {
@@ -92,7 +93,7 @@ export default function ParticleSystem() {
       
       // Add inner bright spot
       ctx.shadowBlur = 0;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
       ctx.beginPath();
       ctx.arc(particle.x, particle.y, particle.size * 0.3, 0, Math.PI * 2);
       ctx.fill();
@@ -104,7 +105,7 @@ export default function ParticleSystem() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Add new particles
-      if (Math.random() < 0.3) {
+      if (Math.random() < 0.2) {
         particlesRef.current.push(createParticle());
       }
 
