@@ -5,63 +5,87 @@ import { Button } from '@/components/ui/button';
 export default function AudioPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(189); // 3:09 in seconds
-  const intervalRef = useRef<NodeJS.Timeout>();
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
-  // Simulate audio playback since we don't have actual audio file
   const handlePlayPause = () => {
+    if (!audioRef.current) return;
+
     if (isPlaying) {
+      audioRef.current.pause();
       setIsPlaying(false);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
     } else {
+      audioRef.current.play();
       setIsPlaying(true);
-      intervalRef.current = setInterval(() => {
-        setCurrentTime(prev => {
-          if (prev >= duration) {
-            setIsPlaying(false);
-            if (intervalRef.current) {
-              clearInterval(intervalRef.current);
-            }
-            return 0;
-          }
-          return prev + 1;
-        });
-      }, 1000);
     }
   };
 
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, []);
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const handleEnded = () => {
+    setIsPlaying(false);
+    setCurrentTime(0);
+  };
+
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!audioRef.current) return;
+    
+    const progressBar = e.currentTarget;
+    const rect = progressBar.getBoundingClientRect();
+    const percent = (e.clientX - rect.left) / rect.width;
+    const newTime = percent * duration;
+    
+    audioRef.current.currentTime = newTime;
+    setCurrentTime(newTime);
+  };
 
   const formatTime = (time: number) => {
+    if (isNaN(time)) return '0:00';
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const progress = (currentTime / duration) * 100;
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <div className="flex items-center space-x-4">
+      <audio
+        ref={audioRef}
+        src="https://preservingconnections.com/attached_assets/Michael_Vallee_-_Personal_Message_1752374049846.mp3"
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
+        onEnded={handleEnded}
+        preload="metadata"
+      />
+      
       <Button
         variant="ghost"
         size="sm"
         onClick={handlePlayPause}
         className="flex items-center space-x-2 text-purple-600 hover:text-purple-700 transition-colors duration-200"
+        data-testid="audio-play-pause-button"
       >
         {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
         <span>{isPlaying ? 'Pause' : 'Play'}</span>
       </Button>
       
       <div className="flex-1 max-w-xs">
-        <div className="bg-purple-100 rounded-full h-2 relative overflow-hidden">
+        <div 
+          className="bg-purple-100 rounded-full h-2 relative overflow-hidden cursor-pointer"
+          onClick={handleProgressClick}
+          data-testid="audio-progress-bar"
+        >
           <div 
             className="bg-gradient-to-r from-purple-500 to-purple-600 h-2 rounded-full transition-all duration-300"
             style={{ width: `${progress}%` }}
@@ -69,7 +93,7 @@ export default function AudioPlayer() {
         </div>
       </div>
       
-      <span className="text-gray-600 text-sm">
+      <span className="text-gray-600 text-sm" data-testid="audio-time-display">
         {formatTime(currentTime)} / {formatTime(duration)}
       </span>
     </div>
