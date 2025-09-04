@@ -189,10 +189,10 @@ export default function Home() {
             </div>
             
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" className="text-gray-600 hover:text-gray-900">
+              <Button variant="ghost" className="text-gray-600 hover:text-gray-900" onClick={() => window.location.href = '/sign-in'}>
                 Login
               </Button>
-              <Button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white shadow-lg">
+              <Button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white shadow-lg" onClick={() => window.location.href = '/register'}>
                 Register
               </Button>
               <Button 
