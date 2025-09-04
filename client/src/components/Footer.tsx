@@ -161,7 +161,7 @@ export default function Footer() {
             
             <div className="text-center md:text-right">
               <p className="text-gray-400 text-sm mb-2">
-                © 2024 Preserving Connections. All rights reserved.
+                © 2025 Preserving Connections. All rights reserved.
               </p>
               <p className="text-gray-500 text-xs">
                 Built with love for families preserving precious memories.
