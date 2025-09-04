@@ -6,17 +6,25 @@ export default function AudioPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [hasError, setHasError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  const handlePlayPause = () => {
-    if (!audioRef.current) return;
+  const handlePlayPause = async () => {
+    if (!audioRef.current || hasError) return;
 
-    if (isPlaying) {
-      audioRef.current.pause();
+    try {
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        await audioRef.current.play();
+        setIsPlaying(true);
+      }
+    } catch (error) {
+      console.error('Audio playback failed:', error);
+      setHasError(true);
       setIsPlaying(false);
-    } else {
-      audioRef.current.play();
-      setIsPlaying(true);
     }
   };
 
@@ -29,12 +37,24 @@ export default function AudioPlayer() {
   const handleLoadedMetadata = () => {
     if (audioRef.current) {
       setDuration(audioRef.current.duration);
+      setIsLoading(false);
     }
   };
 
   const handleEnded = () => {
     setIsPlaying(false);
     setCurrentTime(0);
+  };
+
+  const handleError = (e: React.SyntheticEvent<HTMLAudioElement, Event>) => {
+    console.error('Audio loading error:', e);
+    setHasError(true);
+    setIsLoading(false);
+  };
+
+  const handleCanPlay = () => {
+    setIsLoading(false);
+    setHasError(false);
   };
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -58,6 +78,16 @@ export default function AudioPlayer() {
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  if (hasError) {
+    return (
+      <div className="flex items-center space-x-4">
+        <div className="text-sm text-gray-500">
+          Audio message unavailable
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center space-x-4">
       <audio
@@ -66,18 +96,22 @@ export default function AudioPlayer() {
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={handleEnded}
+        onError={handleError}
+        onCanPlay={handleCanPlay}
         preload="metadata"
+        crossOrigin="anonymous"
       />
       
       <Button
         variant="ghost"
         size="sm"
         onClick={handlePlayPause}
-        className="flex items-center space-x-2 text-purple-600 hover:text-purple-700 transition-colors duration-200"
+        disabled={isLoading}
+        className="flex items-center space-x-2 text-purple-600 hover:text-purple-700 transition-colors duration-200 disabled:opacity-50"
         data-testid="audio-play-pause-button"
       >
         {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-        <span>{isPlaying ? 'Pause' : 'Play'}</span>
+        <span>{isLoading ? 'Loading...' : isPlaying ? 'Pause' : 'Play'}</span>
       </Button>
       
       <div className="flex-1 max-w-xs">
