@@ -117,22 +117,22 @@ export default function Waitlist() {
             {/* Call to Action Cards */}
             <div className="grid md:grid-cols-2 gap-8 mb-16">
               {/* Professional Partner CTA */}
-              <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 hover:bg-white/15 transition-all duration-300 group cursor-pointer">
-                <div className="mb-6">
+              <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 hover:bg-white/15 transition-all duration-300 group cursor-pointer flex flex-col h-full">
+                <div className="flex-grow">
                   <Building className="w-12 h-12 text-purple-300 mx-auto mb-4 group-hover:scale-110 transition-transform duration-300" />
                   <h3 className="text-2xl font-bold text-white mb-4">Professional Partners</h3>
                   <p className="text-purple-100 text-lg mb-6">
                     Funeral directors, estate planners, hospice coordinators
                   </p>
-                  <ul className="text-left text-purple-200 space-y-2 text-sm">
-                    <li className="flex items-center"><Clock className="w-4 h-4 mr-3" />6-month exclusive access</li>
-                    <li className="flex items-center"><Shield className="w-4 h-4 mr-3" />Revenue sharing opportunity</li>
-                    <li className="flex items-center"><Users className="w-4 h-4 mr-3" />Co-development partnership</li>
+                  <ul className="text-left text-purple-200 space-y-2 text-sm mb-6">
+                    <li className="flex items-center"><Clock className="w-4 h-4 mr-3 flex-shrink-0" />6-month exclusive access</li>
+                    <li className="flex items-center"><Shield className="w-4 h-4 mr-3 flex-shrink-0" />Revenue sharing opportunity</li>
+                    <li className="flex items-center"><Users className="w-4 h-4 mr-3 flex-shrink-0" />Co-development partnership</li>
                   </ul>
                 </div>
                 <Button 
                   onClick={() => handleTrackSelection('partner')}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 text-lg rounded-xl"
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 text-lg rounded-xl mt-auto"
                   data-testid="button-apply-partner"
                 >
                   Apply as Partner
@@ -140,22 +140,22 @@ export default function Waitlist() {
               </div>
 
               {/* Family Feedback CTA */}
-              <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 hover:bg-white/15 transition-all duration-300 group cursor-pointer">
-                <div className="mb-6">
+              <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 hover:bg-white/15 transition-all duration-300 group cursor-pointer flex flex-col h-full">
+                <div className="flex-grow">
                   <Heart className="w-12 h-12 text-pink-300 mx-auto mb-4 group-hover:scale-110 transition-transform duration-300" />
                   <h3 className="text-2xl font-bold text-white mb-4">Family Feedback</h3>
                   <p className="text-purple-100 text-lg mb-6">
                     Families who have experienced loss and want to help us build something meaningful
                   </p>
-                  <ul className="text-left text-purple-200 space-y-2 text-sm">
-                    <li className="flex items-center"><Heart className="w-4 h-4 mr-3" />Free platform access</li>
-                    <li className="flex items-center"><Shield className="w-4 h-4 mr-3" />Professional support available</li>
-                    <li className="flex items-center"><Users className="w-4 h-4 mr-3" />Shape the future of grief tech</li>
+                  <ul className="text-left text-purple-200 space-y-2 text-sm mb-6">
+                    <li className="flex items-center"><Heart className="w-4 h-4 mr-3 flex-shrink-0" />Free platform access</li>
+                    <li className="flex items-center"><Shield className="w-4 h-4 mr-3 flex-shrink-0" />Professional support available</li>
+                    <li className="flex items-center"><Users className="w-4 h-4 mr-3 flex-shrink-0" />Shape the future of grief tech</li>
                   </ul>
                 </div>
                 <Button 
                   onClick={() => handleTrackSelection('family')}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 text-lg rounded-xl"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 text-lg rounded-xl mt-auto"
                   data-testid="button-apply-family"
                 >
                   Join as Family
@@ -164,20 +164,20 @@ export default function Waitlist() {
             </div>
 
             {/* Trust Indicators */}
-            <div className="grid md:grid-cols-3 gap-6 text-center">
-              <div className="text-purple-200">
-                <Shield className="w-8 h-8 mx-auto mb-2" />
-                <h4 className="font-semibold text-white mb-1">Emotional Safety First</h4>
+            <div className="grid md:grid-cols-3 gap-6 text-center items-start">
+              <div className="text-purple-200 flex flex-col items-center h-full">
+                <Shield className="w-8 h-8 mx-auto mb-3" />
+                <h4 className="font-semibold text-white mb-2">Emotional Safety First</h4>
                 <p className="text-sm">Professional counselors review all applications</p>
               </div>
-              <div className="text-purple-200">
-                <Users className="w-8 h-8 mx-auto mb-2" />
-                <h4 className="font-semibold text-white mb-1">Quality Over Quantity</h4>
+              <div className="text-purple-200 flex flex-col items-center h-full">
+                <Users className="w-8 h-8 mx-auto mb-3" />
+                <h4 className="font-semibold text-white mb-2">Quality Over Quantity</h4>
                 <p className="text-sm">Carefully selected participants for meaningful feedback</p>
               </div>
-              <div className="text-purple-200">
-                <Heart className="w-8 h-8 mx-auto mb-2" />
-                <h4 className="font-semibold text-white mb-1">Medical-Grade Process</h4>
+              <div className="text-purple-200 flex flex-col items-center h-full">
+                <Heart className="w-8 h-8 mx-auto mb-3" />
+                <h4 className="font-semibold text-white mb-2">Medical-Grade Process</h4>
                 <p className="text-sm">Clinical trial-level consent and safety protocols</p>
               </div>
             </div>
