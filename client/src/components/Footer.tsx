@@ -130,6 +130,25 @@ export default function Footer() {
           </div>
         </div>
 
+        {/* Waitlist Call-to-Action */}
+        <div className="border-t border-gray-700 pt-8">
+          <div className="text-center mb-8">
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-8 max-w-2xl mx-auto">
+              <h3 className="text-2xl font-bold text-white mb-4">
+                Be Among the First to Experience Preserving Connections
+              </h3>
+              <p className="text-purple-100 mb-6">
+                Join our exclusive waitlist for early access to our platform. We're carefully selecting families and professional partners for our beta program.
+              </p>
+              <Link href="/waitlist">
+                <button className="bg-white text-purple-600 font-semibold px-8 py-3 rounded-lg hover:bg-purple-50 transition-colors duration-200" data-testid="button-join-waitlist">
+                  Join Our Waitlist
+                </button>
+              </Link>
+            </div>
+          </div>
+        </div>
+
         {/* Bottom Footer */}
         <div className="border-t border-gray-700 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">

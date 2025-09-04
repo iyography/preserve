@@ -1,0 +1,117 @@
+Dual-Track Waitlist Strategy
+Track 1: B2B Partner Waitlist (Priority)
+Target: Funeral directors, estate planners, hospice coordinators, elder care facilities
+Approach:
+
+Private invite-only system (no public signup)
+Todd's funeral industry contacts get direct outreach
+Michael uses LinkedIn automation to target specific personas
+NDA required before platform access
+White-label demo ready before broader launch
+
+Waitlist Structure:
+Partner Application Form:
+- Business type & size
+- Current grief support offerings
+- Technology comfort level
+- Revenue sharing interest
+- Pilot program capacity (how many families they can test with)
+- Timeline for implementation
+Value Proposition:
+
+6-month exclusive access before public launch
+Co-development of features for their specific needs
+Revenue sharing opportunity
+Marketing materials and training included
+"First to market" advantage in their region
+
+Track 2: End-User Feedback Group (Selective)
+Target: Grieving families willing to provide detailed feedback
+Sourcing Strategy:
+
+Referrals from B2B partners (funeral directors recommend specific families)
+Grief support groups (your 30 Facebook groups with 2M users)
+Professional referrals (Todd's girlfriend's psychology network at Mayo Clinic)
+Personal networks (friends/family who've experienced loss)
+
+Screening Process:
+User Application:
+- Relationship to deceased person
+- Time since loss (6+ months preferred for stability)
+- Comfort with technology
+- Willingness to provide weekly feedback
+- Availability for 30-minute monthly check-ins
+- Consent for anonymized case study usage
+Implementation Timeline
+Phase 1 (Weeks 1-2): Partner Outreach
+
+Direct outreach to Todd's funeral contacts
+LinkedIn campaign targeting funeral directors, estate planners
+Create NDA and partnership interest forms
+Goal: 25-50 qualified B2B partners
+
+Phase 2 (Weeks 3-4): Selective User Recruitment
+
+Partner referrals for test families
+Careful recruitment from grief support groups
+Professional referrals from psychology network
+Goal: 50-100 committed feedback users
+
+Phase 3 (Weeks 5-8): Controlled Testing
+
+Partners test white-label versions
+End users test core platform
+Weekly feedback collection
+Monthly refinement cycles
+
+Critical Success Factors
+Emotional Safety First
+
+Screen out users in acute grief phases (under 6 months)
+Require professional support system acknowledgment
+Clear boundaries around feedback expectations
+Easy exit process without guilt or pressure
+
+Quality Over Quantity
+
+Better to have 25 engaged partners than 100 inactive ones
+Focus on users who can provide detailed, constructive feedback
+Prioritize diversity in relationships (spouse, parent, child, sibling losses)
+
+Feedback Infrastructure
+
+Weekly automated check-ins via email
+Monthly 30-minute video calls
+Anonymous feedback portal for sensitive issues
+Professional counselor available for participants
+
+Specific Tactics
+For B2B Partners:
+LinkedIn Message Template:
+"I'm working with a team developing technology to help families preserve memories of loved ones. We're looking for funeral directors who might be interested in offering additional services to families. Would you be open to a 15-minute conversation about how this might fit with your current offerings?"
+For End Users:
+Facebook Group Post (from established member account):
+"Has anyone used technology to feel connected to a loved one who passed? I'm part of a small group testing a new platform and looking for others who might want to try it and share feedback. It's free and very early stage."
+Risk Mitigation
+Emotional Safety Protocols:
+
+Professional counselor review of all participant applications
+Clear boundaries around testing expectations
+Regular mental health check-ins during testing
+Immediate professional referral pathways
+
+Product Quality Assurance:
+
+Never launch incomplete safety features
+Multiple family member validation of persona accuracy
+Clear disclaimers about AI limitations
+Easy deletion/modification options
+
+Business Development Protection:
+
+NDAs for all partners before product access
+Exclusive territory agreements to prevent conflicts
+Clear revenue sharing terms upfront
+Professional relationship management
+
+The key insight: treat this like recruiting participants for a clinical trial, not a typical tech beta. The emotional stakes require medical-grade consent processes and safety protocols, but the feedback quality will be correspondingly high.

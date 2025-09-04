@@ -37,6 +37,7 @@ import AboutMission from "@/pages/about-mission";
 import PrivacyPolicy from "@/pages/privacy-policy";
 import TermsOfService from "@/pages/terms-of-service";
 import PartnerWithUs from "@/pages/partner-with-us";
+import Waitlist from "@/pages/waitlist";
 
 import NotFound from "@/pages/not-found";
 
@@ -77,6 +78,9 @@ function Router() {
       <Route path="/privacy-policy" component={PrivacyPolicy} />
       <Route path="/terms-of-service" component={TermsOfService} />
       <Route path="/partner-with-us" component={PartnerWithUs} />
+      
+      {/* Waitlist */}
+      <Route path="/waitlist" component={Waitlist} />
       
       <Route component={NotFound} />
     </Switch>
