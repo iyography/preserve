@@ -492,60 +492,6 @@ export default function Home() {
         </div>
       </section>
       
-      {/* Footer */}
-      <footer className="bg-gradient-to-br from-white via-purple-50 to-purple-200 px-6 py-12">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-8 text-gray-800">
-            {/* Left Column - Brand & Description */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center shadow-lg">
-                  <Infinity className="text-white w-4 h-4" />
-                </div>
-                <span className="text-gray-900 font-semibold text-lg">Preserving Connections</span>
-              </div>
-              <p className="text-gray-700 text-sm leading-relaxed">
-                Preserve memories and maintain meaningful connections with AI-powered personas of your loved ones.
-              </p>
-              <p className="text-gray-600 text-xs">
-                <a href="/sign-in" className="hover:text-purple-600 transition-colors cursor-pointer">©</a> 2025 Preserving Connections. All rights reserved.
-              </p>
-            </div>
-
-            {/* Middle Column - Product */}
-            <div className="space-y-4">
-              <h3 className="text-gray-900 font-semibold text-base">Product</h3>
-              <ul className="space-y-2 text-sm text-gray-700">
-                <li><a href="#pricing" className="hover:text-purple-600 transition-colors">Pricing</a></li>
-                <li><a href="#" className="hover:text-purple-600 transition-colors">My Personas</a></li>
-                <li><a href="#" className="hover:text-purple-600 transition-colors">Create Persona</a></li>
-                <li><a href="#demo" className="hover:text-purple-600 transition-colors">Try Demo</a></li>
-              </ul>
-            </div>
-
-            {/* Right Column - Legal */}
-            <div className="space-y-4">
-              <h3 className="text-gray-900 font-semibold text-base">Legal</h3>
-              <ul className="space-y-2 text-sm text-gray-700">
-                <li><a href="#" className="hover:text-purple-600 transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-purple-600 transition-colors">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-purple-600 transition-colors">Legal Contact</a></li>
-                <li><a href="#" className="hover:text-purple-600 transition-colors">Support</a></li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Bottom Section */}
-          <div className="mt-8 pt-6 border-t border-purple-200 flex flex-col md:flex-row justify-between items-center text-xs text-gray-600">
-            <p className="mb-2 md:mb-0">
-              <span className="font-medium">Important:</span> This service provides AI-generated responses and does not guarantee actual communication with deceased persons.
-            </p>
-            <p className="text-right">
-              Governed by Arizona State Law
-            </p>
-          </div>
-        </div>
-      </footer>
 
       {/* Demo Chat Dialog */}
       <Dialog open={isDemoOpen} onOpenChange={setIsDemoOpen}>
