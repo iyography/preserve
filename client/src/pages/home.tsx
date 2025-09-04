@@ -180,12 +180,6 @@ export default function Home() {
                 <a href="/community" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
                   Community
                 </a>
-                <button 
-                  onClick={() => scrollToSection('pricing')}
-                  className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200"
-                >
-                  Pricing
-                </button>
                 <a href="#faq" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
                   FAQ
                 </a>
@@ -241,7 +235,7 @@ export default function Home() {
           
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-12">
             <Button 
-              onClick={() => scrollToSection('pricing')}
+              onClick={() => window.location.href = '/register'}
               className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
               size="lg"
             >
@@ -388,7 +382,7 @@ export default function Home() {
       {/* Final CTA Section */}
       <section 
         className="relative z-10 px-4 py-20"
-        id="pricing"
+        id="get-started"
       >
         <div className="max-w-4xl mx-auto text-center">
           <Card className="bg-white/70 backdrop-blur-sm rounded-3xl p-12 shadow-xl transition-all duration-300 border-purple-100 hover:shadow-2xl hover:bg-white/80">

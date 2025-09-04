@@ -354,7 +354,7 @@ export default function EstatePlanning() {
           </div>
         </div>
 
-        {/* Pricing Information */}
+        {/* Service Packages Information */}
         <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 mb-16">
           <CardContent className="p-8">
             <h3 className="text-2xl font-bold text-gray-900 text-center mb-8">
@@ -364,7 +364,6 @@ export default function EstatePlanning() {
             <div className="grid md:grid-cols-3 gap-6">
               <div className="text-center p-6 bg-white rounded-lg">
                 <h4 className="text-lg font-semibold text-gray-900 mb-2">Basic Package</h4>
-                <div className="text-3xl font-bold text-purple-600 mb-4">$495</div>
                 <ul className="space-y-2 text-sm text-gray-600">
                   <li>Digital Asset Will Amendment</li>
                   <li>Basic Privacy Directives</li>
@@ -375,7 +374,6 @@ export default function EstatePlanning() {
               
               <div className="text-center p-6 bg-white rounded-lg ring-2 ring-purple-300">
                 <h4 className="text-lg font-semibold text-gray-900 mb-2">Comprehensive Package</h4>
-                <div className="text-3xl font-bold text-purple-600 mb-4">$1,295</div>
                 <Badge className="bg-purple-600 text-white mb-4">Most Popular</Badge>
                 <ul className="space-y-2 text-sm text-gray-600">
                   <li>All Basic Package features</li>
@@ -388,7 +386,6 @@ export default function EstatePlanning() {
               
               <div className="text-center p-6 bg-white rounded-lg">
                 <h4 className="text-lg font-semibold text-gray-900 mb-2">Premium Package</h4>
-                <div className="text-3xl font-bold text-purple-600 mb-4">$2,495</div>
                 <ul className="space-y-2 text-sm text-gray-600">
                   <li>All Comprehensive features</li>
                   <li>Complex Trust Structures</li>

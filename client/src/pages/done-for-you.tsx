@@ -41,7 +41,6 @@ export default function DoneForYou() {
   const packages = [
     {
       name: "Essential Package",
-      price: "$2,999",
       description: "Perfect for individuals who want professional help creating their first persona",
       features: [
         "2-hour memory interview",
@@ -54,7 +53,6 @@ export default function DoneForYou() {
     },
     {
       name: "Family Package",
-      price: "$4,999",
       description: "Comprehensive service for families wanting to create a rich, collaborative memory",
       features: [
         "Up to 5 family interviews",
@@ -69,7 +67,6 @@ export default function DoneForYou() {
     },
     {
       name: "Legacy Package",
-      price: "$7,999",
       description: "Complete white-glove service for creating the most comprehensive digital memory",
       features: [
         "Unlimited family interviews",
@@ -235,7 +232,6 @@ export default function DoneForYou() {
                       <Badge className="bg-purple-600 text-white">Most Popular</Badge>
                     )}
                   </div>
-                  <div className="text-3xl font-bold text-purple-600 mb-2">{pkg.price}</div>
                   <p className="text-gray-600">{pkg.description}</p>
                 </CardHeader>
                 <CardContent className="space-y-4">

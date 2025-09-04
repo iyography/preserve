@@ -19,7 +19,7 @@ export default function PartnerWithUs() {
       title: "Funeral Home Partnership",
       description: "Integrate digital memory services into your funeral home offerings",
       benefits: [
-        "Additional revenue stream",
+        "Additional service offerings",
         "Enhanced family support",
         "Differentiation from competitors",
         "Ongoing family relationships"
@@ -58,7 +58,7 @@ export default function PartnerWithUs() {
         "Certified specialist status",
         "Training and certification",
         "Referral network access",
-        "Premium service pricing"
+        "Premium service opportunities"
       ],
       requirements: ["Relevant professional background", "Grief counseling experience", "Client service excellence", "Certification completion"]
     }
@@ -66,12 +66,12 @@ export default function PartnerWithUs() {
 
   const partnerBenefits = [
     {
-      category: "Revenue Growth",
+      category: "Growth Opportunities",
       benefits: [
-        "Multiple revenue sharing models",
+        "Multiple partnership models",
         "Subscription and per-service options",
-        "Performance-based incentives",
-        "Exclusive territory opportunities"
+        "Performance-based opportunities",
+        "Exclusive territory access"
       ]
     },
     {
@@ -138,7 +138,7 @@ export default function PartnerWithUs() {
       results: [
         "150+ families served in first year",
         "25% increase in family satisfaction",
-        "$50K additional annual revenue",
+        "Significant business growth",
         "Expanded into 3 additional locations"
       ]
     },

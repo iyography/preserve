@@ -416,11 +416,11 @@ export default function GriefCounselingPartners() {
           </CardContent>
         </Card>
 
-        {/* Insurance & Pricing */}
+        {/* Insurance & Support */}
         <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 mb-16">
           <CardContent className="p-8">
             <h3 className="text-2xl font-bold text-gray-900 text-center mb-8">
-              Insurance & Pricing Information
+              Insurance & Support Information
             </h3>
             
             <div className="grid md:grid-cols-3 gap-6">
@@ -438,12 +438,12 @@ export default function GriefCounselingPartners() {
               
               <div className="text-center">
                 <Clock className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-                <h4 className="font-semibold text-gray-900 mb-2">Session Pricing</h4>
-                <p className="text-sm text-gray-600 mb-4">Transparent, fair pricing for all services</p>
+                <h4 className="font-semibold text-gray-900 mb-2">Session Options</h4>
+                <p className="text-sm text-gray-600 mb-4">Flexible scheduling for all services</p>
                 <ul className="text-xs text-gray-600 space-y-1">
-                  <li>• Individual: $120-180/session</li>
-                  <li>• Family: $150-220/session</li>
-                  <li>• Group: $40-60/session</li>
+                  <li>• Individual sessions available</li>
+                  <li>• Family therapy options</li>
+                  <li>• Group support sessions</li>
                   <li>• Sliding scale available</li>
                 </ul>
               </div>
