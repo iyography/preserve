@@ -62,9 +62,9 @@ export default function Register() {
         description: "Account created successfully. Please check your email to verify your account."
       });
 
-      // Redirect to dashboard after successful registration
+      // Redirect to onboarding after successful registration
       setTimeout(() => {
-        window.location.href = '/dashboard';
+        window.location.href = '/onboarding';
       }, 2000);
 
     } catch (error) {

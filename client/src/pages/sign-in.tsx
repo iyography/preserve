@@ -45,9 +45,9 @@ export default function SignIn() {
         description: "You have successfully signed in."
       });
 
-      // Redirect to dashboard after successful sign in
+      // Redirect to onboarding after successful sign in
       setTimeout(() => {
-        window.location.href = '/dashboard';
+        window.location.href = '/onboarding';
       }, 1000);
 
     } catch (error) {

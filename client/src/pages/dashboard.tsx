@@ -23,6 +23,19 @@ export default function Dashboard() {
       window.location.href = '/sign-in';
     }
   }, [user, loading]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50/50 via-white to-indigo-50/30 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <span className="text-white font-bold text-xl">∞</span>
+          </div>
+          <p className="text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
   
   // Sample data - in real app this would come from API
   const personas = [
