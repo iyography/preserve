@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import ParticleSystem from "@/components/ParticleSystem";
+import Footer from "@/components/Footer";
 import { Link } from "wouter";
 
 interface Discussion {

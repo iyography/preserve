@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import ParticleSystem from "@/components/ParticleSystem";
 import AudioPlayer from "@/components/AudioPlayer";
+import Footer from "@/components/Footer";
 
 type ChatMessage = {
   id: number;
@@ -801,6 +802,7 @@ export default function Home() {
         </DialogContent>
       </Dialog>
 
+      <Footer />
     </div>
   );
 }

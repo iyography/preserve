@@ -13,6 +13,31 @@ import AIGuidedInterview from "@/pages/ai-guided-interview";
 import GradualAwakening from "@/pages/gradual-awakening";
 import DigitalSeance from "@/pages/digital-seance";
 import LivingArchive from "@/pages/living-archive";
+
+// For Families pages
+import CreateFirstPersona from "@/pages/create-first-persona";
+import FamilySharingGuide from "@/pages/family-sharing-guide";
+import PrivacySecurity from "@/pages/privacy-security";
+import DataExport from "@/pages/data-export";
+
+// Professional Services pages
+import DoneForYou from "@/pages/done-for-you";
+import FuneralHomePartners from "@/pages/funeral-home-partners";
+import ElderCareIntegration from "@/pages/elder-care-integration";
+import EstatePlanning from "@/pages/estate-planning";
+
+// Support & Safety pages
+import CrisisResources from "@/pages/crisis-resources";
+import GriefCounselingPartners from "@/pages/grief-counseling-partners";
+import CommunityGuidelines from "@/pages/community-guidelines";
+import ContactSupport from "@/pages/contact-support";
+
+// Company pages
+import AboutMission from "@/pages/about-mission";
+import PrivacyPolicy from "@/pages/privacy-policy";
+import TermsOfService from "@/pages/terms-of-service";
+import PartnerWithUs from "@/pages/partner-with-us";
+
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -28,6 +53,31 @@ function Router() {
       <Route path="/onboarding/digital-seance" component={DigitalSeance} />
       <Route path="/onboarding/living-archive" component={LivingArchive} />
       <Route path="/dashboard" component={Dashboard} />
+      
+      {/* For Families */}
+      <Route path="/create-first-persona" component={CreateFirstPersona} />
+      <Route path="/family-sharing-guide" component={FamilySharingGuide} />
+      <Route path="/privacy-security" component={PrivacySecurity} />
+      <Route path="/data-export" component={DataExport} />
+      
+      {/* Professional Services */}
+      <Route path="/done-for-you" component={DoneForYou} />
+      <Route path="/funeral-home-partners" component={FuneralHomePartners} />
+      <Route path="/elder-care-integration" component={ElderCareIntegration} />
+      <Route path="/estate-planning" component={EstatePlanning} />
+      
+      {/* Support & Safety */}
+      <Route path="/crisis-resources" component={CrisisResources} />
+      <Route path="/grief-counseling-partners" component={GriefCounselingPartners} />
+      <Route path="/community-guidelines" component={CommunityGuidelines} />
+      <Route path="/contact-support" component={ContactSupport} />
+      
+      {/* Company */}
+      <Route path="/about-mission" component={AboutMission} />
+      <Route path="/privacy-policy" component={PrivacyPolicy} />
+      <Route path="/terms-of-service" component={TermsOfService} />
+      <Route path="/partner-with-us" component={PartnerWithUs} />
+      
       <Route component={NotFound} />
     </Switch>
   );
