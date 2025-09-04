@@ -552,7 +552,7 @@ export default function AIGuidedInterview() {
           <Card className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center space-x-3">
-                <Users className="w-6 h-6 text-purple-600" />
+                <User className="w-6 h-6 text-purple-600" />
                 <span>Family Coordination</span>
               </CardTitle>
               <p className="text-gray-600">
