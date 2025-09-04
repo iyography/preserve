@@ -176,6 +176,9 @@ export default function Home() {
                 <a href="#demo" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
                   Demo
                 </a>
+                <a href="/community" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
+                  Community
+                </a>
                 <button 
                   onClick={() => scrollToSection('pricing')}
                   className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200"

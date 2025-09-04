@@ -7,6 +7,7 @@ import Home from "@/pages/home";
 import SignIn from "@/pages/sign-in";
 import Register from "@/pages/register";
 import Dashboard from "@/pages/dashboard";
+import Community from "@/pages/community";
 import Onboarding from "@/pages/onboarding";
 import AIGuidedInterview from "@/pages/ai-guided-interview";
 import GradualAwakening from "@/pages/gradual-awakening";
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/sign-in" component={SignIn} />
       <Route path="/register" component={Register} />
+      <Route path="/community" component={Community} />
       <Route path="/onboarding" component={Onboarding} />
       <Route path="/onboarding/ai-guided-interview" component={AIGuidedInterview} />
       <Route path="/onboarding/gradual-awakening" component={GradualAwakening} />
