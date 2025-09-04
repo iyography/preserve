@@ -6,10 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ParticleSystem from "@/components/ParticleSystem";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -18,18 +21,60 @@ export default function Register() {
     confirmPassword: ''
   });
 
+  const { signUp } = useAuth();
+  const { toast } = useToast();
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle registration logic here
-    console.log('Registration attempt:', formData);
     
-    // For demo purposes, redirect to dashboard on successful registration
-    if (formData.email && formData.password && formData.password === formData.confirmPassword) {
-      window.location.href = '/dashboard';
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        variant: "destructive",
+        title: "Password Mismatch",
+        description: "Passwords do not match. Please check and try again."
+      });
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast({
+        variant: "destructive",
+        title: "Password Too Short",
+        description: "Password must be at least 6 characters long."
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      await signUp(formData.email, formData.password, {
+        first_name: formData.firstName,
+        last_name: formData.lastName
+      });
+
+      toast({
+        title: "Success!",
+        description: "Account created successfully. Please check your email to verify your account."
+      });
+
+      // Redirect to dashboard after successful registration
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 2000);
+
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Registration Failed",
+        description: error instanceof Error ? error.message : "An error occurred during registration."
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -204,10 +249,10 @@ export default function Register() {
                 <Button
                   type="submit"
                   className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-300"
-                  disabled={formData.password !== formData.confirmPassword}
+                  disabled={formData.password !== formData.confirmPassword || isLoading}
                 >
-                  Create Account
-                  <ArrowRight className="w-4 h-4 ml-2" />
+                  {isLoading ? "Creating Account..." : "Create Account"}
+                  {!isLoading && <ArrowRight className="w-4 h-4 ml-2" />}
                 </Button>
               </form>
 

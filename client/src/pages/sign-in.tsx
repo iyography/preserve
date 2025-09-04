@@ -6,25 +6,58 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ParticleSystem from "@/components/ParticleSystem";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SignIn() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { signIn } = useAuth();
+  const { toast } = useToast();
 
   const fillTestCredentials = () => {
     setEmail('demo@preservingconnections.com');
     setPassword('demo123');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle sign in logic here
-    console.log('Sign in attempt:', { email, password });
     
-    // For demo purposes, redirect to dashboard on any sign in attempt
-    if (email && password) {
-      window.location.href = '/dashboard';
+    if (!email || !password) {
+      toast({
+        variant: "destructive",
+        title: "Missing Information",
+        description: "Please enter both email and password."
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      await signIn(email, password);
+      
+      toast({
+        title: "Welcome back!",
+        description: "You have successfully signed in."
+      });
+
+      // Redirect to dashboard after successful sign in
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 1000);
+
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Sign In Failed",
+        description: error instanceof Error ? error.message : "Invalid email or password."
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -123,18 +156,19 @@ export default function SignIn() {
                 <Button
                   type="submit"
                   className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                  disabled={isLoading}
                 >
-                  Sign In
-                  <ArrowRight className="w-4 h-4 ml-2" />
+                  {isLoading ? "Signing In..." : "Sign In"}
+                  {!isLoading && <ArrowRight className="w-4 h-4 ml-2" />}
                 </Button>
               </form>
 
               <div className="mt-6 text-center">
                 <p className="text-sm text-gray-600">
                   Don't have an account?{' '}
-                  <a href="#" className="text-purple-600 hover:text-purple-700 font-medium">
+                  <Link href="/register" className="text-purple-600 hover:text-purple-700 font-medium">
                     Sign up here
-                  </a>
+                  </Link>
                 </p>
               </div>
 

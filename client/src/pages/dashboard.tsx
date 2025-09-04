@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Heart, Plus, Upload, MessageCircle, Clock, Shield, Calendar, Settings, Play, Bookmark, Share, Download, Mic, FileText, Video, Camera, Sparkles, Users, BarChart3, CheckCircle, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,11 +8,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import UserProfile from "@/components/UserProfile";
 
 export default function Dashboard() {
   const [selectedPersona, setSelectedPersona] = useState('grandma-rose');
   const [mode, setMode] = useState<'grief' | 'legacy'>('grief');
   const [voiceSimilarity] = useState(82);
+  const { user, loading } = useAuth();
+
+  // Redirect to sign-in if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      window.location.href = '/sign-in';
+    }
+  }, [user, loading]);
   
   // Sample data - in real app this would come from API
   const personas = [
@@ -68,6 +78,8 @@ export default function Dashboard() {
                 <Settings className="w-4 h-4 mr-2" />
                 Settings
               </Button>
+
+              <UserProfile />
             </div>
           </div>
         </div>
