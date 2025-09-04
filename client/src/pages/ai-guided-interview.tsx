@@ -26,22 +26,22 @@ const interviewSteps: InterviewStep[] = [
     description: 'Basic information and emotional check-in'
   },
   {
-    id: 'conversation',
-    title: 'Memory Interview',
+    id: 'interview',
+    title: 'The Interview Experience',
     duration: '20-45 minutes',
     description: 'Natural conversation with AI interviewer Sarah'
   },
   {
     id: 'testing',
-    title: 'Persona Testing',
+    title: 'Live Persona Testing',
     duration: '10 minutes',
-    description: 'Try talking with the initial persona'
+    description: 'Try talking with the created persona'
   },
   {
     id: 'coordination',
-    title: 'Family Setup',
+    title: 'Family Coordination',
     duration: '5 minutes',
-    description: 'Invite family members to contribute'
+    description: 'Invite family members to add memories'
   }
 ];
 
@@ -64,17 +64,16 @@ export default function AIGuidedInterview() {
   const openingQuestions = [
     "Tell me about the first time you remember really laughing with {name}",
     "What's a typical Saturday afternoon with them look like?",
-    "If {name} walked into this room right now, what would they say?",
-    "What made {name} different from anyone else you knew?",
-    "Can you share a memory that perfectly captures who {name} was?"
+    "If {name} walked into this room right now, what would they say?"
   ];
 
   const followUpQuestions = [
-    "That sounds wonderful. Can you tell me more about what made that moment special?",
+    "That sounds like such a special tradition. What made it different? Did they have any funny habits?",
     "I'm hearing that {name} was very {trait}. Can you give me an example of that?",
-    "What would {name} say if they were here listening to this story?",
-    "How did that make you feel? What was {name}'s reaction?",
-    "Did {name} have any favorite phrases or expressions they used?"
+    "When you say they were {trait}, can you give me an example?",
+    "Did {name} have any favorite phrases or expressions?",
+    "How was {name} different with you versus with other family members?",
+    "What made that moment so special to you both?"
   ];
 
   useEffect(() => {
@@ -236,7 +235,11 @@ export default function AIGuidedInterview() {
                 <Heart className="w-6 h-6 text-purple-600" />
                 <span>Pre-Interview Setup</span>
               </CardTitle>
-              <p className="text-gray-600">Let's start by getting to know a bit about the person you'd like to remember.</p>
+              <p className="text-gray-600">
+                I'm Sarah, and I'll be helping you share memories of your loved one. 
+                This will feel like talking to a friend who truly wants to understand who they were. 
+                We can pause anytime, and everything you share stays private until you decide otherwise.
+              </p>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Basic Information */}
@@ -283,12 +286,15 @@ export default function AIGuidedInterview() {
                 <Label htmlFor="emotionalState" className="text-sm font-medium text-gray-700">How are you feeling about sharing today?</Label>
                 <Textarea
                   id="emotionalState"
-                  placeholder="Take a moment to check in with yourself..."
+                  placeholder="Take a moment to check in with yourself. There's no right or wrong way to feel..."
                   value={emotionalState}
                   onChange={(e) => setEmotionalState(e.target.value)}
                   className="border-purple-200 focus:border-purple-400 min-h-[80px]"
                   data-testid="textarea-emotional-state"
                 />
+                <p className="text-xs text-gray-500">
+                  This helps me understand how to best support you during our conversation.
+                </p>
               </div>
 
               {/* Safety Information */}
@@ -336,9 +342,9 @@ export default function AIGuidedInterview() {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-gray-900 mb-1">Meet Sarah, Your Interview Guide</h3>
-                    <p className="text-gray-600 text-sm mb-3">
-                      Sarah is an empathetic AI trained in grief support and memory preservation. She'll guide you through sharing memories in a natural, supportive way.
-                    </p>
+              <p className="text-gray-600 text-sm mb-3">
+                Sarah is an empathetic AI trained in grief support and memory preservation. She'll guide you through sharing memories in a natural, supportive way, building your loved one's persona in real-time.
+              </p>
                     <div className="flex items-center space-x-4 text-sm text-gray-500">
                       <div className="flex items-center space-x-1">
                         <Clock className="w-4 h-4" />
@@ -455,67 +461,90 @@ export default function AIGuidedInterview() {
           </div>
         )}
 
-        {/* Step 3: Persona Testing */}
+        {/* Step 3: Live Persona Testing */}
         {currentStep === 2 && (
-          <Card className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-3">
-                <Play className="w-6 h-6 text-purple-600" />
-                <span>Try Talking with {personaName}</span>
-              </CardTitle>
-              <p className="text-gray-600">
-                Based on your memories, we've created an initial version of {personaName}. 
-                Remember, they'll get better as you add more memories over time.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Persona First Message */}
-              <div className="bg-purple-50 rounded-lg p-6 border border-purple-100">
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-700 rounded-full flex items-center justify-center text-white font-semibold text-lg">
-                    {personaName.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-purple-900 mb-2">{personaName}</h4>
-                    <p className="text-purple-800">
-                      Hello, my dear. I'm still learning about who I was, but I'm here with you now. 
-                      Thank you for sharing those beautiful memories with Sarah. What would you like to talk about?
-                    </p>
+          <div className="space-y-6">
+            {/* Introduction to Persona Testing */}
+            <Card className="bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200">
+              <CardContent className="p-6 text-center">
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Persona Created Successfully!</h3>
+                <p className="text-gray-600 mb-4">
+                  Based on what you've shared, I've created an early version of {personaName}. 
+                  Would you like to try talking to them? Remember, they'll get better as we add more memories.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Persona Testing Interface */}
+            <Card className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-3">
+                  <Play className="w-6 h-6 text-purple-600" />
+                  <span>First Conversation with {personaName}</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Persona First Message */}
+                <div className="bg-purple-50 rounded-lg p-6 border border-purple-100">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-700 rounded-full flex items-center justify-center text-white font-semibold text-lg">
+                      {personaName.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-purple-900 mb-2">{personaName}</h4>
+                      <p className="text-purple-800">
+                        Hello, my dear. I'm still learning about who I was through the beautiful memories you've shared. 
+                        It feels wonderful to be here with you again. What would you like to talk about?
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Feedback Section */}
-              <div className="space-y-4">
-                <Label className="text-sm font-medium text-gray-700">How does this feel? Any feedback on the persona?</Label>
-                <Textarea
-                  placeholder="Does this sound like them? What feels right or needs adjustment?"
-                  className="border-purple-200 focus:border-purple-400 min-h-[100px]"
-                  data-testid="textarea-persona-feedback"
-                />
-              </div>
+                {/* Test Conversation */}
+                <div className="space-y-4">
+                  <Label className="text-sm font-medium text-gray-700">Try having a brief conversation:</Label>
+                  <Textarea
+                    placeholder="Ask them a question or share something..."
+                    className="border-purple-200 focus:border-purple-400 min-h-[100px]"
+                    data-testid="textarea-test-conversation"
+                  />
+                  <Button className="bg-purple-600 hover:bg-purple-700 text-white">
+                    Send Message
+                  </Button>
+                </div>
 
-              <div className="flex justify-between pt-4">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setCurrentStep(1)}
-                  className="px-6"
-                  data-testid="button-back-to-interview"
-                >
-                  <ChevronLeft className="w-4 h-4 mr-2" />
-                  Back to Interview
-                </Button>
-                <Button 
-                  onClick={handleNextStep}
-                  className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-6"
-                  data-testid="button-continue-to-family"
-                >
-                  Continue to Family Setup
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                {/* Feedback Section */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">How does this feel? Feedback on accuracy:</Label>
+                  <Textarea
+                    placeholder="Does this sound like them? What feels right or needs adjustment?"
+                    className="border-purple-200 focus:border-purple-400 min-h-[80px] bg-white"
+                    data-testid="textarea-persona-feedback"
+                  />
+                </div>
+
+                <div className="flex justify-between pt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setCurrentStep(1)}
+                    className="px-6"
+                    data-testid="button-back-to-interview"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-2" />
+                    Back to Interview
+                  </Button>
+                  <Button 
+                    onClick={handleNextStep}
+                    className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-6"
+                    data-testid="button-continue-to-family"
+                  >
+                    Continue to Family Coordination
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Step 4: Family Coordination */}
@@ -523,55 +552,73 @@ export default function AIGuidedInterview() {
           <Card className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center space-x-3">
-                <Heart className="w-6 h-6 text-purple-600" />
-                <span>Include Other Family Members</span>
+                <Users className="w-6 h-6 text-purple-600" />
+                <span>Family Coordination</span>
               </CardTitle>
               <p className="text-gray-600">
-                Would you like to invite other family members to add their memories? 
-                This will make {personaName}'s persona richer and more complete.
+                Who else might want to add their memories of {personaName}? 
+                Each family member's contributions will make the persona richer and more complete for everyone.
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Family Invitation */}
               <div className="space-y-4">
-                <Label className="text-sm font-medium text-gray-700">Who else might want to contribute memories?</Label>
+                <Label className="text-sm font-medium text-gray-700">Invite family members to contribute:</Label>
                 <div className="space-y-3">
                   <Input
-                    placeholder="Family member's email"
+                    placeholder="Family member's email address"
                     className="border-purple-200 focus:border-purple-400"
                     data-testid="input-family-email"
                   />
                   <Input
-                    placeholder="Their relationship to {personaName} (e.g., daughter, son)"
+                    placeholder="Their relationship to {personaName} (e.g., daughter, brother, grandchild)"
                     className="border-purple-200 focus:border-purple-400"
                     data-testid="input-family-relationship"
                   />
                   <Button variant="outline" className="w-full border-purple-200 text-purple-600">
                     <User className="w-4 h-4 mr-2" />
-                    Add Family Member
+                    Send Invitation
                   </Button>
                 </div>
               </div>
 
-              {/* Privacy Settings */}
-              <div className="bg-purple-50 rounded-lg p-4 border border-purple-100">
-                <h4 className="text-sm font-medium text-purple-900 mb-2">Privacy & Permissions</h4>
-                <p className="text-sm text-purple-700 mb-3">
-                  You control what memories are shared and who can access {personaName}. 
-                  Family members will only see memories you've marked as shareable.
+              {/* What they'll receive */}
+              <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
+                <h4 className="text-sm font-medium text-indigo-900 mb-2">What will they receive?</h4>
+                <p className="text-sm text-indigo-700 mb-2">
+                  Automated invitations with context about what's already been shared, plus:
                 </p>
-                <div className="space-y-2">
-                  <label className="flex items-center space-x-2 text-sm">
-                    <input type="checkbox" className="rounded border-purple-300" defaultChecked />
-                    <span>Allow family members to add new memories</span>
+                <ul className="text-sm text-indigo-700 space-y-1">
+                  <li>• Simple interface to add their own memories</li>
+                  <li>• Access to interact with {personaName}'s persona</li>
+                  <li>• Notifications when new memories are added</li>
+                </ul>
+              </div>
+
+              {/* Permission Settings */}
+              <div className="bg-purple-50 rounded-lg p-4 border border-purple-100">
+                <h4 className="text-sm font-medium text-purple-900 mb-3">Permission settings for what each family member can access:</h4>
+                <div className="space-y-3">
+                  <label className="flex items-start space-x-3 text-sm">
+                    <input type="checkbox" className="rounded border-purple-300 mt-0.5" defaultChecked />
+                    <div>
+                      <span className="font-medium">View shared memories</span>
+                      <p className="text-purple-600 text-xs">Family members can see memories you've marked as shareable</p>
+                    </div>
                   </label>
-                  <label className="flex items-center space-x-2 text-sm">
-                    <input type="checkbox" className="rounded border-purple-300" defaultChecked />
-                    <span>Send me notifications when new memories are added</span>
+                  <label className="flex items-start space-x-3 text-sm">
+                    <input type="checkbox" className="rounded border-purple-300 mt-0.5" defaultChecked />
+                    <div>
+                      <span className="font-medium">Add new memories</span>
+                      <p className="text-purple-600 text-xs">Let family members contribute their own memories and stories</p>
+                    </div>
                   </label>
-                  <label className="flex items-center space-x-2 text-sm">
-                    <input type="checkbox" className="rounded border-purple-300" />
-                    <span>Allow family members to have private conversations with {personaName}</span>
+                  <label className="flex items-start space-x-3 text-sm">
+                    <input type="checkbox" className="rounded border-purple-300 mt-0.5" defaultChecked />
+                    <div>
+                      <span className="font-medium">Talk with {personaName}</span>
+                      <p className="text-purple-600 text-xs">Allow private conversations between family members and the persona</p>
+                    </div>
                   </label>
                 </div>
               </div>
@@ -590,7 +637,7 @@ export default function AIGuidedInterview() {
                   className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-6"
                   data-testid="button-complete-interview"
                 >
-                  Complete Setup
+                  Complete Interview Process
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </div>
