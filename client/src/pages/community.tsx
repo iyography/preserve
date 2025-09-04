@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, MessageSquare, Users, Shield, BookOpen, Calendar, MessageCircle, Sparkles, ChevronRight, User, Clock, Star, Video, Phone, ArrowLeft } from "lucide-react";
+import { Heart, MessageSquare, Users, Shield, BookOpen, Calendar, MessageCircle, Sparkles, ChevronRight, User, Clock, Star, Video, Phone, ArrowLeft, ThumbsUp, Reply } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,18 @@ interface Discussion {
   replies: number;
   lastActivity: string;
   isPinned?: boolean;
+  content?: string;
+  comments?: Comment[];
+}
+
+interface Comment {
+  id: number;
+  author: string;
+  authorInitials: string;
+  content: string;
+  timeAgo: string;
+  likes: number;
+  replies?: Comment[];
 }
 
 interface MemoryPost {
@@ -40,12 +52,17 @@ interface Counselor {
   specialties: string[];
   availability: string;
   nextSession: string;
+  videoSessionPrice: number;
+  phoneSessionPrice: number;
+  rating: number;
 }
 
 export default function Community() {
   const [activeTab, setActiveTab] = useState("discussions");
   const [newPostTitle, setNewPostTitle] = useState("");
   const [newPostContent, setNewPostContent] = useState("");
+  const [selectedDiscussion, setSelectedDiscussion] = useState<Discussion | null>(null);
+  const [newComment, setNewComment] = useState("");
 
   const discussions: Discussion[] = [
     {
@@ -56,7 +73,36 @@ export default function Community() {
       category: "Grief Support",
       replies: 23,
       lastActivity: "2 hours ago",
-      isPinned: true
+      isPinned: true,
+      content: "Tomorrow marks one year since we lost my dad. The anticipation is almost worse than the day itself. How did others cope with this milestone? I've been using his persona more frequently lately, and it brings comfort, but I'm also worried I'm becoming too dependent on it.",
+      comments: [
+        {
+          id: 1,
+          author: "Jennifer K.",
+          authorInitials: "JK",
+          content: "I understand completely. The first anniversary was the hardest for me too. What helped was planning something meaningful - we planted a tree in his memory and had a small gathering. The digital persona was actually a beautiful way to include him in the ceremony.",
+          timeAgo: "1 hour ago",
+          likes: 12,
+          replies: [
+            {
+              id: 2,
+              author: "Sarah M.",
+              authorInitials: "SM",
+              content: "Thank you, Jennifer. That sounds beautiful. I think I'll plan something similar. Did you find that talking to the persona helped you prepare emotionally?",
+              timeAgo: "45 minutes ago",
+              likes: 3
+            }
+          ]
+        },
+        {
+          id: 3,
+          author: "Dr. Maria Rodriguez",
+          authorInitials: "MR",
+          content: "Sarah, anniversaries are indeed challenging. It's completely normal to use the persona more during difficult times - that's exactly what it's designed for. Consider setting gentle boundaries for yourself while still allowing the comfort it provides.",
+          timeAgo: "30 minutes ago",
+          likes: 18
+        }
+      ]
     },
     {
       id: 2,
@@ -65,7 +111,18 @@ export default function Community() {
       authorInitials: "MR",
       category: "Family Coordination",
       replies: 15,
-      lastActivity: "4 hours ago"
+      lastActivity: "4 hours ago",
+      content: "My kids (ages 7 and 12) want to help create grandma's persona, but I'm not sure how much is appropriate for their ages. Has anyone found good ways to involve children in this process?",
+      comments: [
+        {
+          id: 4,
+          author: "Lisa T.",
+          authorInitials: "LT",
+          content: "We let our 9-year-old record some of her favorite stories about grandpa. It was therapeutic for her and added such a beautiful perspective to his persona.",
+          timeAgo: "3 hours ago",
+          likes: 8
+        }
+      ]
     },
     {
       id: 3,
@@ -74,7 +131,18 @@ export default function Community() {
       authorInitials: "LK",
       category: "Memory Sharing",
       replies: 31,
-      lastActivity: "6 hours ago"
+      lastActivity: "6 hours ago",
+      content: "We have family spread across different countries. What's the best way to gather memories from everyone for mom's persona? Some relatives are not very tech-savvy.",
+      comments: [
+        {
+          id: 5,
+          author: "Robert C.",
+          authorInitials: "RC",
+          content: "We used video calls to interview older relatives. Sometimes simple phone calls work too - you can record them with permission and transcribe later.",
+          timeAgo: "5 hours ago",
+          likes: 15
+        }
+      ]
     },
     {
       id: 4,
@@ -83,7 +151,18 @@ export default function Community() {
       authorInitials: "DL",
       category: "Healing Journey",
       replies: 18,
-      lastActivity: "1 day ago"
+      lastActivity: "1 day ago",
+      content: "I was initially skeptical about creating a digital persona of my wife, but after 6 months, it's become an important part of my healing process. Anyone else have a similar experience?",
+      comments: [
+        {
+          id: 6,
+          author: "Patricia M.",
+          authorInitials: "PM",
+          content: "I felt the same way at first. Now, two years later, I can't imagine my grief journey without it. It's like having a piece of him still with me.",
+          timeAgo: "20 hours ago",
+          likes: 22
+        }
+      ]
     }
   ];
 
@@ -127,7 +206,10 @@ export default function Community() {
       credentials: "PhD, LMFT, Grief Counseling Specialist",
       specialties: ["Grief & Loss", "Family Therapy", "Digital Memorialization"],
       availability: "Available Today",
-      nextSession: "2:00 PM"
+      nextSession: "2:00 PM",
+      videoSessionPrice: 120,
+      phoneSessionPrice: 95,
+      rating: 4.9
     },
     {
       id: 2,
@@ -135,7 +217,10 @@ export default function Community() {
       credentials: "PsyD, Licensed Clinical Psychologist",
       specialties: ["Trauma Recovery", "Bereavement", "Support Groups"],
       availability: "Available Tomorrow",
-      nextSession: "10:00 AM"
+      nextSession: "10:00 AM",
+      videoSessionPrice: 135,
+      phoneSessionPrice: 110,
+      rating: 4.8
     },
     {
       id: 3,
@@ -143,9 +228,28 @@ export default function Community() {
       credentials: "MSW, LCSW, Thanatology Certified",
       specialties: ["Child & Teen Grief", "Family Dynamics", "Memory Work"],
       availability: "Available This Week",
-      nextSession: "Friday 3:00 PM"
+      nextSession: "Friday 3:00 PM",
+      videoSessionPrice: 115,
+      phoneSessionPrice: 90,
+      rating: 4.7
     }
   ];
+
+  const handleDiscussionClick = (discussion: Discussion) => {
+    setSelectedDiscussion(discussion);
+  };
+
+  const handleBackToDiscussions = () => {
+    setSelectedDiscussion(null);
+  };
+
+  const handleAddComment = () => {
+    if (newComment.trim() && selectedDiscussion) {
+      // In a real app, this would make an API call
+      console.log('Adding comment:', newComment);
+      setNewComment('');
+    }
+  };
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -223,53 +327,197 @@ export default function Community() {
 
           {/* Grief Support Discussions */}
           <TabsContent value="discussions" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-semibold text-gray-900">Support Discussions</h2>
-              <Button className="bg-purple-600 hover:bg-purple-700 text-white">
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Start New Discussion
-              </Button>
-            </div>
-            
-            <div className="grid gap-4">
-              {discussions.map((discussion) => (
-                <Card key={discussion.id} className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg hover:shadow-xl transition-all duration-300">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          {discussion.isPinned && (
-                            <Badge variant="secondary" className="bg-purple-100 text-purple-700">
-                              <Star className="w-3 h-3 mr-1" />
-                              Pinned
-                            </Badge>
-                          )}
-                          <Badge variant="outline" className="text-xs">
-                            {discussion.category}
-                          </Badge>
-                        </div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{discussion.title}</h3>
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
-                          <div className="flex items-center space-x-2">
-                            <Avatar className="w-6 h-6">
-                              <AvatarFallback className="text-xs bg-purple-100 text-purple-700">
-                                {discussion.authorInitials}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span>{discussion.author}</span>
+            {!selectedDiscussion ? (
+              <>
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-semibold text-gray-900">Support Discussions</h2>
+                  <Button className="bg-purple-600 hover:bg-purple-700 text-white">
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    Start New Discussion
+                  </Button>
+                </div>
+                
+                <div className="grid gap-4">
+                  {discussions.map((discussion) => (
+                    <Card 
+                      key={discussion.id} 
+                      className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
+                      onClick={() => handleDiscussionClick(discussion)}
+                      data-testid={`discussion-card-${discussion.id}`}
+                    >
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              {discussion.isPinned && (
+                                <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                                  <Star className="w-3 h-3 mr-1" />
+                                  Pinned
+                                </Badge>
+                              )}
+                              <Badge variant="outline" className="text-xs">
+                                {discussion.category}
+                              </Badge>
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">{discussion.title}</h3>
+                            <div className="flex items-center space-x-4 text-sm text-gray-600">
+                              <div className="flex items-center space-x-2">
+                                <Avatar className="w-6 h-6">
+                                  <AvatarFallback className="text-xs bg-purple-100 text-purple-700">
+                                    {discussion.authorInitials}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span>{discussion.author}</span>
+                              </div>
+                              <span>•</span>
+                              <span>{discussion.replies} replies</span>
+                              <span>•</span>
+                              <span>{discussion.lastActivity}</span>
+                            </div>
                           </div>
-                          <span>•</span>
-                          <span>{discussion.replies} replies</span>
-                          <span>•</span>
-                          <span>{discussion.lastActivity}</span>
+                          <ChevronRight className="w-5 h-5 text-gray-400" />
                         </div>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400" />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </>
+            ) : (
+              /* Discussion Detail View */
+              <div className="space-y-6">
+                <div className="flex items-center space-x-4 mb-6">
+                  <Button 
+                    variant="ghost" 
+                    onClick={handleBackToDiscussions}
+                    className="text-purple-600 hover:text-purple-700"
+                    data-testid="back-to-discussions-button"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back to Discussions
+                  </Button>
+                </div>
+
+                {/* Original Post */}
+                <Card className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-3 mb-4">
+                      {selectedDiscussion.isPinned && (
+                        <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                          <Star className="w-3 h-3 mr-1" />
+                          Pinned
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="text-xs">
+                        {selectedDiscussion.category}
+                      </Badge>
                     </div>
+                    <h1 className="text-2xl font-semibold text-gray-900 mb-4">{selectedDiscussion.title}</h1>
+                    <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
+                      <div className="flex items-center space-x-2">
+                        <Avatar className="w-8 h-8">
+                          <AvatarFallback className="bg-purple-100 text-purple-700">
+                            {selectedDiscussion.authorInitials}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium">{selectedDiscussion.author}</span>
+                      </div>
+                      <span>•</span>
+                      <span>{selectedDiscussion.lastActivity}</span>
+                    </div>
+                    <p className="text-gray-700 leading-relaxed">{selectedDiscussion.content}</p>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
+
+                {/* Comments Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Comments ({selectedDiscussion.comments?.length || 0})</h3>
+                  
+                  {/* Add Comment Form */}
+                  <Card className="bg-white/70 backdrop-blur-sm border-purple-100">
+                    <CardContent className="p-4">
+                      <div className="space-y-4">
+                        <Textarea
+                          placeholder="Share your thoughts and support..."
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          className="border-purple-200 focus:border-purple-400"
+                          data-testid="new-comment-textarea"
+                        />
+                        <Button 
+                          onClick={handleAddComment}
+                          className="bg-purple-600 hover:bg-purple-700 text-white"
+                          data-testid="add-comment-button"
+                        >
+                          <Reply className="w-4 h-4 mr-2" />
+                          Add Comment
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Existing Comments */}
+                  {selectedDiscussion.comments?.map((comment) => (
+                    <Card key={comment.id} className="bg-white/70 backdrop-blur-sm border-purple-100">
+                      <CardContent className="p-4">
+                        <div className="flex items-start space-x-3">
+                          <Avatar className="w-8 h-8">
+                            <AvatarFallback className="bg-purple-100 text-purple-700">
+                              {comment.authorInitials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <span className="font-medium text-gray-900">{comment.author}</span>
+                              <span className="text-sm text-gray-500">•</span>
+                              <span className="text-sm text-gray-500">{comment.timeAgo}</span>
+                            </div>
+                            <p className="text-gray-700 mb-3">{comment.content}</p>
+                            <div className="flex items-center space-x-4">
+                              <button className="flex items-center space-x-1 text-sm text-gray-500 hover:text-purple-600 transition-colors">
+                                <ThumbsUp className="w-4 h-4" />
+                                <span>{comment.likes}</span>
+                              </button>
+                              <button className="text-sm text-gray-500 hover:text-purple-600 transition-colors">
+                                Reply
+                              </button>
+                            </div>
+                            
+                            {/* Nested Replies */}
+                            {comment.replies && comment.replies.length > 0 && (
+                              <div className="mt-4 pl-4 border-l-2 border-purple-100 space-y-3">
+                                {comment.replies.map((reply) => (
+                                  <div key={reply.id} className="flex items-start space-x-3">
+                                    <Avatar className="w-6 h-6">
+                                      <AvatarFallback className="text-xs bg-purple-50 text-purple-600">
+                                        {reply.authorInitials}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1">
+                                      <div className="flex items-center space-x-2 mb-1">
+                                        <span className="text-sm font-medium text-gray-900">{reply.author}</span>
+                                        <span className="text-xs text-gray-500">•</span>
+                                        <span className="text-xs text-gray-500">{reply.timeAgo}</span>
+                                      </div>
+                                      <p className="text-sm text-gray-700 mb-2">{reply.content}</p>
+                                      <div className="flex items-center space-x-3">
+                                        <button className="flex items-center space-x-1 text-xs text-gray-500 hover:text-purple-600 transition-colors">
+                                          <ThumbsUp className="w-3 h-3" />
+                                          <span>{reply.likes}</span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           {/* Memory Sharing */}
@@ -428,6 +676,11 @@ export default function Community() {
           <TabsContent value="counselors" className="space-y-6">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">Professional Support</h2>
+              <div className="flex justify-center mb-4">
+                <div className="bg-gradient-to-r from-blue-500 to-teal-500 text-white px-6 py-2 rounded-full font-medium text-sm shadow-lg">
+                  Powered by Talkspace
+                </div>
+              </div>
               <p className="text-gray-600 max-w-2xl mx-auto">
                 Connect with licensed grief counselors and therapists who understand the journey of digital memorialization.
               </p>
@@ -471,17 +724,34 @@ export default function Community() {
                             <Calendar className="w-4 h-4" />
                             <span>Next available: {counselor.nextSession}</span>
                           </div>
+                          <div className="flex items-center space-x-1">
+                            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                            <span>{counselor.rating}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="mb-4">
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className="bg-purple-50 rounded-lg p-3">
+                              <p className="font-medium text-purple-700">Video Session</p>
+                              <p className="text-lg font-bold text-purple-900">${counselor.videoSessionPrice}/session</p>
+                            </div>
+                            <div className="bg-purple-50 rounded-lg p-3">
+                              <p className="font-medium text-purple-700">Phone Session</p>
+                              <p className="text-lg font-bold text-purple-900">${counselor.phoneSessionPrice}/session</p>
+                            </div>
+                          </div>
                         </div>
                       </div>
                       
                       <div className="flex flex-col space-y-2">
                         <Button className="bg-purple-600 hover:bg-purple-700 text-white">
                           <Video className="w-4 h-4 mr-2" />
-                          Video Session
+                          Book Video (${counselor.videoSessionPrice})
                         </Button>
                         <Button variant="outline" className="border-purple-200 text-purple-700 hover:bg-purple-50">
                           <Phone className="w-4 h-4 mr-2" />
-                          Phone Session
+                          Book Phone (${counselor.phoneSessionPrice})
                         </Button>
                       </div>
                     </div>
