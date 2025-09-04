@@ -115,7 +115,14 @@ export default function Onboarding() {
   const handleNext = () => {
     if (step === 'welcome') setStep('comfort');
     else if (step === 'comfort') setStep('approach');
-    else if (step === 'approach') setStep('setup');
+    else if (step === 'approach') {
+      // Instead of going to setup, redirect to the specific approach flow
+      if (selectedApproach) {
+        setLocation(`/onboarding/${selectedApproach}`);
+      } else {
+        setStep('setup');
+      }
+    }
     else setLocation('/dashboard');
   };
 

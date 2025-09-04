@@ -1,0 +1,42 @@
+AI-Guided Memory Interview" (Recommended Primary)
+Core Philosophy
+An empathetic AI interviewer conducts a natural conversation to extract memories, automatically building the persona in real-time while providing therapeutic value through the sharing process itself.
+Onboarding Flow
+Pre-Interview Setup (2 minutes)
+"I'm Sarah, and I'll be helping you share memories of [Name]. 
+This will feel like talking to a friend who truly wants to understand who they were.
+We can pause anytime, and everything you share stays private until you decide otherwise."
+
+Basic info: Name, relationship, photo upload
+Emotional check-in: "How are you feeling about sharing today?"
+The Interview Experience (20-45 minutes, can be split across sessions)
+Opening Questions (Natural conversation starter):
+
+"Tell me about the first time you remember really laughing with [Name]"
+"What's a typical Saturday afternoon with them look like?"
+"If [Name] walked into this room right now, what would they say?"
+
+AI Follow-up Intelligence:
+User: "Dad always made pancakes on Sunday mornings"
+
+AI Sarah: "That sounds like such a special tradition. What made his pancakes different? 
+Did he have any funny habits while cooking? Who else was usually there for Sunday pancakes?"
+Dynamic Persona Building:
+
+AI identifies personality traits in real-time ("I'm hearing that your dad was very generous")
+Asks clarifying questions ("When you say he was stubborn, can you give me an example?")
+Builds voice patterns ("Did he have any favorite phrases or expressions?")
+Maps relationships ("How was he different with your mom versus with you kids?")
+
+Emotional Safety Protocols:
+
+Detects emotional distress and offers breaks
+Validates difficult emotions ("That sounds incredibly painful to lose him so suddenly")
+Gently redirects if unhealthy patterns emerge
+Offers professional resources if needed
+
+Live Persona Testing (10 minutes)
+"Based on what you've shared, I've created an early version of your dad. 
+Would you like to try talking to him? Remember, he'll get better as we add more memories."
+
+[User can have a brief conversation, provide feedback on accuracy]

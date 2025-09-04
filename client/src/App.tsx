@@ -8,6 +8,7 @@ import SignIn from "@/pages/sign-in";
 import Register from "@/pages/register";
 import Dashboard from "@/pages/dashboard";
 import Onboarding from "@/pages/onboarding";
+import AIGuidedInterview from "@/pages/ai-guided-interview";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -17,6 +18,7 @@ function Router() {
       <Route path="/sign-in" component={SignIn} />
       <Route path="/register" component={Register} />
       <Route path="/onboarding" component={Onboarding} />
+      <Route path="/onboarding/ai-guided-interview" component={AIGuidedInterview} />
       <Route path="/dashboard" component={Dashboard} />
       <Route component={NotFound} />
     </Switch>
