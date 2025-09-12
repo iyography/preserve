@@ -729,7 +729,13 @@ export default function AIGuidedInterview() {
                         <p className={`text-xs mt-1 ${
                           entry.speaker === 'You' ? 'text-purple-100' : 'text-gray-400'
                         }`}>
-                          {entry.speaker} • {entry.timestamp.toLocaleTimeString()}
+                          {entry.speaker} • {(() => {
+                            try {
+                              return new Date(entry.timestamp).toLocaleTimeString();
+                            } catch (error) {
+                              return 'Invalid time';
+                            }
+                          })()}
                         </p>
                       </div>
                     </div>
