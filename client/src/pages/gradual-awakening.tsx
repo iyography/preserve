@@ -833,9 +833,9 @@ export default function GradualAwakening() {
       
       toast({
         title: "Gradual Awakening Started!",
-        description: `${personaName} is beginning to awaken. You'll receive gentle daily invitations to add more memories.`
+        description: `${personaName} is ready! Start your first conversation.`
       });
-      setLocation('/dashboard');
+      setLocation(`/chat/${currentPersona?.id}`);
     }
   };
 

@@ -317,13 +317,13 @@ export default function AIGuidedInterview() {
 
       await createSessionMutation.mutateAsync(sessionData);
 
-      // Redirect to dashboard after successful persona creation
+      // Redirect to chat after successful persona creation
       toast({
         title: "Persona Created Successfully!",
-        description: `${personaName} has been created and is ready. Welcome to your dashboard!`
+        description: `${personaName} has been created and is ready. Start your first conversation!`
       });
       
-      setLocation('/dashboard');
+      setLocation(`/chat/${persona.id}`);
     } catch (error) {
       console.error('Error starting interview:', error);
       toast({
