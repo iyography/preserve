@@ -1,0 +1,49 @@
+Add After "Three Adjectives":
+Their Voice & Communication Style
+
+"How did they usually greet you?" (Hey kiddo, What's up buttercup, etc.)
+"A phrase they said all the time" (catchphrases, inside jokes)
+"How they texted/talked" (formal, lots of emojis, abbreviated, dramatic)
+
+Add After "One Favorite Memory":
+What They'd Say About...
+
+"What advice would they give you about relationships?"
+"How would they react if you got a promotion?"
+"What would they say if you were stressed about money?"
+"Their typical response when you complained about something"
+
+Their Personality Patterns
+
+"Were they more of a listener or a talker?"
+"How did they handle conflict?" (avoided it, tackled it head-on, made jokes)
+"What always made them laugh?"
+"What did they worry about most?"
+
+Quick Context Builders
+
+"Three topics they could talk about for hours"
+"Something they were really proud of"
+"Their biggest pet peeve"
+"How they showed they cared about you"
+
+Smart Implementation Strategy
+Progressive Disclosure: Keep your current 5 fields as "Essential" but add a "Tell us more" section that expands to reveal 8-10 additional fields. This maintains the "3-minute" promise while allowing deeper capture.
+Memory Prompts: Instead of just "one favorite memory," add:
+
+"A time they made you laugh"
+"Advice they gave that stuck with you"
+"How they celebrated your wins"
+"What they did when you were upset"
+
+Relationship-Specific Questions:
+After they select relationship type, show 3-4 targeted questions:
+
+Parent: "How did they discipline/guide you?" "Their rules for the house"
+Friend: "Your inside jokes" "What you always did together"
+Partner: "Pet names for each other" "How you handled disagreements"
+
+Voice Sample Enhancement:
+Instead of just "Record it," add: "Record them saying something they'd actually say - advice, a joke, or just hello"
+This approach would give the AI enough personality markers, speech patterns, and situational responses to have much more authentic conversations without overwhelming the initial experience.
+The key is capturing how they communicated and what they'd say in specific situations, not just who they were in general terms.

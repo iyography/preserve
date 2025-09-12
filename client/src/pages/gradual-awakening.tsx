@@ -14,7 +14,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import type { Persona, OnboardingSession } from "@shared/schema";
 
 // TypeScript types for enhanced features
@@ -115,6 +115,7 @@ export default function GradualAwakening() {
   // Load existing onboarding session
   const { data: existingSession } = useQuery({
     queryKey: ['/api/onboarding-sessions/gradual-awakening'],
+    queryFn: getQueryFn({ on401: 'returnNull', userId: user?.id }),
     enabled: !!user?.id,
   });
 
