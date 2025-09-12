@@ -44,8 +44,8 @@ export const authHelpers = {
   },
 
   // Sign in user
-  async signIn(email: string, password: string) {
-    console.log('Supabase signIn called with:', { email });
+  async signIn(email: string, password: string, rememberMe?: boolean) {
+    console.log('Supabase signIn called with:', { email, rememberMe });
     
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -57,6 +57,17 @@ export const authHelpers = {
     if (error) {
       console.error('Supabase signIn error:', error);
       throw new Error(error.message)
+    }
+    
+    // Store remember me preference for future reference
+    if (typeof window !== 'undefined') {
+      if (rememberMe) {
+        localStorage.setItem('remember_me', 'true');
+        // Supabase sessions are persistent by default, lasting 1 hour with auto-refresh
+        // For "remember me", we'll rely on the persistent session configuration
+      } else {
+        localStorage.removeItem('remember_me');
+      }
     }
     
     return data

@@ -41,10 +41,10 @@ export function useAuth() {
     }
   }
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, rememberMe?: boolean) => {
     setLoading(true)
     try {
-      const result = await authHelpers.signIn(email, password)
+      const result = await authHelpers.signIn(email, password, rememberMe)
       return result
     } catch (error) {
       throw error

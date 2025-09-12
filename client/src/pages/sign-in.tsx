@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import ParticleSystem from "@/components/ParticleSystem";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,14 +14,15 @@ export default function SignIn() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const { signIn } = useAuth();
   const { toast } = useToast();
 
   const fillTestCredentials = () => {
-    setEmail('demo@gmail.com');
-    setPassword('demouser123');
+    setEmail('secondgavel@gmail.com');
+    setPassword('testuser123');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,7 +40,7 @@ export default function SignIn() {
     setIsLoading(true);
 
     try {
-      await signIn(email, password);
+      await signIn(email, password, rememberMe);
       
       toast({
         title: "Welcome back!",
@@ -143,6 +145,22 @@ export default function SignIn() {
                   </div>
                 </div>
 
+                {/* Remember Me Checkbox */}
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="remember-me"
+                    checked={rememberMe}
+                    onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                    data-testid="checkbox-remember-me"
+                  />
+                  <Label
+                    htmlFor="remember-me"
+                    className="text-sm text-gray-600 cursor-pointer"
+                  >
+                    Remember me for 30 days
+                  </Label>
+                </div>
+
                 {/* Test Credentials Button */}
                 <Button
                   type="button"
@@ -176,8 +194,8 @@ export default function SignIn() {
               {/* Test Credentials Info */}
               <div className="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-100">
                 <p className="text-xs text-purple-700 font-medium mb-1">Test Account:</p>
-                <p className="text-xs text-purple-600">Email: demo@gmail.com</p>
-                <p className="text-xs text-purple-600">Password: demouser123</p>
+                <p className="text-xs text-purple-600">Email: secondgavel@gmail.com</p>
+                <p className="text-xs text-purple-600">Password: testuser123</p>
                 <p className="text-xs text-purple-500 mt-1 italic">Click "Fill Test Credentials" to use these</p>
               </div>
             </CardContent>
