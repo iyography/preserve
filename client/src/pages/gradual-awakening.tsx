@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -232,20 +233,7 @@ export default function GradualAwakening() {
   // Create persona mutation
   const createPersonaMutation = useMutation({
     mutationFn: async (personaData: any) => {
-      const response = await fetch('/api/personas', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-Id': user?.id || '',
-        },
-        body: JSON.stringify(personaData),
-        credentials: 'include',
-      });
-      
-      if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
-      }
-      
+      const response = await apiRequest('POST', '/api/personas', personaData);
       return response.json();
     },
     onSuccess: (persona) => {
@@ -257,20 +245,7 @@ export default function GradualAwakening() {
   // Create onboarding session mutation
   const createSessionMutation = useMutation({
     mutationFn: async (sessionData: any) => {
-      const response = await fetch('/api/onboarding-sessions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-Id': user?.id || '',
-        },
-        body: JSON.stringify(sessionData),
-        credentials: 'include',
-      });
-      
-      if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
-      }
-      
+      const response = await apiRequest('POST', '/api/onboarding-sessions', sessionData);
       return response.json();
     },
     onSuccess: (session) => {
@@ -282,20 +257,7 @@ export default function GradualAwakening() {
   // Update session mutation
   const updateSessionMutation = useMutation({
     mutationFn: async ({ sessionId, updates }: { sessionId: string; updates: any }) => {
-      const response = await fetch(`/api/onboarding-sessions/${sessionId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-Id': user?.id || '',
-        },
-        body: JSON.stringify(updates),
-        credentials: 'include',
-      });
-      
-      if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
-      }
-      
+      const response = await apiRequest('PUT', `/api/onboarding-sessions/${sessionId}`, updates);
       return response.json();
     },
     onSuccess: (session) => {
@@ -309,20 +271,58 @@ export default function GradualAwakening() {
       const formData = new FormData();
       formData.append('file', file);
       
+      // For file uploads, we need to use fetch directly but with proper credentials
       const response = await fetch(`/api/personas/${personaId}/media`, {
         method: 'POST',
         body: formData,
-        headers: {
-          'X-User-Id': user?.id || '',
-        },
         credentials: 'include',
       });
       
       if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
+        const text = (await response.text()) || response.statusText;
+        throw new Error(`${response.status}: ${text}`);
       }
       
       return response.json();
+    },
+  });
+
+  // Save for later mutation
+  const saveForLaterMutation = useMutation({
+    mutationFn: async () => {
+      const sessionData = {
+        approach: 'gradual-awakening',
+        currentStep: 'tell-us-more',
+        stepData: {
+          personaName,
+          relationship,
+          adjectives,
+          favoriteMemory,
+          memoryType,
+          voiceCommunication,
+          personalityPatterns,
+          whatTheydSay,
+          contextBuilders,
+          enhancedMemories,
+          relationshipSpecific,
+        },
+        isCompleted: false,
+      };
+
+      if (currentSession) {
+        const response = await apiRequest('PUT', `/api/onboarding-sessions/${currentSession.id}`, sessionData);
+        return response.json();
+      } else {
+        const response = await apiRequest('POST', '/api/onboarding-sessions', sessionData);
+        return response.json();
+      }
+    },
+    onSuccess: () => {
+      toast({
+        title: "Progress Saved!",
+        description: "Your persona information has been saved. You can continue later from your dashboard."
+      });
+      setLocation('/dashboard');
     },
   });
 
@@ -1736,22 +1736,34 @@ export default function GradualAwakening() {
                 )}
 
             {/* Navigation */}
-            <div className="flex justify-between pt-4">
+            <div className="flex justify-between items-center pt-4">
               <Link href="/onboarding">
                 <Button variant="outline" className="px-6" data-testid="button-back-onboarding">
                   <ChevronLeft className="w-4 h-4 mr-2" />
                   Back
                 </Button>
               </Link>
-              <Button 
-                onClick={handleNext}
-                disabled={isCreatingPersona || createPersonaMutation.isPending}
-                className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-6"
-                data-testid="button-create-persona"
-              >
-                {isCreatingPersona || createPersonaMutation.isPending ? 'Creating Persona...' : 'Create Initial Persona'}
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
+              
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline"
+                  onClick={() => saveForLaterMutation.mutate()}
+                  disabled={saveForLaterMutation.isPending}
+                  className="px-6"
+                  data-testid="button-save-for-later"
+                >
+                  {saveForLaterMutation.isPending ? 'Saving...' : 'Save for Later'}
+                </Button>
+                <Button 
+                  onClick={handleNext}
+                  disabled={isCreatingPersona || createPersonaMutation.isPending}
+                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-6"
+                  data-testid="button-create-persona"
+                >
+                  {isCreatingPersona || createPersonaMutation.isPending ? 'Creating Persona...' : 'Create Initial Persona'}
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
             </div>
           </div>
         )}
