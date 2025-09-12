@@ -39,6 +39,7 @@ export interface IStorage {
   // Onboarding session methods
   getOnboardingSession(id: string): Promise<OnboardingSession | undefined>;
   getOnboardingSessionByUser(userId: string, approach: string): Promise<OnboardingSession | undefined>;
+  getOnboardingSessionsByUser(userId: string): Promise<OnboardingSession[]>;
   createOnboardingSession(session: InsertOnboardingSession): Promise<OnboardingSession>;
   updateOnboardingSession(id: string, updates: Partial<OnboardingSession>): Promise<OnboardingSession | undefined>;
 }
@@ -129,6 +130,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(onboardingSessions.createdAt)
       .limit(1);
     return session || undefined;
+  }
+
+  async getOnboardingSessionsByUser(userId: string): Promise<OnboardingSession[]> {
+    return await db
+      .select()
+      .from(onboardingSessions)
+      .where(eq(onboardingSessions.userId, userId))
+      .orderBy(onboardingSessions.createdAt);
   }
 
   async createOnboardingSession(insertSession: InsertOnboardingSession): Promise<OnboardingSession> {

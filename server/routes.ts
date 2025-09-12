@@ -106,6 +106,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Onboarding Sessions API
+  app.get('/api/onboarding-sessions', async (req, res) => {
+    try {
+      const userId = req.headers['x-user-id'] as string;
+      
+      if (!userId) {
+        return res.status(401).json({ error: 'User ID required' });
+      }
+      
+      const sessions = await storage.getOnboardingSessionsByUser(userId);
+      res.json(sessions);
+    } catch (error) {
+      console.error('Error fetching onboarding sessions:', error);
+      res.status(500).json({ error: 'Failed to fetch onboarding sessions' });
+    }
+  });
+
   app.get('/api/onboarding-sessions/:approach', async (req, res) => {
     try {
       const userId = req.headers['x-user-id'] as string;
