@@ -10,6 +10,65 @@ import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
+// Helper function to determine where to route user after sign-in
+async function determineUserRoute(): Promise<string> {
+  try {
+    // Check if user has any completed personas
+    const personasResponse = await fetch('/api/personas', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (personasResponse.ok) {
+      const personas = await personasResponse.json();
+      
+      // If user has completed personas, go to dashboard
+      if (personas.length > 0 && personas.some((p: any) => p.status === 'completed')) {
+        return '/dashboard';
+      }
+      
+      // If user has personas but they're all in progress, go to dashboard too
+      if (personas.length > 0) {
+        return '/dashboard';
+      }
+    }
+    
+    // Check if user has any incomplete onboarding sessions
+    const sessionsResponse = await fetch('/api/onboarding-sessions', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (sessionsResponse.ok) {
+      const sessions = await sessionsResponse.json();
+      
+      // Find the most recent incomplete session
+      const incompleteSessions = sessions.filter((s: any) => !s.isCompleted);
+      if (incompleteSessions.length > 0) {
+        // Sort by creation date and get the most recent
+        const recentSession = incompleteSessions.sort((a: any, b: any) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )[0];
+        
+        // Route to the specific onboarding approach where they left off
+        return `/onboarding/${recentSession.approach}`;
+      }
+    }
+    
+    // Default: new user, send to onboarding flow
+    return '/onboarding';
+    
+  } catch (error) {
+    console.error('Error checking user state:', error);
+    // Fallback to onboarding on any error
+    return '/onboarding';
+  }
+}
+
 export default function SignIn() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
@@ -47,9 +106,17 @@ export default function SignIn() {
         description: "You have successfully signed in."
       });
 
-      // Redirect to onboarding after successful sign in
-      setTimeout(() => {
-        window.location.href = '/onboarding';
+      // Smart routing based on user state
+      setTimeout(async () => {
+        try {
+          // Check user state to determine where to route
+          const route = await determineUserRoute();
+          window.location.href = route;
+        } catch (error) {
+          console.error('Error determining user route:', error);
+          // Fallback to onboarding if there's an error
+          window.location.href = '/onboarding';
+        }
       }, 1000);
 
     } catch (error) {
