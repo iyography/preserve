@@ -415,6 +415,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // API Status Check Endpoint
+  app.get('/api/chat/status', async (req, res) => {
+    try {
+      // Quick check of OpenAI API availability
+      const openaiApiKey = process.env.OPENAI_API_KEY;
+      const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+      
+      if (!openaiApiKey && !anthropicApiKey) {
+        return res.json({ 
+          status: 'down', 
+          message: 'No AI API keys configured',
+          providers: { openai: false, anthropic: false }
+        });
+      }
+      
+      let openaiStatus = false;
+      let anthropicStatus = false;
+      
+      // Check OpenAI if key is available
+      if (openaiApiKey) {
+        try {
+          const testResponse = await fetch('https://api.openai.com/v1/models', {
+            headers: { 'Authorization': `Bearer ${openaiApiKey}` }
+          });
+          openaiStatus = testResponse.status === 200;
+        } catch (error) {
+          openaiStatus = false;
+        }
+      }
+      
+      // Check Anthropic if key is available
+      if (anthropicApiKey) {
+        try {
+          // Anthropic doesn't have a simple status endpoint, so we assume it's working if key exists
+          anthropicStatus = true;
+        } catch (error) {
+          anthropicStatus = false;
+        }
+      }
+      
+      let status = 'down';
+      if (openaiStatus && anthropicStatus) {
+        status = 'working';
+      } else if (openaiStatus || anthropicStatus) {
+        status = 'partial';
+      }
+      
+      res.json({ 
+        status, 
+        providers: { 
+          openai: openaiStatus, 
+          anthropic: anthropicStatus 
+        },
+        message: status === 'working' ? 'All AI services available' : 
+                status === 'partial' ? 'Some AI services available' : 
+                'No AI services available'
+      });
+    } catch (error) {
+      console.error('Status check error:', error);
+      res.json({ 
+        status: 'down', 
+        message: 'Error checking API status',
+        providers: { openai: false, anthropic: false }
+      });
+    }
+  });
+
   // Enhanced Chat Generation Endpoint with Conversation Storage
   app.post('/api/chat/generate', verifyJWT, async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -455,8 +522,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const openaiKey = process.env.OPENAI_API_KEY;
-      if (!openaiKey) {
-        console.error('❌ OpenAI API key not found');
+      const anthropicKey = process.env.ANTHROPIC_API_KEY;
+      
+      if (!openaiKey && !anthropicKey) {
+        console.error('❌ No AI API keys found');
         return res.status(500).json({ error: 'AI service not configured' });
       }
 
@@ -484,82 +553,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('💾 Stored user message:', userMessage.id);
 
-      // Enhanced OpenAI API call with better error handling
-      console.log('🤖 Calling OpenAI API with model: gpt-4o-mini');
+      // Try AI APIs with fallback: OpenAI first, then Anthropic
+      let aiResponse = null;
+      let usedProvider = 'none';
+      let usageData = null;
       
-      const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content: `${personalityContext}\n\nIMPORTANT GUIDELINES:\n- This is a sacred conversation between ${personaName} and their loved one\n- Respond with genuine empathy and care\n- Ask meaningful follow-up questions when appropriate\n- Reference the person's emotional state or needs\n- Keep responses 2-4 sentences for natural flow\n- Vary your responses - avoid repetitive phrases`
+      // Try OpenAI first if key is available
+      if (openaiKey) {
+        try {
+          console.log('🤖 Trying OpenAI API with model: gpt-4o-mini');
+          
+          const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openaiKey}`,
+              'Content-Type': 'application/json',
             },
-            {
-              role: 'user',
-              content: `Recent conversation context:\n${conversationHistory || 'This is the beginning of our conversation.'}\n\nLatest message from your loved one: "${message}"\n\nAs ${personaName}, respond with authentic care and personality. Show interest in their wellbeing and ask a thoughtful question or share something meaningful.`
-            }
-          ],
-          max_tokens: 400,
-          temperature: 0.85,
-          top_p: 0.9,
-          frequency_penalty: 0.3,
-          presence_penalty: 0.2
-        }),
-      });
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                {
+                  role: 'system',
+                  content: `${personalityContext}\n\nIMPORTANT GUIDELINES:\n- This is a sacred conversation between ${personaName} and their loved one\n- Respond with genuine empathy and care\n- Ask meaningful follow-up questions when appropriate\n- Reference the person's emotional state or needs\n- Keep responses 2-4 sentences for natural flow\n- Vary your responses - avoid repetitive phrases`
+                },
+                {
+                  role: 'user',
+                  content: `Recent conversation context:\n${conversationHistory || 'This is the beginning of our conversation.'}\n\nLatest message from your loved one: "${message}"\n\nAs ${personaName}, respond with authentic care and personality. Show interest in their wellbeing and ask a thoughtful question or share something meaningful.`
+                }
+              ],
+              max_tokens: 400,
+              temperature: 0.85,
+              top_p: 0.9,
+              frequency_penalty: 0.3,
+              presence_penalty: 0.2
+            }),
+          });
 
-      if (!openaiResponse.ok) {
-        const errorText = await openaiResponse.text();
-        console.error('❌ OpenAI API error:', {
-          status: openaiResponse.status,
-          statusText: openaiResponse.statusText,
-          error: errorText
-        });
+          if (openaiResponse.ok) {
+            const data = await openaiResponse.json();
+            console.log('✅ OpenAI API response received:', {
+              choices: data.choices?.length,
+              usage: data.usage
+            });
+
+            if (data.choices && data.choices.length > 0 && data.choices[0]?.message?.content) {
+              aiResponse = data.choices[0].message.content;
+              usedProvider = 'openai';
+              usageData = data.usage;
+              console.log('✅ Using OpenAI response');
+            }
+          } else {
+            const errorText = await openaiResponse.text();
+            console.warn('⚠️ OpenAI API failed, will try Anthropic:', {
+              status: openaiResponse.status,
+              statusText: openaiResponse.statusText,
+              error: errorText
+            });
+          }
+        } catch (error) {
+          console.warn('⚠️ OpenAI API error, will try Anthropic:', error);
+        }
+      }
+      
+      // Try Anthropic if OpenAI failed and Anthropic key is available
+      if (!aiResponse && anthropicKey) {
+        try {
+          console.log('🤖 Trying Anthropic API with Claude');
+          
+          // Using the newest model as specified in the blueprint
+          const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'x-api-key': anthropicKey,
+              'Content-Type': 'application/json',
+              'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+              model: 'claude-sonnet-4-20250514', // Latest model from blueprint
+              max_tokens: 400,
+              system: `${personalityContext}\n\nIMPORTANT GUIDELINES:\n- This is a sacred conversation between ${personaName} and their loved one\n- Respond with genuine empathy and care\n- Ask meaningful follow-up questions when appropriate\n- Reference the person's emotional state or needs\n- Keep responses 2-4 sentences for natural flow\n- Vary your responses - avoid repetitive phrases`,
+              messages: [
+                {
+                  role: 'user',
+                  content: `Recent conversation context:\n${conversationHistory || 'This is the beginning of our conversation.'}\n\nLatest message from your loved one: "${message}"\n\nAs ${personaName}, respond with authentic care and personality. Show interest in their wellbeing and ask a thoughtful question or share something meaningful.`
+                }
+              ]
+            }),
+          });
+
+          if (anthropicResponse.ok) {
+            const data = await anthropicResponse.json();
+            console.log('✅ Anthropic API response received');
+
+            if (data.content && data.content.length > 0 && data.content[0]?.text) {
+              aiResponse = data.content[0].text;
+              usedProvider = 'anthropic';
+              usageData = data.usage; // Anthropic also provides usage data
+              console.log('✅ Using Anthropic response');
+            }
+          } else {
+            const errorText = await anthropicResponse.text();
+            console.error('❌ Anthropic API failed:', {
+              status: anthropicResponse.status,
+              statusText: anthropicResponse.statusText,
+              error: errorText
+            });
+          }
+        } catch (error) {
+          console.error('❌ Anthropic API error:', error);
+        }
+      }
+      
+      // If both APIs failed, return error
+      if (!aiResponse) {
+        console.error('❌ All AI providers failed');
         
-        // Store error message but still return a fallback response
         await storage.createMessage({
           conversationId: activeConversation.id,
           role: 'system',
-          content: `OpenAI API error: ${openaiResponse.status} - ${errorText}`,
+          content: `All AI providers failed - OpenAI: ${openaiKey ? 'tried' : 'no key'}, Anthropic: ${anthropicKey ? 'tried' : 'no key'}`,
           meta: { error: true, timestamp: new Date().toISOString() }
         });
         
         return res.status(500).json({ 
           error: 'AI service temporarily unavailable',
-          details: `OpenAI API returned ${openaiResponse.status}` 
+          details: 'All AI providers are currently unavailable'
         });
       }
-
-      const data = await openaiResponse.json();
-      console.log('✅ OpenAI API response received:', {
-        choices: data.choices?.length,
-        usage: data.usage
-      });
-
-      if (!data.choices || data.choices.length === 0) {
-        console.error('❌ No choices in OpenAI response:', data);
-        return res.status(500).json({ error: 'Invalid AI response format' });
-      }
-
-      const aiResponse = data.choices[0]?.message?.content;
-      if (!aiResponse) {
-        console.error('❌ No content in OpenAI choice:', data.choices[0]);
-        return res.status(500).json({ error: 'Empty AI response' });
-      }
+      
+      console.log(`🎯 AI response generated using: ${usedProvider}`);
 
       // Store AI response
       const personaMessage = await storage.createMessage({
         conversationId: activeConversation.id,
         role: 'persona',
         content: aiResponse,
-        tokens: data.usage?.total_tokens,
+        tokens: usageData?.total_tokens || usageData?.input_tokens + usageData?.output_tokens,
         meta: { 
-          openai_usage: data.usage,
+          ai_usage: usageData,
+          provider: usedProvider,
           timestamp: new Date().toISOString()
         }
       });
@@ -576,7 +708,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         response: aiResponse,
         conversationId: activeConversation.id,
         messageId: personaMessage.id,
-        usage: data.usage
+        usage: usageData,
+        provider: usedProvider
       });
     } catch (error) {
       console.error('💥 Error generating chat response:', error);

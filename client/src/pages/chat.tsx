@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useRoute, Link } from "wouter";
-import { ArrowLeft, Send, Settings, Heart, User } from "lucide-react";
+import { ArrowLeft, Send, Settings, Heart, User, Circle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,6 +23,10 @@ export default function Chat() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  
+  // API Status tracking
+  const [apiStatus, setApiStatus] = useState<'unknown' | 'working' | 'partial' | 'down'>('unknown');
+  const [lastApiCheck, setLastApiCheck] = useState<Date | null>(null);
   
   // Track used responses to prevent repetition within 30 minutes (scoped by persona, persisted)
   const [usedResponses, setUsedResponses] = useState<{personaId: string, text: string, timestamp: number}[]>([]);
@@ -64,6 +68,40 @@ export default function Chat() {
     }
   }, [user?.id, usedResponses]);
   
+  // Check API status
+  const checkApiStatus = async () => {
+    try {
+      // Check OpenAI via our chat endpoint
+      const testResponse = await fetch('/api/chat/status', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
+      });
+      
+      if (testResponse.ok) {
+        const data = await testResponse.json();
+        setApiStatus(data.status || 'working');
+      } else if (testResponse.status === 429) {
+        setApiStatus('partial'); // Quota exceeded but API exists
+      } else {
+        setApiStatus('down');
+      }
+    } catch (error) {
+      console.warn('API status check failed:', error);
+      setApiStatus('down');
+    }
+    setLastApiCheck(new Date());
+  };
+
+  // Check API status periodically
+  useEffect(() => {
+    checkApiStatus(); // Initial check
+    const interval = setInterval(checkApiStatus, 30000); // Check every 30 seconds
+    return () => clearInterval(interval);
+  }, [session?.access_token]);
+
   // Helper function to get available responses (not used in last 30 minutes for this persona)
   const getAvailableResponses = (allResponses: string[], onboardingData: any, responseType: 'welcome' | 'fallback', personaId: string): string[] => {
     const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
@@ -457,7 +495,7 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
           const fallbackResponse = getAvailableResponses(
             duplicateFallbacks,
             onboardingData, 
-            'duplicate-fallback', 
+            'fallback', 
             persona.id
           )[0];
           markResponseUsed(fallbackResponse, persona.id);
@@ -632,10 +670,40 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
               </Badge>
             </div>
             
-            <Button variant="outline" size="sm">
-              <Settings className="w-4 h-4 mr-2" />
-              Settings
-            </Button>
+            <div className="flex items-center space-x-3">
+              {/* API Status Indicator */}
+              <div className="flex items-center space-x-2" data-testid="api-status-indicator">
+                {apiStatus === 'working' && (
+                  <>
+                    <Circle className="w-3 h-3 text-green-500 fill-current" />
+                    <span className="text-xs text-green-600 font-medium">AI Online</span>
+                  </>
+                )}
+                {apiStatus === 'partial' && (
+                  <>
+                    <Circle className="w-3 h-3 text-yellow-500 fill-current" />
+                    <span className="text-xs text-yellow-600 font-medium">Limited</span>
+                  </>
+                )}
+                {apiStatus === 'down' && (
+                  <>
+                    <AlertCircle className="w-3 h-3 text-red-500" />
+                    <span className="text-xs text-red-600 font-medium">AI Offline</span>
+                  </>
+                )}
+                {apiStatus === 'unknown' && (
+                  <>
+                    <Circle className="w-3 h-3 text-gray-400 fill-current" />
+                    <span className="text-xs text-gray-500 font-medium">Checking...</span>
+                  </>
+                )}
+              </div>
+              
+              <Button variant="outline" size="sm">
+                <Settings className="w-4 h-4 mr-2" />
+                Settings
+              </Button>
+            </div>
           </div>
         </div>
       </header>
