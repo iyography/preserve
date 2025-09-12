@@ -13,13 +13,20 @@ import { useToast } from "@/hooks/use-toast";
 // Helper function to determine where to route user after sign-in
 async function determineUserRoute(): Promise<string> {
   try {
-    // Check if user has any completed personas
-    const personasResponse = await fetch('/api/personas', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    // Helper function to make authenticated requests
+    const makeAuthenticatedRequest = async (url: string) => {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+      return response;
+    };
+
+    // Check if user has any personas
+    const personasResponse = await makeAuthenticatedRequest('/api/personas');
     
     if (personasResponse.ok) {
       const personas = await personasResponse.json();
@@ -36,12 +43,7 @@ async function determineUserRoute(): Promise<string> {
     }
     
     // Check if user has any incomplete onboarding sessions
-    const sessionsResponse = await fetch('/api/onboarding-sessions', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const sessionsResponse = await makeAuthenticatedRequest('/api/onboarding-sessions');
     
     if (sessionsResponse.ok) {
       const sessions = await sessionsResponse.json();
@@ -49,13 +51,17 @@ async function determineUserRoute(): Promise<string> {
       // Find the most recent incomplete session
       const incompleteSessions = sessions.filter((s: any) => !s.isCompleted);
       if (incompleteSessions.length > 0) {
-        // Sort by creation date and get the most recent
-        const recentSession = incompleteSessions.sort((a: any, b: any) => 
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        )[0];
+        // Sort by creation date if it exists, with fallback handling
+        const recentSession = incompleteSessions.sort((a: any, b: any) => {
+          const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return bDate - aDate;
+        })[0];
         
         // Route to the specific onboarding approach where they left off
-        return `/onboarding/${recentSession.approach}`;
+        if (recentSession.approach) {
+          return `/onboarding/${recentSession.approach}`;
+        }
       }
     }
     

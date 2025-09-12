@@ -137,7 +137,14 @@ export default function AIGuidedInterview() {
         return response.json();
       }
     },
-    onSuccess: () => {
+    onSuccess: (session) => {
+      // Update local state with the returned session
+      setCurrentSession(session);
+      
+      // Invalidate and refetch related queries
+      queryClient.invalidateQueries({ queryKey: ['/api/onboarding-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/onboarding-sessions/ai-guided-interview'] });
+      
       toast({
         title: "Progress Saved!",
         description: "Your interview progress has been saved. You can continue or come back later."
