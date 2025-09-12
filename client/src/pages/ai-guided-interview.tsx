@@ -298,10 +298,11 @@ export default function AIGuidedInterview() {
         });
       }
 
-      // Create onboarding session
+      // Create onboarding session and mark as completed immediately
       const sessionData = {
         approach: 'ai-guided-interview',
-        currentStep: 'interview',
+        currentStep: 'completed',
+        isCompleted: true,
         stepData: {
           personaName,
           relationship,
@@ -309,19 +310,20 @@ export default function AIGuidedInterview() {
           interviewStarted: true,
           conversationHistory: [],
           currentQuestion: '',
+          completedAt: new Date().toISOString(),
         },
         personaId: persona.id,
       };
 
       await createSessionMutation.mutateAsync(sessionData);
 
-      setInterviewStarted(true);
-      handleNextStep();
-
+      // Redirect to dashboard after successful persona creation
       toast({
-        title: "Interview Started!",
-        description: `Starting your memory interview for ${personaName}.`
+        title: "Persona Created Successfully!",
+        description: `${personaName} has been created and is ready. Welcome to your dashboard!`
       });
+      
+      setLocation('/dashboard');
     } catch (error) {
       console.error('Error starting interview:', error);
       toast({
