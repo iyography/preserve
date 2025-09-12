@@ -453,20 +453,49 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
       const greeting = onboardingData?.voiceCommunication?.usualGreeting || 'Hello';
       const traits = onboardingData?.adjectives?.slice(0, 2)?.join(' and ') || 'loving';
       
-      // Build persona-specific fallback responses using authentic personality data
+      // Build persona-specific fallback responses that answer directly instead of deflecting
       const communicationStyle = onboardingData?.voiceCommunication?.communicationStyle?.[0] || 'direct';
       const catchphrase = onboardingData?.voiceCommunication?.catchphrase;
       const favoriteTopics = onboardingData?.contextBuilders?.favoriteTopics;
       const showsCare = onboardingData?.contextBuilders?.showsCare;
+      const mainWorries = onboardingData?.personalityPatterns?.mainWorries;
+      const proudOf = onboardingData?.contextBuilders?.proudOf;
       
-      const fallbackResponses = [
-        `${greeting}! ${catchphrase ? catchphrase + ' ' : ''}How have you been?`,
-        communicationStyle === 'playful' ? `${greeting}! What kind of adventures have you been having?` : `${greeting}! How's everything been going?`,
-        favoriteTopics?.length ? `${greeting}! How's the ${favoriteTopics[0]} been lately?` : `${greeting}! What's new with you?`,
-        showsCare ? `${greeting}! Just wanted to check in and see how you're doing.` : `${greeting}! Good to hear from you.`,
-        `${greeting}! ${traits} as always - how are things?`,
-        `${greeting}! Been wondering about you. What's been keeping you busy?`
-      ];
+      // Check if user asked a direct question that needs a direct answer
+      const isHowAreYouQuestion = userMessage && /how are you|how've you been|how you doing|what's up|how you been/i.test(userMessage);
+      const isWhatUpQuestion = userMessage && /what's up|what up|sup|what have you been up to|what you been doing/i.test(userMessage);
+      
+      let fallbackResponses = [];
+      
+      if (isHowAreYouQuestion) {
+        // Direct answers to "How are you?" - share actual status, don't deflect
+        fallbackResponses = [
+          `Hey, I'm doing pretty good actually. ${catchphrase ? catchphrase + ' ' : ''}Just been thinking about ${favoriteTopics?.[0] || 'things'} lately.`,
+          `Not bad at all. Been keeping myself busy with ${favoriteTopics?.[0] || 'the usual stuff'}. ${communicationStyle === 'playful' ? 'You know how it is!' : 'Same old, same old.'}`,
+          `I'm alright, thanks for asking. ${mainWorries ? `A bit worried about ${mainWorries.toLowerCase()} but` : 'Been'} staying positive.`,
+          `Doing well! ${proudOf ? `Still feeling good about ${proudOf.toLowerCase()}.` : 'Can\'t complain.'} ${showsCare ? 'Hope you\'re doing well too.' : ''}`,
+          `Pretty good! ${communicationStyle === 'dramatic' ? 'Life\'s been quite the adventure lately.' : 'Just taking things one day at a time.'}`
+        ];
+      } else if (isWhatUpQuestion) {
+        // Direct answers to "What's up?" - share what they've been doing
+        fallbackResponses = [
+          `Not much, just been thinking about ${favoriteTopics?.[0] || 'life'} and ${favoriteTopics?.[1] || 'random stuff'}. ${catchphrase || ''}`,
+          `Oh you know, ${communicationStyle === 'playful' ? 'getting into all sorts of mischief' : 'the usual routine'}. ${mainWorries ? `Trying not to worry too much about ${mainWorries.toLowerCase()}.` : ''}`,
+          `Just been relaxing and ${favoriteTopics?.[0] ? `reading up on ${favoriteTopics[0].toLowerCase()}` : 'taking it easy'}. ${showsCare ? 'What about you?' : ''}`,
+          `Same old stuff really. ${proudOf ? `Still feeling pretty good about ${proudOf.toLowerCase()}.` : 'Nothing too exciting.'} ${communicationStyle === 'dramatic' ? 'But that\'s life, right?' : ''}`,
+          `Just chilling. ${catchphrase ? catchphrase + ' ' : ''}Been wondering how you were doing actually.`
+        ];
+      } else {
+        // General fallback responses for other situations
+        fallbackResponses = [
+          `Hey there. ${catchphrase ? catchphrase + ' ' : ''}Good to hear from you.`,
+          communicationStyle === 'playful' ? 'Well hello! What brings you by?' : 'Hey! Nice to see you.',
+          favoriteTopics?.length ? `Hi! I was just thinking about ${favoriteTopics[0].toLowerCase()} earlier.` : 'Hey! Good timing.',
+          showsCare ? 'Hey there. Hope you\'re doing well.' : 'What\'s going on?',
+          `${greeting.replace(/!+/g, '')}. ${traits} as always.`,
+          `Hey! ${communicationStyle === 'dramatic' ? 'What an interesting day this has been.' : 'How\'s everything going?'}`
+        ];
+      }
       
       // Select from available (non-recently-used) fallback responses
       const availableFallbacks = getAvailableResponses(fallbackResponses, onboardingData, 'fallback', persona?.id || '');
