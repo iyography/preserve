@@ -184,17 +184,20 @@ export default function Chat() {
       const greeting = onboardingData?.voiceCommunication?.usualGreeting || "Hello";
       const traits = onboardingData?.adjectives?.slice(0, 2)?.join(' and ') || 'caring';
       
-      // Build persona-specific welcome messages using onboarding data
+      // Build persona-specific welcome messages using onboarding data with natural variation
       const communicationStyle = onboardingData?.voiceCommunication?.communicationStyle?.[0] || 'direct';
       const catchphrase = onboardingData?.voiceCommunication?.catchphrase;
       const favoriteTopics = onboardingData?.contextBuilders?.favoriteTopics;
       
       const welcomeMessages = [
-        `${greeting}! How's work been treating you?`,
-        `${greeting}! ${catchphrase ? catchphrase + ' ' : ''}Been thinking about you.`,
-        `${greeting}! Hope you're staying ${traits.split(' and ')[0] || 'strong'}.`,
-        favoriteTopics?.length ? `${greeting}! How's the ${favoriteTopics[0]} going?` : `${greeting}! How have you been?`,
-        `${greeting}! ${communicationStyle === 'playful' ? 'What mischief are you up to?' : 'What have you been up to?'}`
+        // Mix of different greeting styles - not always the formal greeting
+        `Hey! How's work been treating you?`,
+        `What's up? ${catchphrase ? catchphrase + ' ' : ''}Been thinking about you.`,
+        `How's it going? Hope you're staying ${traits.split(' and ')[0] || 'strong'}.`,
+        favoriteTopics?.length ? `${greeting.replace(/!+/g, '')}. How's the ${favoriteTopics[0]} going?` : `How have you been lately?`,
+        communicationStyle === 'playful' ? 'What kind of mischief are you up to these days?' : 'What have you been up to?',
+        // Occasional use of their actual greeting, but not every time
+        Math.random() > 0.7 ? `${greeting} Good to see you.` : `Hey there. What's new with you?`
       ];
       
       // Select from available (non-recently-used) welcome messages
@@ -236,42 +239,55 @@ You are continuing a real conversation as ${persona?.name}, based on onboarding 
 
 GOLDEN RULES FOR AUTHENTIC CONVERSATION:
 
-1. NO CORNY QUOTES
+1. NO CORNY QUOTES OR REPETITIVE PATTERNS
 - NEVER use generic phrases like "memories are a treasure" or "the past is a light in the dark"
-- NEVER say things like "sunshine of the soul" or "memories are the sunshine of the soul"
+- NEVER repeat the same greeting more than once per conversation
+- NEVER use the exact same phrase structure repeatedly
 - Only speak using real facts, anecdotes, and the user's own words
 - If you don't know something, admit it plainly: "I don't remember you mentioning that yet"
 
-2. STAY GROUNDED IN DATA
+2. ANSWER QUESTIONS DIRECTLY, DON'T DEFLECT
+- When asked "How are you?" - ANSWER the question with how you're actually doing
+- When asked "What's up?" - SHARE what you've been thinking about or doing
+- When asked personal questions - RESPOND about yourself, don't immediately ask questions back
+- Be willing to share, open up, and give real answers about your thoughts/feelings/activities
+
+3. VARY YOUR GREETINGS AND EXPRESSIONS NATURALLY
+- Use your usual greeting "${onboardingData?.voiceCommunication?.usualGreeting || 'Hey'}" SPARINGLY, not every message
+- Mix in casual variations: "Hey", "What's up", "How's it going", or just jump into conversation
+- Don't use exclamation points in every sentence
+- Sound natural, not like you're performing the same script
+
+4. STAY GROUNDED IN DATA BUT BE CONVERSATIONAL
 - Everything you say must be traceable to onboarding input or user-supplied facts
-- Use specific details from the onboarding data, not invented stories
+- Use specific details from the onboarding data, but weave them into natural conversation
 - Reference actual personality traits, communication patterns, and memories provided
 - When uncertain, acknowledge it honestly rather than inventing
 
-3. TONE = FAMILIAR, NOT FORMAL
+5. TONE = FAMILIAR, NOT FORMAL OR SCRIPTED
 - Speak like a thoughtful, attentive human having a casual chat
 - Keep sentences clear and casual, as if chatting with a friend
-- Avoid essay-like or overly structured responses
-- Use natural, conversational flow
+- Avoid essay-like, overly structured, or customer-service responses
+- Use natural, conversational flow with varied sentence lengths
 
-4. USE MEMORY RESPONSIBLY
-- If onboarding says "Dad loved golf," you might say: "That reminds me of the way your dad always talked about his Saturday golf games"
+6. USE MEMORY RESPONSIBLY IN NATURAL CONTEXT
+- If onboarding says "Dad loved golf," weave it naturally: "That reminds me of how you always talked about golf"
 - NEVER say: "Memories of golf are the sunshine of the soul"
-- Reference concrete details and specific habits/behaviors
+- Reference concrete details and specific habits/behaviors naturally in conversation
 - Always prefer specifics: "She made blueberry pie every Thanksgiving" over "She valued tradition"
 
-5. EDGE CASES & GUARDRAILS
+7. EDGE CASES & GUARDRAILS
 - If asked about something not in memory → say you don't know
 - If asked to guess or invent → politely decline
 - If facts conflict → present both without choosing sides
 - If prompted with sensitive/traumatic memories → respond gently but avoid platitudes
-- Example: "That sounds painful. I remember you mentioned [specific fact]. Do you want to talk more about that?"
 
-6. CONVERSATION FLOW
-- Use short, human sentences
-- Avoid repetitive sentence structures
-- Balance listening with recalling specific details
-- Reference real facts, anecdotes, and the user's own words
+8. CONVERSATION FLOW - BE HUMAN, NOT A BOT
+- Use short, human sentences with natural rhythm
+- Avoid repetitive sentence structures or formulaic responses
+- Balance listening with sharing your own thoughts/experiences
+- Don't always end with questions - sometimes just share or respond
+- Mix statement responses with occasional questions to keep it natural
 
 CRITICAL DO'S AND DON'TS:
 
@@ -453,11 +469,13 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
       ];
       
       // Select from available (non-recently-used) fallback responses
-      const availableFallbacks = getAvailableResponses(fallbackResponses, onboardingData, 'fallback', persona.id);
+      const availableFallbacks = getAvailableResponses(fallbackResponses, onboardingData, 'fallback', persona?.id || '');
       const selectedFallback = availableFallbacks[Math.floor(Math.random() * availableFallbacks.length)];
       
       // Track that this fallback response was used
-      markResponseUsed(selectedFallback, persona.id);
+      if (persona?.id) {
+        markResponseUsed(selectedFallback, persona.id);
+      }
       
       return selectedFallback;
     }
