@@ -1,6 +1,30 @@
 # Overview
 
-This is a full-stack React application built with TypeScript that appears to be focused on creating digital personas or connections. The application features a modern, celestial-themed UI with interactive elements like particle systems and audio players. It's built using a client-server architecture with Express.js on the backend and React with Vite on the frontend.
+This is a grief-tech platform called "Preserving Connections" that creates AI personas of deceased loved ones using comprehensive personality data and authentic conversation patterns. The application features a modern, celestial-themed UI with interactive elements like particle systems and audio players. It's built using a client-server architecture with Express.js on the backend and React with Vite on the frontend.
+
+## Grief-Tech Features
+
+### Response Deduplication System
+- **30-minute no-repeat guarantee**: Comprehensive tracking system prevents any quote or response from being reused within 30 minutes
+- **Persona scoping**: Deduplication is scoped per persona to prevent cross-persona interference
+- **Persistent tracking**: Uses localStorage to maintain deduplication state across page reloads and browser sessions
+- **Race condition protection**: Ensures deduplication state loads before any response selection
+- **Multi-layered coverage**: Covers welcome messages, fallback responses, AI-generated responses, and emergency fallbacks
+- **Authentic alternatives**: When response pools are exhausted, system synthesizes variants using actual personality data
+
+### Golden Rules for Authentic Conversation
+- **No corny quotes**: System explicitly prevents generic phrases like "memories are a treasure" or "sunshine of the soul"
+- **Grounded in data**: All responses must be traceable to onboarding input or user-supplied facts
+- **Familiar tone**: Conversations feel like chatting with a friend, not formal or essay-like
+- **Responsible memory use**: References specific details and behaviors rather than abstract concepts
+- **Strong guardrails**: Admits uncertainty honestly, handles sensitive topics with care, avoids platitudes
+- **Natural flow**: Uses short, human sentences with varied structures and specific details
+
+### AI Persona Framework
+- **Human-like preservation**: Maintains consistent personality traits, communication styles, and relationship dynamics
+- **Onboarding-driven**: Uses comprehensive personality data from user input to create authentic responses
+- **Context-aware**: References specific memories, habits, and communication patterns from the deceased person
+- **Emotional authenticity**: Matches actual support styles and celebration patterns rather than generic responses
 
 # User Preferences
 
