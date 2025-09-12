@@ -96,6 +96,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  app.get('/api/personas/:id', async (req: AuthenticatedRequest, res) => {
+    try {
+      const personaId = req.params.id;
+      const userId = req.user!.id;
+      
+      const persona = await storage.getPersona(personaId);
+      if (!persona) {
+        return res.status(404).json({ error: 'Persona not found' });
+      }
+      
+      // Verify the persona belongs to the authenticated user
+      if (persona.userId !== userId) {
+        return res.status(403).json({ error: 'Access denied - persona belongs to another user' });
+      }
+      
+      res.json(persona);
+    } catch (error) {
+      console.error('Error fetching persona:', error);
+      res.status(500).json({ error: 'Failed to fetch persona' });
+    }
+  });
+  
   app.put('/api/personas/:id', async (req: AuthenticatedRequest, res) => {
     try {
       const personaId = req.params.id;
@@ -117,6 +139,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error updating persona:', error);
       res.status(500).json({ error: 'Failed to update persona' });
+    }
+  });
+  
+  app.delete('/api/personas/:id', async (req: AuthenticatedRequest, res) => {
+    try {
+      const personaId = req.params.id;
+      const userId = req.user!.id;
+      
+      const success = await storage.deletePersona(personaId, userId);
+      
+      if (!success) {
+        return res.status(404).json({ error: 'Persona not found or access denied' });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting persona:', error);
+      res.status(500).json({ error: 'Failed to delete persona' });
     }
   });
   

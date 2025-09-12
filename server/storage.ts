@@ -24,6 +24,7 @@ export interface IStorage {
   getPersonasByUser(userId: string): Promise<Persona[]>;
   createPersona(persona: InsertPersona): Promise<Persona>;
   updatePersona(id: string, userId: string, updates: Partial<Persona>): Promise<Persona | undefined>;
+  deletePersona(id: string, userId: string): Promise<boolean>;
   
   // Media methods
   getPersonaMedia(personaId: string): Promise<PersonaMedia[]>;
@@ -71,6 +72,21 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(personas.id, id), eq(personas.userId, userId)))
       .returning();
     return persona || undefined;
+  }
+
+  async deletePersona(id: string, userId: string): Promise<boolean> {
+    // First delete all related media
+    await db
+      .delete(personaMedia)
+      .where(eq(personaMedia.personaId, id));
+    
+    // Then delete the persona (only if it belongs to the authenticated user)
+    const result = await db
+      .delete(personas)
+      .where(and(eq(personas.id, id), eq(personas.userId, userId)))
+      .returning();
+    
+    return result.length > 0;
   }
   
   // Media methods

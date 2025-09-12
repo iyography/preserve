@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Heart, Plus, Upload, MessageCircle, Clock, Shield, Calendar, Settings, Play, Bookmark, Share, Download, Mic, FileText, Video, Camera, Sparkles, Users, BarChart3, CheckCircle, Moon, Sun } from "lucide-react";
+import { Heart, Plus, Upload, MessageCircle, Clock, Shield, Calendar, Settings, Play, Bookmark, Share, Download, Mic, FileText, Video, Camera, Sparkles, Users, BarChart3, CheckCircle, Moon, Sun, Edit, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -10,21 +10,96 @@ import { Switch } from "@/components/ui/switch";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import UserProfile from "@/components/UserProfile";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
 import type { Persona } from "@shared/schema";
 
 export default function Dashboard() {
   const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
   const [mode, setMode] = useState<'grief' | 'legacy'>('grief');
   const [voiceSimilarity] = useState(82);
+  const [editingPersona, setEditingPersona] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
 
   // Fetch real personas data
   const { data: personas = [], isLoading: personasLoading } = useQuery<Persona[]>({
     queryKey: ['/api/personas'],
     enabled: !!user && !loading,
   });
+
+  // Delete persona mutation
+  const deletePersonaMutation = useMutation({
+    mutationFn: async (personaId: string) => {
+      const response = await apiRequest('DELETE', `/api/personas/${personaId}`);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/personas'] });
+      toast({
+        title: "Success",
+        description: "Persona deleted successfully",
+      });
+    },
+    onError: (error) => {
+      console.error('Delete persona error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete persona",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update persona mutation
+  const updatePersonaMutation = useMutation({
+    mutationFn: async ({ personaId, updates }: { personaId: string; updates: Partial<Persona> }) => {
+      const response = await apiRequest('PUT', `/api/personas/${personaId}`, updates);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/personas'] });
+      setEditingPersona(null);
+      setEditName('');
+      toast({
+        title: "Success",
+        description: "Persona updated successfully",
+      });
+    },
+    onError: (error) => {
+      console.error('Update persona error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update persona",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Helper functions for edit functionality
+  const startEditing = (persona: Persona) => {
+    setEditingPersona(persona.id);
+    setEditName(persona.name);
+  };
+
+  const cancelEditing = () => {
+    setEditingPersona(null);
+    setEditName('');
+  };
+
+  const saveEdit = () => {
+    if (editingPersona && editName.trim()) {
+      updatePersonaMutation.mutate({
+        personaId: editingPersona,
+        updates: { name: editName.trim() }
+      });
+    }
+  };
 
   // Set first persona as selected when data loads
   useEffect(() => {
@@ -263,20 +338,45 @@ export default function Dashboard() {
                     {personas.map((persona) => (
                       <div 
                         key={persona.id} 
-                        className={`flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-purple-100 transition-colors ${persona.id === selectedPersona ? 'bg-purple-50 border-2 border-purple-200' : 'bg-gray-50'}`}
-                        onClick={() => {
-                          setSelectedPersona(persona.id);
-                          setLocation(`/chat/${persona.id}`);
-                        }}
+                        className={`flex items-center justify-between p-3 rounded-lg transition-colors ${persona.id === selectedPersona ? 'bg-purple-50 border-2 border-purple-200' : 'bg-gray-50 hover:bg-purple-50'}`}
                         data-testid={`persona-card-${persona.id}`}
                       >
-                        <div className="flex items-center space-x-3">
+                        <div 
+                          className="flex items-center space-x-3 flex-1 cursor-pointer"
+                          onClick={() => {
+                            console.log('Persona card clicked:', persona.id, persona.name);
+                            setSelectedPersona(persona.id);
+                            console.log('Navigating to chat:', `/chat/${persona.id}`);
+                            setLocation(`/chat/${persona.id}`);
+                          }}
+                        >
                           <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full flex items-center justify-center text-lg">
                             <Heart className="w-4 h-4 text-purple-600" />
                           </div>
-                          <div>
+                          <div className="flex-1">
                             <div className="flex items-center space-x-2">
-                              <p className="font-semibold text-gray-900" data-testid={`text-persona-name-${persona.id}`}>{persona.name}</p>
+                              {editingPersona === persona.id ? (
+                                <Input
+                                  value={editName}
+                                  onChange={(e) => setEditName(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.stopPropagation();
+                                      saveEdit();
+                                    }
+                                    if (e.key === 'Escape') {
+                                      e.stopPropagation();
+                                      cancelEditing();
+                                    }
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="font-semibold text-gray-900 text-sm p-1 h-6 border-purple-300 focus:border-purple-500"
+                                  data-testid={`input-edit-name-${persona.id}`}
+                                  autoFocus
+                                />
+                              ) : (
+                                <p className="font-semibold text-gray-900" data-testid={`text-persona-name-${persona.id}`}>{persona.name}</p>
+                              )}
                               <Badge variant="secondary" className="text-xs">
                                 {persona.id === selectedPersona ? 'Current' : persona.status === 'completed' ? 'Complete' : 'In Progress'}
                               </Badge>
@@ -284,9 +384,92 @@ export default function Dashboard() {
                             <p className="text-sm text-gray-600" data-testid={`text-persona-details-${persona.id}`}>{persona.relationship} • Created {new Date(persona.createdAt).toLocaleDateString()}</p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-sm font-medium text-purple-700">{persona.status === 'completed' ? '100' : '50'}%</div>
-                          <Progress value={persona.status === 'completed' ? 100 : 50} className="w-16 h-1" />
+                        <div className="flex items-center space-x-2">
+                          <div className="text-right mr-2">
+                            <div className="text-sm font-medium text-purple-700">{persona.status === 'completed' ? '100' : '50'}%</div>
+                            <Progress value={persona.status === 'completed' ? 100 : 50} className="w-16 h-1" />
+                          </div>
+                          
+                          {editingPersona === persona.id ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  saveEdit();
+                                }}
+                                disabled={updatePersonaMutation.isPending}
+                                data-testid={`button-save-edit-${persona.id}`}
+                                className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  cancelEditing();
+                                }}
+                                data-testid={`button-cancel-edit-${persona.id}`}
+                                className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startEditing(persona);
+                                }}
+                                data-testid={`button-edit-${persona.id}`}
+                                className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={(e) => e.stopPropagation()}
+                                    data-testid={`button-delete-${persona.id}`}
+                                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Persona</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete "{persona.name}"? This action cannot be undone and will permanently delete all associated memories and media.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel data-testid={`button-cancel-delete-${persona.id}`}>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        deletePersonaMutation.mutate(persona.id);
+                                      }}
+                                      disabled={deletePersonaMutation.isPending}
+                                      data-testid={`button-confirm-delete-${persona.id}`}
+                                      className="bg-red-600 hover:bg-red-700"
+                                    >
+                                      {deletePersonaMutation.isPending ? 'Deleting...' : 'Delete'}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
