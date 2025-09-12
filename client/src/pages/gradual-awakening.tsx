@@ -1788,7 +1788,7 @@ export default function GradualAwakening() {
                   variant="outline"
                   onClick={() => saveForLaterMutation.mutate('tell-us-more')}
                   disabled={saveForLaterMutation.isPending}
-                  className="px-6"
+                  className="px-6 border-green-200 text-green-600 hover:bg-green-50"
                   data-testid="button-save-for-later"
                 >
                   {saveForLaterMutation.isPending ? 'Saving...' : 'Save for Later'}
