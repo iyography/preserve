@@ -3,24 +3,13 @@ import { pgTable, text, varchar, timestamp, jsonb, boolean } from "drizzle-orm/p
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-});
-
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-});
-
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+// Users are handled by Supabase auth - no separate users table needed
+// User IDs will be Supabase auth user UUIDs (varchar)
 
 // Personas table for storing information about deceased loved ones
 export const personas = pgTable("personas", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
+  userId: varchar("user_id").notNull(), // Supabase auth user UUID
   name: text("name").notNull(),
   relationship: text("relationship").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -49,7 +38,7 @@ export const personaMedia = pgTable("persona_media", {
 // Onboarding sessions to track progress
 export const onboardingSessions = pgTable("onboarding_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
+  userId: varchar("user_id").notNull(), // Supabase auth user UUID
   personaId: varchar("persona_id").references(() => personas.id),
   approach: text("approach").notNull(), // 'gradual-awakening', 'ai-guided-interview', etc.
   currentStep: text("current_step").notNull(),
@@ -59,17 +48,8 @@ export const onboardingSessions = pgTable("onboarding_sessions", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Relations
-export const usersRelations = relations(users, ({ many }) => ({
-  personas: many(personas),
-  onboardingSessions: many(onboardingSessions),
-}));
-
-export const personasRelations = relations(personas, ({ one, many }) => ({
-  user: one(users, {
-    fields: [personas.userId],
-    references: [users.id],
-  }),
+// Relations (removed user relations since Supabase handles users)
+export const personasRelations = relations(personas, ({ many }) => ({
   media: many(personaMedia),
   onboardingSessions: many(onboardingSessions),
 }));
@@ -82,10 +62,6 @@ export const personaMediaRelations = relations(personaMedia, ({ one }) => ({
 }));
 
 export const onboardingSessionsRelations = relations(onboardingSessions, ({ one }) => ({
-  user: one(users, {
-    fields: [onboardingSessions.userId],
-    references: [users.id],
-  }),
   persona: one(personas, {
     fields: [onboardingSessions.personaId],
     references: [personas.id],

@@ -1,13 +1,10 @@
 import { 
-  type User, 
-  type InsertUser,
   type Persona,
   type InsertPersona,
   type PersonaMedia,
   type InsertPersonaMedia,
   type OnboardingSession,
   type InsertOnboardingSession,
-  users,
   personas,
   personaMedia,
   onboardingSessions
@@ -20,10 +17,7 @@ import { randomUUID } from "crypto";
 // you might need
 
 export interface IStorage {
-  // User methods
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  // Note: User management is handled by Supabase auth
   
   // Persona methods
   getPersona(id: string): Promise<Persona | undefined>;
@@ -46,24 +40,7 @@ export interface IStorage {
 
 // Database storage implementation
 export class DatabaseStorage implements IStorage {
-  // User methods
-  async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user || undefined;
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(insertUser)
-      .returning();
-    return user;
-  }
+  // Note: User management is handled by Supabase auth
   
   // Persona methods
   async getPersona(id: string): Promise<Persona | undefined> {
