@@ -111,6 +111,40 @@ export default function AIGuidedInterview() {
     },
   });
 
+  // Save for later mutation
+  const saveForLaterMutation = useMutation({
+    mutationFn: async () => {
+      const currentStepId = interviewSteps[currentStep]?.id || 'pre-interview-setup';
+      const sessionData = {
+        approach: 'ai-guided-interview',
+        currentStep: currentStepId,
+        stepData: {
+          personaName,
+          relationship,
+          emotionalState,
+          conversationHistory,
+          currentQuestion,
+          interviewStarted,
+        },
+        isCompleted: false,
+      };
+
+      if (currentSession) {
+        const response = await apiRequest('PUT', `/api/onboarding-sessions/${currentSession.id}`, sessionData);
+        return response.json();
+      } else {
+        const response = await apiRequest('POST', '/api/onboarding-sessions', sessionData);
+        return response.json();
+      }
+    },
+    onSuccess: () => {
+      toast({
+        title: "Progress Saved!",
+        description: "Your interview progress has been saved. You can continue or come back later."
+      });
+    },
+  });
+
   // Upload photo mutation
   const uploadPhotoMutation = useMutation({
     mutationFn: async ({ personaId, file }: { personaId: string; file: File }) => {
@@ -655,15 +689,26 @@ export default function AIGuidedInterview() {
                     Back
                   </Button>
                 </Link>
-                <Button 
-                  onClick={handleStartInterview}
-                  disabled={isCreatingPersona || createPersonaMutation.isPending || createSessionMutation.isPending}
-                  className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-6"
-                  data-testid="button-start-interview"
-                >
-                  {isCreatingPersona ? 'Creating Persona...' : 'Begin Interview'}
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
+                <div className="flex space-x-3">
+                  <Button 
+                    onClick={() => saveForLaterMutation.mutate()}
+                    disabled={saveForLaterMutation.isPending || !personaName || !relationship}
+                    variant="outline"
+                    className="px-6 border-green-200 text-green-600 hover:bg-green-50"
+                    data-testid="button-save-for-later"
+                  >
+                    {saveForLaterMutation.isPending ? 'Saving...' : 'Save for Later'}
+                  </Button>
+                  <Button 
+                    onClick={handleStartInterview}
+                    disabled={isCreatingPersona || createPersonaMutation.isPending || createSessionMutation.isPending}
+                    className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-6"
+                    data-testid="button-start-interview"
+                  >
+                    {isCreatingPersona ? 'Creating Persona...' : 'Begin Interview'}
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -764,6 +809,16 @@ export default function AIGuidedInterview() {
                       >
                         <Mic className="w-4 h-4 mr-1" />
                         {isRecording ? 'Stop Recording' : 'Voice Response'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => saveForLaterMutation.mutate()}
+                        disabled={saveForLaterMutation.isPending}
+                        className="text-green-600 border-green-200 hover:bg-green-50"
+                        data-testid="button-save-conversation-later"
+                      >
+                        {saveForLaterMutation.isPending ? 'Saving...' : 'Save for Later'}
                       </Button>
                       <span className="text-xs text-gray-500">
                         {isRecording ? 'Recording...' : 'Click to record your voice'}
