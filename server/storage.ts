@@ -23,19 +23,19 @@ export interface IStorage {
   getPersona(id: string): Promise<Persona | undefined>;
   getPersonasByUser(userId: string): Promise<Persona[]>;
   createPersona(persona: InsertPersona): Promise<Persona>;
-  updatePersona(id: string, updates: Partial<Persona>): Promise<Persona | undefined>;
+  updatePersona(id: string, userId: string, updates: Partial<Persona>): Promise<Persona | undefined>;
   
   // Media methods
   getPersonaMedia(personaId: string): Promise<PersonaMedia[]>;
   createPersonaMedia(media: InsertPersonaMedia): Promise<PersonaMedia>;
-  deletePersonaMedia(id: string): Promise<boolean>;
+  deletePersonaMedia(id: string, userId: string): Promise<boolean>;
   
   // Onboarding session methods
   getOnboardingSession(id: string): Promise<OnboardingSession | undefined>;
   getOnboardingSessionByUser(userId: string, approach: string): Promise<OnboardingSession | undefined>;
   getOnboardingSessionsByUser(userId: string): Promise<OnboardingSession[]>;
   createOnboardingSession(session: InsertOnboardingSession): Promise<OnboardingSession>;
-  updateOnboardingSession(id: string, updates: Partial<OnboardingSession>): Promise<OnboardingSession | undefined>;
+  updateOnboardingSession(id: string, userId: string, updates: Partial<OnboardingSession>): Promise<OnboardingSession | undefined>;
 }
 
 // Database storage implementation
@@ -63,11 +63,12 @@ export class DatabaseStorage implements IStorage {
     return persona;
   }
 
-  async updatePersona(id: string, updates: Partial<Persona>): Promise<Persona | undefined> {
+  async updatePersona(id: string, userId: string, updates: Partial<Persona>): Promise<Persona | undefined> {
+    // Only update personas that belong to the authenticated user
     const [persona] = await db
       .update(personas)
       .set({ ...updates, updatedAt: new Date() })
-      .where(eq(personas.id, id))
+      .where(and(eq(personas.id, id), eq(personas.userId, userId)))
       .returning();
     return persona || undefined;
   }
@@ -85,7 +86,22 @@ export class DatabaseStorage implements IStorage {
     return media;
   }
 
-  async deletePersonaMedia(id: string): Promise<boolean> {
+  async deletePersonaMedia(id: string, userId: string): Promise<boolean> {
+    // First check if the media belongs to a persona owned by the authenticated user
+    const mediaWithPersona = await db
+      .select({ 
+        mediaId: personaMedia.id,
+        personaUserId: personas.userId 
+      })
+      .from(personaMedia)
+      .innerJoin(personas, eq(personaMedia.personaId, personas.id))
+      .where(eq(personaMedia.id, id));
+    
+    if (mediaWithPersona.length === 0 || mediaWithPersona[0].personaUserId !== userId) {
+      return false; // Media not found or doesn't belong to user
+    }
+    
+    // Now safe to delete
     const result = await db.delete(personaMedia).where(eq(personaMedia.id, id)).returning();
     return result.length > 0;
   }
@@ -128,11 +144,12 @@ export class DatabaseStorage implements IStorage {
     return session;
   }
 
-  async updateOnboardingSession(id: string, updates: Partial<OnboardingSession>): Promise<OnboardingSession | undefined> {
+  async updateOnboardingSession(id: string, userId: string, updates: Partial<OnboardingSession>): Promise<OnboardingSession | undefined> {
+    // Only update sessions that belong to the authenticated user
     const [session] = await db
       .update(onboardingSessions)
       .set({ ...updates, updatedAt: new Date() })
-      .where(eq(onboardingSessions.id, id))
+      .where(and(eq(onboardingSessions.id, id), eq(onboardingSessions.userId, userId)))
       .returning();
     return session || undefined;
   }
