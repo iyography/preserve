@@ -208,7 +208,7 @@ export default function GradualAwakening() {
   const [isCreatingPersona, setIsCreatingPersona] = useState(false);
   const [currentPersona, setCurrentPersona] = useState<Persona | null>(null);
   const [currentSession, setCurrentSession] = useState<OnboardingSession | null>(null);
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -233,12 +233,41 @@ export default function GradualAwakening() {
   // Create persona mutation
   const createPersonaMutation = useMutation({
     mutationFn: async (personaData: any) => {
+      console.log('Creating persona with data:', { name: personaData.name, userId: user?.id });
       const response = await apiRequest('POST', '/api/personas', personaData);
+      console.log('Persona creation API response status:', response.status);
       return response.json();
     },
     onSuccess: (persona) => {
+      console.log('Persona created successfully:', persona.id);
       setCurrentPersona(persona);
       queryClient.invalidateQueries({ queryKey: ['/api/personas'] });
+    },
+    onError: (error: Error) => {
+      console.error('Persona creation failed:', error);
+      // Check if it's an authentication error
+      if (error.message.includes('401') || error.message.toLowerCase().includes('unauthorized') || error.message.toLowerCase().includes('missing authorization')) {
+        toast({
+          variant: "destructive",
+          title: "Authentication Required",
+          description: "Please sign in again to create your persona. You'll be redirected to the login page."
+        });
+        // Redirect to login with return URL
+        const returnUrl = encodeURIComponent('/gradual-awakening');
+        setLocation(`/sign-in?returnTo=${returnUrl}`);
+      } else if (error.message.includes('403') || error.message.toLowerCase().includes('forbidden')) {
+        toast({
+          variant: "destructive",
+          title: "Access Denied",
+          description: "You don't have permission to create personas. Please contact support if this continues."
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Failed to Create Persona",
+          description: `Unable to create your persona: ${error.message}. Please try again or contact support if the issue persists.`
+        });
+      }
     },
   });
 
@@ -850,6 +879,43 @@ export default function GradualAwakening() {
       }
     };
   }, [voiceRecording.url]);
+
+  // Debug logging for authentication state
+  useEffect(() => {
+    console.log('Gradual Awakening - Auth State:', { user: !!user, loading, userId: user?.id });
+  }, [user, loading]);
+
+  // Authentication guard - redirect unauthenticated users to login
+  useEffect(() => {
+    if (!loading && !user) {
+      console.log('Redirecting unauthenticated user to login');
+      const returnUrl = encodeURIComponent('/gradual-awakening');
+      setLocation(`/sign-in?returnTo=${returnUrl}`);
+    }
+  }, [user, loading, setLocation]);
+
+  // Show loading spinner while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50/50 via-white to-indigo-50/30 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600" data-testid="text-auth-loading">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render main content if user is not authenticated (will redirect via useEffect above)
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50/50 via-white to-indigo-50/30 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600" data-testid="text-redirecting">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50/50 via-white to-indigo-50/30 relative overflow-hidden">

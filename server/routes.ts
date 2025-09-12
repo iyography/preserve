@@ -51,11 +51,21 @@ const bucketName = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
 const bucket = gcs.bucket(bucketName || '');
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check endpoint (no auth required)
+  app.get('/api', (req, res) => {
+    res.json({ status: 'ok', message: 'API is running' });
+  });
+  
+  // Health check for HEAD requests too (fixes the continuous 401s)
+  app.head('/api', (req, res) => {
+    res.status(200).end();
+  });
+  
   // Middleware to parse JSON
   app.use('/api', express.json());
   
-  // Apply JWT verification to all protected routes
-  app.use('/api', verifyJWT);
+  // Apply JWT verification to all protected routes (except health check)
+  app.use('/api/*', verifyJWT);
   
   // Personas API - All routes now properly authenticated and authorized
   app.get('/api/personas', async (req: AuthenticatedRequest, res) => {
