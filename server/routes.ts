@@ -169,6 +169,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Conversation and Message APIs
+  app.get('/api/conversations', async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const conversations = await storage.getConversationsByUser(userId);
+      res.json(conversations);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      res.status(500).json({ error: 'Failed to fetch conversations' });
+    }
+  });
+
+  app.get('/api/conversations/:id/messages', async (req: AuthenticatedRequest, res) => {
+    try {
+      const conversationId = req.params.id;
+      const userId = req.user!.id;
+      
+      // Verify conversation belongs to user
+      const conversation = await storage.getConversation(conversationId, userId);
+      if (!conversation) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+      
+      const messages = await storage.getMessagesByConversation(conversationId, userId);
+      res.json(messages);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      res.status(500).json({ error: 'Failed to fetch messages' });
+    }
+  });
+
+  app.get('/api/personas/:personaId/conversations', async (req: AuthenticatedRequest, res) => {
+    try {
+      const personaId = req.params.personaId;
+      const userId = req.user!.id;
+      
+      // Verify persona belongs to user
+      const persona = await storage.getPersona(personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(404).json({ error: 'Persona not found' });
+      }
+      
+      const conversations = await storage.getConversationsByPersona(personaId, userId);
+      res.json(conversations);
+    } catch (error) {
+      console.error('Error fetching persona conversations:', error);
+      res.status(500).json({ error: 'Failed to fetch conversations' });
+    }
+  });
+
   // Onboarding Sessions API - All routes now properly authenticated and authorized
   app.get('/api/onboarding-sessions', async (req: AuthenticatedRequest, res) => {
     try {
@@ -365,21 +415,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Chat Generation Endpoint
+  // Enhanced Chat Generation Endpoint with Conversation Storage
   app.post('/api/chat/generate', verifyJWT, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { message, personalityContext, conversationHistory, personaName } = req.body;
+      const { message, personalityContext, conversationHistory, personaName, personaId, userId } = req.body;
+      const authenticatedUserId = req.user!.id;
 
-      if (!message || !personalityContext || !personaName) {
-        return res.status(400).json({ error: 'Missing required fields' });
+      console.log('🚀 Chat generation request:', {
+        personaName,
+        personaId,
+        requestUserId: userId,
+        authenticatedUserId,
+        messageLength: message?.length,
+        hasPersonalityContext: !!personalityContext
+      });
+
+      // Validate required fields
+      if (!message || !personalityContext || !personaName || !personaId) {
+        console.error('❌ Missing required fields:', { message: !!message, personalityContext: !!personalityContext, personaName: !!personaName, personaId: !!personaId });
+        return res.status(400).json({ error: 'Missing required fields: message, personalityContext, personaName, and personaId are required' });
+      }
+
+      // Verify user authorization
+      if (userId && userId !== authenticatedUserId) {
+        console.error('❌ User ID mismatch:', { provided: userId, authenticated: authenticatedUserId });
+        return res.status(403).json({ error: 'User ID mismatch' });
+      }
+
+      // Verify persona access
+      const persona = await storage.getPersona(personaId);
+      if (!persona) {
+        console.error('❌ Persona not found:', personaId);
+        return res.status(404).json({ error: 'Persona not found' });
+      }
+
+      if (persona.userId !== authenticatedUserId) {
+        console.error('❌ Persona access denied:', { personaUserId: persona.userId, authenticatedUserId });
+        return res.status(403).json({ error: 'Access denied to this persona' });
       }
 
       const openaiKey = process.env.OPENAI_API_KEY;
       if (!openaiKey) {
-        console.error('OpenAI API key not found');
+        console.error('❌ OpenAI API key not found');
         return res.status(500).json({ error: 'AI service not configured' });
       }
 
+      // Find or create conversation
+      let conversations = await storage.getConversationsByPersona(personaId, authenticatedUserId);
+      let activeConversation = conversations.find(c => c.status === 'active');
+      
+      if (!activeConversation) {
+        console.log('📝 Creating new conversation for persona:', personaName);
+        activeConversation = await storage.createConversation({
+          userId: authenticatedUserId,
+          personaId,
+          title: `Chat with ${personaName}`,
+          status: 'active'
+        });
+      }
+
+      // Store user message
+      const userMessage = await storage.createMessage({
+        conversationId: activeConversation.id,
+        role: 'user',
+        content: message,
+        meta: { timestamp: new Date().toISOString() }
+      });
+
+      console.log('💾 Stored user message:', userMessage.id);
+
+      // Enhanced OpenAI API call with better error handling
+      console.log('🤖 Calling OpenAI API with model: gpt-4o-mini');
+      
       const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -391,30 +498,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
           messages: [
             {
               role: 'system',
-              content: personalityContext
+              content: `${personalityContext}\n\nIMPORTANT GUIDELINES:\n- This is a sacred conversation between ${personaName} and their loved one\n- Respond with genuine empathy and care\n- Ask meaningful follow-up questions when appropriate\n- Reference the person's emotional state or needs\n- Keep responses 2-4 sentences for natural flow\n- Vary your responses - avoid repetitive phrases`
             },
             {
               role: 'user',
-              content: `Recent conversation:\n${conversationHistory}\n\nLatest message: ${message}\n\nRespond as ${personaName} would, staying true to their personality and speaking patterns.`
+              content: `Recent conversation context:\n${conversationHistory || 'This is the beginning of our conversation.'}\n\nLatest message from your loved one: "${message}"\n\nAs ${personaName}, respond with authentic care and personality. Show interest in their wellbeing and ask a thoughtful question or share something meaningful.`
             }
           ],
-          max_tokens: 300,
-          temperature: 0.8,
+          max_tokens: 400,
+          temperature: 0.85,
+          top_p: 0.9,
+          frequency_penalty: 0.3,
+          presence_penalty: 0.2
         }),
       });
 
       if (!openaiResponse.ok) {
-        console.error('OpenAI API error:', await openaiResponse.text());
-        return res.status(500).json({ error: 'Failed to generate response' });
+        const errorText = await openaiResponse.text();
+        console.error('❌ OpenAI API error:', {
+          status: openaiResponse.status,
+          statusText: openaiResponse.statusText,
+          error: errorText
+        });
+        
+        // Store error message but still return a fallback response
+        await storage.createMessage({
+          conversationId: activeConversation.id,
+          role: 'system',
+          content: `OpenAI API error: ${openaiResponse.status} - ${errorText}`,
+          meta: { error: true, timestamp: new Date().toISOString() }
+        });
+        
+        return res.status(500).json({ 
+          error: 'AI service temporarily unavailable',
+          details: `OpenAI API returned ${openaiResponse.status}` 
+        });
       }
 
       const data = await openaiResponse.json();
-      const response = data.choices[0]?.message?.content || 'I\'m having trouble connecting right now, but I\'m still here with you.';
+      console.log('✅ OpenAI API response received:', {
+        choices: data.choices?.length,
+        usage: data.usage
+      });
 
-      res.json({ response });
+      if (!data.choices || data.choices.length === 0) {
+        console.error('❌ No choices in OpenAI response:', data);
+        return res.status(500).json({ error: 'Invalid AI response format' });
+      }
+
+      const aiResponse = data.choices[0]?.message?.content;
+      if (!aiResponse) {
+        console.error('❌ No content in OpenAI choice:', data.choices[0]);
+        return res.status(500).json({ error: 'Empty AI response' });
+      }
+
+      // Store AI response
+      const personaMessage = await storage.createMessage({
+        conversationId: activeConversation.id,
+        role: 'persona',
+        content: aiResponse,
+        tokens: data.usage?.total_tokens,
+        meta: { 
+          openai_usage: data.usage,
+          timestamp: new Date().toISOString()
+        }
+      });
+
+      // Update conversation last message time
+      await storage.updateConversation(activeConversation.id, authenticatedUserId, {
+        lastMessageAt: new Date()
+      });
+
+      console.log('💾 Stored persona response:', personaMessage.id);
+      console.log('✨ Chat generation completed successfully');
+
+      res.json({ 
+        response: aiResponse,
+        conversationId: activeConversation.id,
+        messageId: personaMessage.id,
+        usage: data.usage
+      });
     } catch (error) {
-      console.error('Error generating chat response:', error);
-      res.status(500).json({ error: 'Failed to generate response' });
+      console.error('💥 Error generating chat response:', error);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      res.status(500).json({ 
+        error: 'Failed to generate response',
+        message: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
     }
   });
 
