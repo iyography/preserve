@@ -75,12 +75,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePersona(id: string, userId: string): Promise<boolean> {
-    // First delete all related media
+    // First delete all related onboarding sessions
+    await db
+      .delete(onboardingSessions)
+      .where(eq(onboardingSessions.personaId, id));
+    
+    // Then delete all related media
     await db
       .delete(personaMedia)
       .where(eq(personaMedia.personaId, id));
     
-    // Then delete the persona (only if it belongs to the authenticated user)
+    // Finally delete the persona (only if it belongs to the authenticated user)
     const result = await db
       .delete(personas)
       .where(and(eq(personas.id, id), eq(personas.userId, userId)))
