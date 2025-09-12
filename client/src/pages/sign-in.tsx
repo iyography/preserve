@@ -8,7 +8,6 @@ import ParticleSystem from "@/components/ParticleSystem";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
 
 export default function SignIn() {
   const [showPassword, setShowPassword] = useState(false);
@@ -46,29 +45,9 @@ export default function SignIn() {
         description: "You have successfully signed in."
       });
 
-      // Check persona count and redirect accordingly
-      setTimeout(async () => {
-        try {
-          const session = await supabase.auth.getSession();
-          const response = await fetch('/api/personas', {
-            headers: {
-              'Authorization': `Bearer ${session.data.session?.access_token}`
-            }
-          });
-          if (response.ok) {
-            const personas = await response.json();
-            if (personas.length >= 1) {
-              window.location.href = '/dashboard';
-            } else {
-              window.location.href = '/onboarding';
-            }
-          } else {
-            window.location.href = '/onboarding';
-          }
-        } catch (error) {
-          console.error('Error checking personas:', error);
-          window.location.href = '/onboarding';
-        }
+      // Redirect to onboarding after successful sign in
+      setTimeout(() => {
+        window.location.href = '/onboarding';
       }, 1000);
 
     } catch (error) {

@@ -254,15 +254,6 @@ export default function Dashboard() {
                     <MessageCircle className="w-4 h-4 mr-2" />
                     Continue Conversation
                   </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={() => toast({ title: "Coming Soon", description: "Daily invitations setup will be available soon!" })}
-                    className="border-purple-200 text-purple-700 hover:bg-purple-50"
-                    data-testid="button-setup-invitations"
-                  >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Set Up Daily Invitations
-                  </Button>
                 </div>
               </div>
             </CardContent>
