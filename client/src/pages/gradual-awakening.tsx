@@ -289,10 +289,11 @@ export default function GradualAwakening() {
 
   // Save for later mutation
   const saveForLaterMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (saveStep?: string) => {
+      const currentSaveStep = saveStep || 'tell-us-more';
       const sessionData = {
         approach: 'gradual-awakening',
-        currentStep: 'tell-us-more',
+        currentStep: currentSaveStep,
         stepData: {
           personaName,
           relationship,
@@ -1179,22 +1180,34 @@ export default function GradualAwakening() {
             </Card>
 
             {/* Navigation */}
-            <div className="flex justify-between pt-4">
+            <div className="flex justify-between items-center pt-4">
               <Link href="/" className="inline-flex">
                 <Button variant="outline" className="px-6">
                   <ChevronLeft className="w-4 h-4 mr-2" />
                   Back
                 </Button>
               </Link>
-              <Button 
-                onClick={handleNext}
-                disabled={!personaName || !relationship || adjectives.some(adj => !adj.trim()) || !favoriteMemory}
-                className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-6"
-                data-testid="button-continue-to-tell-more"
-              >
-                Continue
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
+              
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline"
+                  onClick={() => saveForLaterMutation.mutate('minimal-start')}
+                  disabled={saveForLaterMutation.isPending}
+                  className="px-6 border-green-200 text-green-600 hover:bg-green-50"
+                  data-testid="button-save-for-later"
+                >
+                  {saveForLaterMutation.isPending ? 'Saving...' : 'Save for Later'}
+                </Button>
+                <Button 
+                  onClick={handleNext}
+                  disabled={!personaName || !relationship || adjectives.some(adj => !adj.trim()) || !favoriteMemory}
+                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-6"
+                  data-testid="button-continue-to-tell-more"
+                >
+                  Continue
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -1747,7 +1760,7 @@ export default function GradualAwakening() {
               <div className="flex gap-3">
                 <Button 
                   variant="outline"
-                  onClick={() => saveForLaterMutation.mutate()}
+                  onClick={() => saveForLaterMutation.mutate('tell-us-more')}
                   disabled={saveForLaterMutation.isPending}
                   className="px-6"
                   data-testid="button-save-for-later"
