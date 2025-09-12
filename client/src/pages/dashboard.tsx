@@ -10,12 +10,27 @@ import { Switch } from "@/components/ui/switch";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import UserProfile from "@/components/UserProfile";
+import { useQuery } from "@tanstack/react-query";
+import type { Persona } from "@shared/schema";
 
 export default function Dashboard() {
-  const [selectedPersona, setSelectedPersona] = useState('grandma-rose');
+  const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
   const [mode, setMode] = useState<'grief' | 'legacy'>('grief');
   const [voiceSimilarity] = useState(82);
   const { user, loading } = useAuth();
+
+  // Fetch real personas data
+  const { data: personas = [], isLoading: personasLoading } = useQuery<Persona[]>({
+    queryKey: ['/api/personas'],
+    enabled: !!user && !loading,
+  });
+
+  // Set first persona as selected when data loads
+  useEffect(() => {
+    if (personas.length > 0 && !selectedPersona) {
+      setSelectedPersona(personas[0].id);
+    }
+  }, [personas, selectedPersona]);
 
   // Redirect to sign-in if not authenticated
   useEffect(() => {
@@ -24,7 +39,7 @@ export default function Dashboard() {
     }
   }, [user, loading]);
 
-  if (loading) {
+  if (loading || personasLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50/50 via-white to-indigo-50/30 flex items-center justify-center">
         <div className="text-center">
@@ -36,26 +51,61 @@ export default function Dashboard() {
       </div>
     );
   }
-  
-  // Sample data - in real app this would come from API
-  const personas = [
-    {
-      id: 'grandma-rose',
-      name: 'Grandma Rose',
-      avatar: '👵',
-      totalMemories: 47,
-      lastInteraction: '3 days ago',
-      voiceTag: 'Warm & Nurturing',
-      completionPercent: 85,
-      recentMemories: [
-        { type: 'voice', title: 'Sunday dinner stories', date: '2 days ago', category: 'love' },
-        { type: 'photo', title: 'Family vacation photos', date: '5 days ago', category: 'wisdom' },
-        { type: 'text', title: 'Recipe collection', date: '1 week ago', category: 'humor' }
-      ]
-    }
-  ];
 
-  const currentPersona = personas.find(p => p.id === selectedPersona) || personas[0];
+  const currentPersona = personas.find(p => p.id === selectedPersona);
+
+  // Show empty state if no personas
+  if (personas.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50/50 via-white to-indigo-50/30">
+        {/* Header */}
+        <header className="bg-white/80 backdrop-blur-sm border-b border-purple-100 sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <Link href="/" className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center shadow-lg">
+                    <span className="text-white font-bold">∞</span>
+                  </div>
+                  <span className="text-gray-900 font-semibold text-lg">Preserving Connections</span>
+                </Link>
+                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                  Dashboard
+                </Badge>
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <Button variant="outline" size="sm">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Settings
+                </Button>
+
+                <UserProfile />
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="max-w-7xl mx-auto px-6 py-16 text-center">
+          <div className="w-24 h-24 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Heart className="w-12 h-12 text-purple-600" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">Welcome to Your Dashboard</h1>
+          <p className="text-gray-600 mb-8 max-w-md mx-auto">
+            Start preserving memories by creating your first AI persona of a loved one.
+          </p>
+          <div className="flex gap-4 justify-center">
+            <Link href="/choose-approach">
+              <Button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Your First Persona
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50/50 via-white to-indigo-50/30">
@@ -106,15 +156,15 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-6">
                   <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full flex items-center justify-center text-4xl shadow-lg">
-                    {currentPersona.avatar}
+                    <Heart className="w-8 h-8 text-purple-600" />
                   </div>
                   <div>
-                    <h1 className="text-3xl font-bold text-gray-900 mb-1">{currentPersona.name}</h1>
-                    <p className="text-purple-600 font-medium mb-2">{currentPersona.voiceTag}</p>
+                    <h1 className="text-3xl font-bold text-gray-900 mb-1" data-testid="text-persona-name">{currentPersona?.name}</h1>
+                    <p className="text-purple-600 font-medium mb-2" data-testid="text-persona-relationship">{currentPersona?.relationship}</p>
                     <div className="flex items-center text-gray-600 text-sm space-x-4">
-                      <span>{currentPersona.totalMemories} memories preserved</span>
+                      <span data-testid="text-persona-status">Status: {currentPersona?.status === 'completed' ? 'Complete' : 'In Progress'}</span>
                       <span>•</span>
-                      <span>You last spoke with {currentPersona.name} {currentPersona.lastInteraction}</span>
+                      <span data-testid="text-persona-approach">Created with {currentPersona?.onboardingApproach?.replace('-', ' ')}</span>
                     </div>
                   </div>
                 </div>
@@ -157,10 +207,10 @@ export default function Dashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="text-3xl font-bold text-purple-700">{currentPersona.totalMemories}</div>
-                  <p className="text-sm text-gray-600">Total memories preserved</p>
-                  <Progress value={currentPersona.completionPercent} className="h-2" />
-                  <p className="text-xs text-gray-500">{currentPersona.completionPercent}% persona complete</p>
+                  <div className="text-3xl font-bold text-purple-700">-</div>
+                  <p className="text-sm text-gray-600">Memories coming soon</p>
+                  <Progress value={currentPersona?.status === 'completed' ? 100 : 50} className="h-2" />
+                  <p className="text-xs text-gray-500">{currentPersona?.status === 'completed' ? '100' : '50'}% persona complete</p>
                 </CardContent>
               </Card>
 
@@ -192,19 +242,10 @@ export default function Dashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {currentPersona.recentMemories.slice(0, 3).map((memory, index) => (
-                    <div key={index} className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                        {memory.type === 'voice' && <Mic className="w-4 h-4 text-purple-600" />}
-                        {memory.type === 'photo' && <Camera className="w-4 h-4 text-purple-600" />}
-                        {memory.type === 'text' && <FileText className="w-4 h-4 text-purple-600" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{memory.title}</p>
-                        <p className="text-xs text-gray-500">{memory.date}</p>
-                      </div>
-                    </div>
-                  ))}
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-600">No recent memories yet</p>
+                    <p className="text-xs text-gray-500">Memories will appear here as you build your persona</p>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -218,38 +259,35 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {[
-                      { name: 'Grandpa Joe', avatar: '👴', relationship: 'Grandfather', completeness: 95, interactions: 127, badge: 'Most Active' },
-                      { name: 'Mom Sarah', avatar: '👩', relationship: 'Mother', completeness: 88, interactions: 89, badge: 'Most Loved' },
-                      { name: 'Uncle Mike', avatar: '👨', relationship: 'Uncle', completeness: 76, interactions: 45, badge: 'Newest' },
-                      { name: 'Grandma Rose', avatar: '👵', relationship: 'Grandmother', completeness: 85, interactions: 67, badge: 'Current' }
-                    ].map((persona, index) => (
-                      <div key={persona.name} className={`flex items-center justify-between p-3 rounded-lg ${persona.badge === 'Current' ? 'bg-purple-50 border-2 border-purple-200' : 'bg-gray-50'}`}>
+                    {personas.map((persona) => (
+                      <div key={persona.id} className={`flex items-center justify-between p-3 rounded-lg ${persona.id === selectedPersona ? 'bg-purple-50 border-2 border-purple-200' : 'bg-gray-50'}`}>
                         <div className="flex items-center space-x-3">
                           <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full flex items-center justify-center text-lg">
-                            {persona.avatar}
+                            <Heart className="w-4 h-4 text-purple-600" />
                           </div>
                           <div>
                             <div className="flex items-center space-x-2">
-                              <p className="font-semibold text-gray-900">{persona.name}</p>
+                              <p className="font-semibold text-gray-900" data-testid={`text-persona-name-${persona.id}`}>{persona.name}</p>
                               <Badge variant="secondary" className="text-xs">
-                                {persona.badge}
+                                {persona.id === selectedPersona ? 'Current' : persona.status === 'completed' ? 'Complete' : 'In Progress'}
                               </Badge>
                             </div>
-                            <p className="text-sm text-gray-600">{persona.relationship} • {persona.interactions} conversations</p>
+                            <p className="text-sm text-gray-600" data-testid={`text-persona-details-${persona.id}`}>{persona.relationship} • Created {new Date(persona.createdAt).toLocaleDateString()}</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm font-medium text-purple-700">{persona.completeness}%</div>
-                          <Progress value={persona.completeness} className="w-16 h-1" />
+                          <div className="text-sm font-medium text-purple-700">{persona.status === 'completed' ? '100' : '50'}%</div>
+                          <Progress value={persona.status === 'completed' ? 100 : 50} className="w-16 h-1" />
                         </div>
                       </div>
                     ))}
                   </div>
-                  <Button variant="outline" className="w-full mt-4">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create New Persona
-                  </Button>
+                  <Link href="/choose-approach">
+                    <Button variant="outline" className="w-full mt-4" data-testid="button-create-persona">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create New Persona
+                    </Button>
+                  </Link>
                 </CardContent>
               </Card>
 
@@ -319,24 +357,10 @@ export default function Dashboard() {
                   <CardTitle className="text-xl">Recent Uploads</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {currentPersona.recentMemories.map((memory, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                          {memory.type === 'voice' && <Mic className="w-4 h-4 text-purple-600" />}
-                          {memory.type === 'photo' && <Camera className="w-4 h-4 text-purple-600" />}
-                          {memory.type === 'text' && <FileText className="w-4 h-4 text-purple-600" />}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{memory.title}</p>
-                          <p className="text-sm text-gray-500">{memory.date}</p>
-                        </div>
-                      </div>
-                      <Badge variant="secondary" className="capitalize">
-                        {memory.category}
-                      </Badge>
-                    </div>
-                  ))}
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-600">No uploads yet</p>
+                    <p className="text-xs text-gray-500">Uploaded memories will appear here</p>
+                  </div>
                 </CardContent>
               </Card>
             </div>

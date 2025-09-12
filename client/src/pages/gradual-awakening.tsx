@@ -321,9 +321,9 @@ export default function GradualAwakening() {
     onSuccess: () => {
       toast({
         title: "Progress Saved!",
-        description: "Your persona information has been saved. You can continue later from your dashboard."
+        description: "Your progress has been saved. You can continue creating your persona or come back later."
       });
-      setLocation('/dashboard');
+      // Don't redirect - let user continue the onboarding process
     },
   });
 
