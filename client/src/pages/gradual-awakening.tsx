@@ -21,6 +21,10 @@ import type { Persona, OnboardingSession } from "@shared/schema";
 type MemoryCadence = 'daily' | 'every-few-days' | 'weekly' | 'weekends' | 'custom';
 type MemoryTheme = 'humor' | 'traditions' | 'places' | 'food' | 'resilience' | 'work' | 'relationships';
 type TopicToAvoid = 'work-stress' | 'health-issues' | 'finances' | 'family-conflict' | 'politics' | 'personal-habits';
+type CommunicationStyle = 'formal' | 'casual' | 'lots-of-emojis' | 'abbreviated' | 'dramatic' | 'dry-humor';
+type ListenerTalkerType = 'listener' | 'talker' | 'balanced';
+type ConflictHandlingStyle = 'avoided-it' | 'tackled-head-on' | 'made-jokes' | 'got-quiet' | 'needed-time';
+type RelationshipType = 'parent' | 'friend' | 'partner' | 'grandparent' | 'sibling' | 'other';
 
 interface SeedPersonaTraits {
   trait1: string;
@@ -33,6 +37,72 @@ interface ComfortSettings {
   surpriseContent: boolean;
   topicsToAvoid: TopicToAvoid[];
   pausePrompts: boolean;
+}
+
+interface VoiceCommunicationStyle {
+  usualGreeting: string;
+  catchphrase: string;
+  communicationStyle: CommunicationStyle[];
+}
+
+interface PersonalityPatterns {
+  listenerOrTalker: ListenerTalkerType;
+  conflictHandling: ConflictHandlingStyle[];
+  humorTriggers: string;
+  mainWorries: string;
+}
+
+interface WhatTheydSay {
+  relationshipAdvice: string;
+  promotionReaction: string;
+  moneyStressResponse: string;
+  complaintResponse: string;
+}
+
+interface QuickContextBuilders {
+  favoriteTopics: [string, string, string];
+  proudOf: string;
+  petPeeve: string;
+  showsCare: string;
+}
+
+interface EnhancedMemories {
+  madeYouLaugh: string;
+  adviceGiven: string;
+  celebratedWins: string;
+  comfortWhenUpset: string;
+}
+
+interface RelationshipSpecificData {
+  parentData?: {
+    disciplineStyle: string;
+    houseRules: string;
+    parenting: string;
+  };
+  friendData?: {
+    insideJokes: string;
+    activities: string;
+    friendship: string;
+  };
+  partnerData?: {
+    petNames: string;
+    disagreements: string;
+    romance: string;
+  };
+  grandparentData?: {
+    stories: string;
+    traditions: string;
+    wisdom: string;
+  };
+}
+
+interface ComprehensivePersonaData {
+  voiceCommunication: VoiceCommunicationStyle;
+  personalityPatterns: PersonalityPatterns;
+  whatTheydSay: WhatTheydSay;
+  contextBuilders: QuickContextBuilders;
+  enhancedMemories: EnhancedMemories;
+  relationshipSpecific: RelationshipSpecificData;
 }
 
 interface DailySetupData {
@@ -61,12 +131,52 @@ export default function GradualAwakening() {
   const [memoryType, setMemoryType] = useState<'text' | 'voice'>('text');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
+  // Progressive disclosure state
+  const [showTellUsMore, setShowTellUsMore] = useState(false);
+  
   // Enhanced features state
   const [showSeedPreview, setShowSeedPreview] = useState(false);
   const [seedTraits, setSeedTraits] = useState<SeedPersonaTraits | null>(null);
   const [generateHelloMessage, setGenerateHelloMessage] = useState(false);
   const [helloMessage, setHelloMessage] = useState<string>('');
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  
+  // Comprehensive persona data state
+  const [voiceCommunication, setVoiceCommunication] = useState<VoiceCommunicationStyle>({
+    usualGreeting: '',
+    catchphrase: '',
+    communicationStyle: []
+  });
+  
+  const [personalityPatterns, setPersonalityPatterns] = useState<PersonalityPatterns>({
+    listenerOrTalker: 'balanced',
+    conflictHandling: [],
+    humorTriggers: '',
+    mainWorries: ''
+  });
+  
+  const [whatTheydSay, setWhatTheydSay] = useState<WhatTheydSay>({
+    relationshipAdvice: '',
+    promotionReaction: '',
+    moneyStressResponse: '',
+    complaintResponse: ''
+  });
+  
+  const [contextBuilders, setContextBuilders] = useState<QuickContextBuilders>({
+    favoriteTopics: ['', '', ''],
+    proudOf: '',
+    petPeeve: '',
+    showsCare: ''
+  });
+  
+  const [enhancedMemories, setEnhancedMemories] = useState<EnhancedMemories>({
+    madeYouLaugh: '',
+    adviceGiven: '',
+    celebratedWins: '',
+    comfortWhenUpset: ''
+  });
+  
+  const [relationshipSpecific, setRelationshipSpecific] = useState<RelationshipSpecificData>({});
   
   // Daily setup enhanced state
   const [cadence, setCadence] = useState<MemoryCadence>('every-few-days');
@@ -359,6 +469,17 @@ export default function GradualAwakening() {
       setMilestoneAlerts(stepData.milestoneAlerts !== false);
       setInviteFamily(stepData.inviteFamily || false);
       
+      // Load comprehensive persona data if available
+      if (stepData.voiceCommunication) {
+        setVoiceCommunication(stepData.voiceCommunication);
+        setPersonalityPatterns(stepData.personalityPatterns);
+        setWhatTheydSay(stepData.whatTheydSay);
+        setContextBuilders(stepData.contextBuilders);
+        setEnhancedMemories(stepData.enhancedMemories);
+        setRelationshipSpecific(stepData.relationshipSpecific || {});
+        setShowTellUsMore(true); // Expand the section if data exists
+      }
+      
       if (validSession.currentStep) {
         setStep(validSession.currentStep as any);
       }
@@ -409,7 +530,7 @@ export default function GradualAwakening() {
       setIsCreatingPersona(true);
       
       try {
-        // Create persona
+        // Create persona with comprehensive data
         const personaData = {
           name: personaName,
           relationship,
@@ -418,6 +539,15 @@ export default function GradualAwakening() {
             adjectives,
             favoriteMemory,
             memoryType,
+            // Comprehensive persona data (only if "Tell us more" was used)
+            ...(showTellUsMore && {
+              voiceCommunication,
+              personalityPatterns,
+              whatTheydSay,
+              contextBuilders,
+              enhancedMemories,
+              relationshipSpecific,
+            }),
           },
         };
         
@@ -453,6 +583,15 @@ export default function GradualAwakening() {
             weeklyUpdates,
             milestoneAlerts,
             inviteFamily,
+            // Comprehensive persona data (only if "Tell us more" was used)
+            ...(showTellUsMore && {
+              voiceCommunication,
+              personalityPatterns,
+              whatTheydSay,
+              contextBuilders,
+              enhancedMemories,
+              relationshipSpecific,
+            }),
           },
           personaId: persona.id,
         };
@@ -694,283 +833,785 @@ export default function GradualAwakening() {
 
         {/* Step 2: Minimal Viable Start */}
         {step === 'minimal-start' && (
-          <Card className="bg-white/70 backdrop-blur-sm border-green-100 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-3">
-                <Heart className="w-6 h-6 text-green-600" />
-                <span>Minimal Viable Start</span>
-                <Badge variant="outline" className="ml-auto bg-green-50 text-green-700 border-green-200">
-                  <Clock className="w-3 h-3 mr-1" />
-                  3 minutes
-                </Badge>
-              </CardTitle>
-              <p className="text-gray-600">
-                Just the essentials to bring them back. We'll add more memories together over time.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Basic Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="personaName" className="text-sm font-medium text-gray-700">Their name</Label>
-                  <Input
-                    id="personaName"
-                    placeholder="What did you call them?"
-                    value={personaName}
-                    onChange={(e) => setPersonaName(e.target.value)}
-                    className="border-green-200 focus:border-green-400"
-                    data-testid="input-persona-name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="relationship" className="text-sm font-medium text-gray-700">Your relationship</Label>
-                  <Input
-                    id="relationship"
-                    placeholder="e.g., mother, father, grandmother"
-                    value={relationship}
-                    onChange={(e) => setRelationship(e.target.value)}
-                    className="border-green-200 focus:border-green-400"
-                    data-testid="input-relationship"
-                  />
-                </div>
-              </div>
-
-              {/* Photo Upload */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">One photo</Label>
-                <div className="border-2 border-dashed border-green-200 rounded-lg p-6 text-center hover:border-green-300 transition-colors">
-                  <Camera className="w-8 h-8 text-green-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600 mb-2">A favorite photo that captures who they were</p>
-                  {selectedFile ? (
-                    <div className="space-y-2">
-                      <p className="text-sm text-green-600 font-medium">{selectedFile.name}</p>
-                      <img 
-                        src={URL.createObjectURL(selectedFile)} 
-                        alt="Selected photo" 
-                        className="max-w-32 max-h-32 mx-auto rounded-lg object-cover"
-                      />
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => setSelectedFile(null)}
-                        className="border-green-200"
-                      >
-                        Change Photo
-                      </Button>
-                    </div>
-                  ) : (
-                    <div>
-                      <input
-                        type="file"
-                        id="photo-upload"
-                        accept="image/*"
-                        onChange={handleFileSelect}
-                        className="hidden"
-                        data-testid="input-photo-upload"
-                      />
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="border-green-200"
-                        onClick={() => document.getElementById('photo-upload')?.click()}
-                      >
-                        <Upload className="w-4 h-4 mr-2" />
-                        Choose Photo
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Three Adjectives */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">Three adjectives that describe them</Label>
-                <p className="text-xs text-gray-500 mb-3">The first words that come to mind when you think of them</p>
-                <div className="grid grid-cols-3 gap-3">
-                  {adjectives.map((adj, index) => (
+          <div className="space-y-6">
+            {/* Essential Section */}
+            <Card className="bg-white/70 backdrop-blur-sm border-green-100 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-3">
+                  <Heart className="w-6 h-6 text-green-600" />
+                  <span>Essential</span>
+                  <Badge variant="outline" className="ml-auto bg-green-50 text-green-700 border-green-200">
+                    <Clock className="w-3 h-3 mr-1" />
+                    3 minutes
+                  </Badge>
+                </CardTitle>
+                <p className="text-gray-600">
+                  Just the essentials to bring them back. We'll add more memories together over time.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Basic Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="personaName" className="text-sm font-medium text-gray-700">Their name</Label>
                     <Input
-                      key={index}
-                      placeholder={`Adjective ${index + 1}`}
-                      value={adj}
-                      onChange={(e) => updateAdjective(index, e.target.value)}
-                      className="border-green-200 focus:border-green-400 text-center"
-                      data-testid={`input-adjective-${index + 1}`}
+                      id="personaName"
+                      placeholder="What did you call them?"
+                      value={personaName}
+                      onChange={(e) => setPersonaName(e.target.value)}
+                      className="border-green-200 focus:border-green-400"
+                      data-testid="input-persona-name"
                     />
-                  ))}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="relationship" className="text-sm font-medium text-gray-700">Your relationship</Label>
+                    <Input
+                      id="relationship"
+                      placeholder="e.g., mother, father, grandmother"
+                      value={relationship}
+                      onChange={(e) => setRelationship(e.target.value)}
+                      className="border-green-200 focus:border-green-400"
+                      data-testid="input-relationship"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* One Favorite Memory */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">One favorite memory</Label>
-                <div className="flex gap-2 mb-3">
-                  <Button 
-                    variant={memoryType === 'text' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setMemoryType('text')}
-                    className={memoryType === 'text' ? 'bg-green-600 hover:bg-green-700' : ''}
-                  >
-                    Write it
-                  </Button>
-                  <Button 
-                    variant={memoryType === 'voice' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setMemoryType('voice')}
-                    className={memoryType === 'voice' ? 'bg-green-600 hover:bg-green-700' : ''}
-                  >
-                    Record it
-                  </Button>
-                </div>
-                
-                {memoryType === 'text' ? (
-                  <Textarea
-                    placeholder="Share one precious memory—it doesn't need to be perfect..."
-                    value={favoriteMemory}
-                    onChange={(e) => setFavoriteMemory(e.target.value)}
-                    className="border-green-200 focus:border-green-400 min-h-[120px]"
-                    data-testid="textarea-favorite-memory"
-                  />
-                ) : (
-                  <div className="border border-green-200 rounded-lg p-6 text-center">
-                    {!voiceRecording.blob ? (
-                      <div>
-                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <Mic className="w-8 h-8 text-green-600" />
-                        </div>
-                        <p className="text-sm text-gray-600 mb-3">Record your favorite memory in your own voice</p>
-                        <p className="text-xs text-gray-500 mb-4">Max 60 seconds • Press and hold to record</p>
+                {/* Photo Upload */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">One photo</Label>
+                  <div className="border-2 border-dashed border-green-200 rounded-lg p-6 text-center hover:border-green-300 transition-colors">
+                    <Camera className="w-8 h-8 text-green-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600 mb-2">A favorite photo that captures who they were</p>
+                    {selectedFile ? (
+                      <div className="space-y-2">
+                        <p className="text-sm text-green-600 font-medium">{selectedFile.name}</p>
+                        <img 
+                          src={URL.createObjectURL(selectedFile)} 
+                          alt="Selected photo" 
+                          className="max-w-32 max-h-32 mx-auto rounded-lg object-cover"
+                        />
                         <Button 
                           variant="outline" 
-                          className="border-green-200 text-green-600"
-                          onClick={isRecording ? stopRecording : startRecording}
-                          disabled={recordingTime >= 60}
-                          data-testid="button-voice-record"
+                          size="sm" 
+                          onClick={() => setSelectedFile(null)}
+                          className="border-green-200"
+                          data-testid="button-change-photo"
                         >
-                          {isRecording ? (
-                            <>
-                              <MicOff className="w-4 h-4 mr-2" />
-                              Stop Recording ({recordingTime}s)
-                            </>
-                          ) : (
-                            <>
-                              <Mic className="w-4 h-4 mr-2" />
-                              Start Recording
-                            </>
-                          )}
+                          Change Photo
                         </Button>
                       </div>
                     ) : (
                       <div>
-                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <Volume2 className="w-8 h-8 text-green-600" />
-                        </div>
-                        <p className="text-sm text-green-600 font-medium mb-2">Voice recording ({voiceRecording.duration}s)</p>
-                        <p className="text-xs text-gray-500 mb-4">Your precious memory has been captured</p>
-                        <div className="flex gap-2 justify-center">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={playRecording}
-                            className="border-green-200"
-                            data-testid="button-play-recording"
-                          >
-                            {isPlaying ? (
-                              <><Pause className="w-4 h-4 mr-1" /> Pause</>
-                            ) : (
-                              <><Play className="w-4 h-4 mr-1" /> Play</>
-                            )}
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={clearRecording}
-                            className="text-gray-500"
-                            data-testid="button-clear-recording"
-                          >
-                            Re-record
-                          </Button>
-                        </div>
+                        <input
+                          type="file"
+                          id="photo-upload"
+                          accept="image/*"
+                          onChange={handleFileSelect}
+                          className="hidden"
+                          data-testid="input-photo-upload"
+                        />
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="border-green-200"
+                          onClick={() => document.getElementById('photo-upload')?.click()}
+                          data-testid="button-choose-photo"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          Choose Photo
+                        </Button>
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+                </div>
 
-              <div className="flex justify-between pt-4">
-                <Link href="/onboarding">
-                  <Button variant="outline" className="px-6">
-                    <ChevronLeft className="w-4 h-4 mr-2" />
-                    Back
-                  </Button>
-                </Link>
-                <Button 
-                  onClick={handleNext}
-                  disabled={isCreatingPersona || createPersonaMutation.isPending}
-                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-6"
-                  data-testid="button-create-persona"
-                >
-                  {isCreatingPersona || createPersonaMutation.isPending ? 'Creating Persona...' : 'Create Initial Persona'}
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
-              
-              {/* Seed Persona Preview - shown after successful creation */}
-              {showSeedPreview && seedTraits && (
-                <div className="mt-6 animate-in slide-in-from-bottom-4 duration-500">
-                  <Card className="bg-gradient-to-r from-emerald-50 to-green-50 border-green-200">
+                {/* Three Adjectives */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">Three adjectives that describe them</Label>
+                  <p className="text-xs text-gray-500 mb-3">The first words that come to mind when you think of them</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {adjectives.map((adj, index) => (
+                      <Input
+                        key={index}
+                        placeholder={`Adjective ${index + 1}`}
+                        value={adj}
+                        onChange={(e) => updateAdjective(index, e.target.value)}
+                        className="border-green-200 focus:border-green-400 text-center"
+                        data-testid={`input-adjective-${index + 1}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* One Favorite Memory */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">One favorite memory</Label>
+                  <div className="flex gap-2 mb-3">
+                    <Button 
+                      variant={memoryType === 'text' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setMemoryType('text')}
+                      className={memoryType === 'text' ? 'bg-green-600 hover:bg-green-700' : ''}
+                      data-testid="button-memory-text"
+                    >
+                      Write it
+                    </Button>
+                    <Button 
+                      variant={memoryType === 'voice' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setMemoryType('voice')}
+                      className={memoryType === 'voice' ? 'bg-green-600 hover:bg-green-700' : ''}
+                      data-testid="button-memory-voice"
+                    >
+                      Record it
+                    </Button>
+                  </div>
+                  
+                  {memoryType === 'text' ? (
+                    <Textarea
+                      placeholder="Share one precious memory—it doesn't need to be perfect..."
+                      value={favoriteMemory}
+                      onChange={(e) => setFavoriteMemory(e.target.value)}
+                      className="border-green-200 focus:border-green-400 min-h-[120px]"
+                      data-testid="textarea-favorite-memory"
+                    />
+                  ) : (
+                    <div className="border border-green-200 rounded-lg p-6 text-center">
+                      {!voiceRecording.blob ? (
+                        <div>
+                          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <Mic className="w-8 h-8 text-green-600" />
+                          </div>
+                          <p className="text-sm text-gray-600 mb-3">Record them saying something they'd actually say - advice, a joke, or just hello</p>
+                          <p className="text-xs text-gray-500 mb-4">Max 60 seconds • Examples based on relationship</p>
+                          <Button 
+                            variant="outline" 
+                            className="border-green-200 text-green-600"
+                            onClick={isRecording ? stopRecording : startRecording}
+                            disabled={recordingTime >= 60}
+                            data-testid="button-voice-record"
+                          >
+                            {isRecording ? (
+                              <>
+                                <MicOff className="w-4 h-4 mr-2" />
+                                Stop Recording ({recordingTime}s)
+                              </>
+                            ) : (
+                              <>
+                                <Mic className="w-4 h-4 mr-2" />
+                                Start Recording
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <Volume2 className="w-8 h-8 text-green-600" />
+                          </div>
+                          <p className="text-sm text-green-600 font-medium mb-2">Voice recording ({voiceRecording.duration}s)</p>
+                          <p className="text-xs text-gray-500 mb-4">Your precious memory has been captured</p>
+                          <div className="flex gap-2 justify-center">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={playRecording}
+                              className="border-green-200"
+                              data-testid="button-play-recording"
+                            >
+                              {isPlaying ? (
+                                <><Pause className="w-4 h-4 mr-1" /> Pause</>
+                              ) : (
+                                <><Play className="w-4 h-4 mr-1" /> Play</>
+                              )}
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={clearRecording}
+                              className="text-gray-500"
+                              data-testid="button-clear-recording"
+                            >
+                              Re-record
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tell Us More Section - Collapsible */}
+            <Collapsible open={showTellUsMore} onOpenChange={setShowTellUsMore}>
+              <CollapsibleTrigger asChild>
+                <Card className="bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200 hover:from-purple-100 hover:to-indigo-100 transition-all duration-200 cursor-pointer">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                          <Sparkles className="w-4 h-4 text-purple-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">Tell us more</h3>
+                          <p className="text-sm text-gray-600">Help create a richer, more authentic persona (optional)</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                          Optional
+                        </Badge>
+                        {showTellUsMore ? (
+                          <ChevronUp className="w-5 h-5 text-purple-600" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-purple-600" />
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </CollapsibleTrigger>
+
+              <CollapsibleContent className="space-y-6 animate-in slide-in-from-top-2 duration-200">
+                {/* Voice & Communication Style */}
+                <Card className="bg-white/70 backdrop-blur-sm border-purple-100">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-3 text-lg">
+                      <Volume2 className="w-5 h-5 text-purple-600" />
+                      <span>Voice & Communication Style</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="usualGreeting" className="text-sm font-medium text-gray-700">How did they usually greet you?</Label>
+                        <Input
+                          id="usualGreeting"
+                          placeholder="e.g., Hey kiddo, What's up buttercup"
+                          value={voiceCommunication.usualGreeting}
+                          onChange={(e) => setVoiceCommunication(prev => ({ ...prev, usualGreeting: e.target.value }))}
+                          className="border-purple-200 focus:border-purple-400"
+                          data-testid="input-usual-greeting"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="catchphrase" className="text-sm font-medium text-gray-700">A phrase they said all the time</Label>
+                        <Input
+                          id="catchphrase"
+                          placeholder="Their catchphrase or inside joke"
+                          value={voiceCommunication.catchphrase}
+                          onChange={(e) => setVoiceCommunication(prev => ({ ...prev, catchphrase: e.target.value }))}
+                          className="border-purple-200 focus:border-purple-400"
+                          data-testid="input-catchphrase"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">How they texted/talked</Label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {['formal', 'casual', 'lots-of-emojis', 'abbreviated', 'dramatic', 'dry-humor'].map((style) => (
+                          <Button
+                            key={style}
+                            variant={voiceCommunication.communicationStyle.includes(style as CommunicationStyle) ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => {
+                              setVoiceCommunication(prev => ({
+                                ...prev,
+                                communicationStyle: prev.communicationStyle.includes(style as CommunicationStyle)
+                                  ? prev.communicationStyle.filter(s => s !== style)
+                                  : [...prev.communicationStyle, style as CommunicationStyle]
+                              }));
+                            }}
+                            className={voiceCommunication.communicationStyle.includes(style as CommunicationStyle) ? 'bg-purple-600 hover:bg-purple-700' : ''}
+                            data-testid={`button-comm-style-${style}`}
+                          >
+                            {style.replace('-', ' ')}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Personality Patterns */}
+                <Card className="bg-white/70 backdrop-blur-sm border-purple-100">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-3 text-lg">
+                      <Users className="w-5 h-5 text-purple-600" />
+                      <span>Personality Patterns</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">Were they more of a listener or a talker?</Label>
+                      <div className="flex gap-3">
+                        {['listener', 'talker', 'balanced'].map((type) => (
+                          <Button
+                            key={type}
+                            variant={personalityPatterns.listenerOrTalker === type ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setPersonalityPatterns(prev => ({ ...prev, listenerOrTalker: type as ListenerTalkerType }))}
+                            className={personalityPatterns.listenerOrTalker === type ? 'bg-purple-600 hover:bg-purple-700' : ''}
+                            data-testid={`button-listener-talker-${type}`}
+                          >
+                            {type}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">How did they handle conflict?</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {['avoided-it', 'tackled-head-on', 'made-jokes', 'got-quiet', 'needed-time'].map((style) => (
+                          <Button
+                            key={style}
+                            variant={personalityPatterns.conflictHandling.includes(style as ConflictHandlingStyle) ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => {
+                              setPersonalityPatterns(prev => ({
+                                ...prev,
+                                conflictHandling: prev.conflictHandling.includes(style as ConflictHandlingStyle)
+                                  ? prev.conflictHandling.filter(s => s !== style)
+                                  : [...prev.conflictHandling, style as ConflictHandlingStyle]
+                              }));
+                            }}
+                            className={personalityPatterns.conflictHandling.includes(style as ConflictHandlingStyle) ? 'bg-purple-600 hover:bg-purple-700' : ''}
+                            data-testid={`button-conflict-${style}`}
+                          >
+                            {style.replace('-', ' ')}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="humorTriggers" className="text-sm font-medium text-gray-700">What always made them laugh?</Label>
+                        <Textarea
+                          id="humorTriggers"
+                          placeholder="Dad jokes, silly pets, specific memories..."
+                          value={personalityPatterns.humorTriggers}
+                          onChange={(e) => setPersonalityPatterns(prev => ({ ...prev, humorTriggers: e.target.value }))}
+                          className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                          data-testid="textarea-humor-triggers"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="mainWorries" className="text-sm font-medium text-gray-700">What did they worry about most?</Label>
+                        <Textarea
+                          id="mainWorries"
+                          placeholder="Family safety, finances, your future..."
+                          value={personalityPatterns.mainWorries}
+                          onChange={(e) => setPersonalityPatterns(prev => ({ ...prev, mainWorries: e.target.value }))}
+                          className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                          data-testid="textarea-main-worries"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* What They'd Say About... */}
+                <Card className="bg-white/70 backdrop-blur-sm border-purple-100">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-3 text-lg">
+                      <Heart className="w-5 h-5 text-purple-600" />
+                      <span>What They'd Say About...</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="relationshipAdvice" className="text-sm font-medium text-gray-700">What advice would they give you about relationships?</Label>
+                        <Textarea
+                          id="relationshipAdvice"
+                          placeholder="Their typical relationship wisdom..."
+                          value={whatTheydSay.relationshipAdvice}
+                          onChange={(e) => setWhatTheydSay(prev => ({ ...prev, relationshipAdvice: e.target.value }))}
+                          className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                          data-testid="textarea-relationship-advice"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="promotionReaction" className="text-sm font-medium text-gray-700">How would they react if you got a promotion?</Label>
+                        <Textarea
+                          id="promotionReaction"
+                          placeholder="Their way of celebrating your wins..."
+                          value={whatTheydSay.promotionReaction}
+                          onChange={(e) => setWhatTheydSay(prev => ({ ...prev, promotionReaction: e.target.value }))}
+                          className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                          data-testid="textarea-promotion-reaction"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="moneyStressResponse" className="text-sm font-medium text-gray-700">What would they say if you were stressed about money?</Label>
+                        <Textarea
+                          id="moneyStressResponse"
+                          placeholder="Their money advice or comfort..."
+                          value={whatTheydSay.moneyStressResponse}
+                          onChange={(e) => setWhatTheydSay(prev => ({ ...prev, moneyStressResponse: e.target.value }))}
+                          className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                          data-testid="textarea-money-stress-response"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="complaintResponse" className="text-sm font-medium text-gray-700">Their typical response when you complained about something</Label>
+                        <Textarea
+                          id="complaintResponse"
+                          placeholder="How they handled your venting..."
+                          value={whatTheydSay.complaintResponse}
+                          onChange={(e) => setWhatTheydSay(prev => ({ ...prev, complaintResponse: e.target.value }))}
+                          className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                          data-testid="textarea-complaint-response"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Quick Context Builders */}
+                <Card className="bg-white/70 backdrop-blur-sm border-purple-100">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-3 text-lg">
+                      <Star className="w-5 h-5 text-purple-600" />
+                      <span>Quick Context Builders</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">Three topics they could talk about for hours</Label>
+                      <div className="grid grid-cols-3 gap-3">
+                        {contextBuilders.favoriteTopics.map((topic, index) => (
+                          <Input
+                            key={index}
+                            placeholder={`Topic ${index + 1}`}
+                            value={topic}
+                            onChange={(e) => {
+                              const newTopics = [...contextBuilders.favoriteTopics] as [string, string, string];
+                              newTopics[index] = e.target.value;
+                              setContextBuilders(prev => ({ ...prev, favoriteTopics: newTopics }));
+                            }}
+                            className="border-purple-200 focus:border-purple-400"
+                            data-testid={`input-favorite-topic-${index + 1}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="proudOf" className="text-sm font-medium text-gray-700">Something they were really proud of</Label>
+                        <Textarea
+                          id="proudOf"
+                          placeholder="Their biggest accomplishment..."
+                          value={contextBuilders.proudOf}
+                          onChange={(e) => setContextBuilders(prev => ({ ...prev, proudOf: e.target.value }))}
+                          className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                          data-testid="textarea-proud-of"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="petPeeve" className="text-sm font-medium text-gray-700">Their biggest pet peeve</Label>
+                        <Textarea
+                          id="petPeeve"
+                          placeholder="What always annoyed them..."
+                          value={contextBuilders.petPeeve}
+                          onChange={(e) => setContextBuilders(prev => ({ ...prev, petPeeve: e.target.value }))}
+                          className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                          data-testid="textarea-pet-peeve"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="showsCare" className="text-sm font-medium text-gray-700">How they showed they cared about you</Label>
+                        <Textarea
+                          id="showsCare"
+                          placeholder="Their way of showing love..."
+                          value={contextBuilders.showsCare}
+                          onChange={(e) => setContextBuilders(prev => ({ ...prev, showsCare: e.target.value }))}
+                          className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                          data-testid="textarea-shows-care"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Enhanced Memory Prompts */}
+                <Card className="bg-white/70 backdrop-blur-sm border-purple-100">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-3 text-lg">
+                      <Calendar className="w-5 h-5 text-purple-600" />
+                      <span>Enhanced Memory Prompts</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="madeYouLaugh" className="text-sm font-medium text-gray-700">A time they made you laugh</Label>
+                        <Textarea
+                          id="madeYouLaugh"
+                          placeholder="A funny moment you shared together..."
+                          value={enhancedMemories.madeYouLaugh}
+                          onChange={(e) => setEnhancedMemories(prev => ({ ...prev, madeYouLaugh: e.target.value }))}
+                          className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                          data-testid="textarea-made-you-laugh"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="adviceGiven" className="text-sm font-medium text-gray-700">Advice they gave that stuck with you</Label>
+                        <Textarea
+                          id="adviceGiven"
+                          placeholder="Words of wisdom you'll never forget..."
+                          value={enhancedMemories.adviceGiven}
+                          onChange={(e) => setEnhancedMemories(prev => ({ ...prev, adviceGiven: e.target.value }))}
+                          className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                          data-testid="textarea-advice-given"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="celebratedWins" className="text-sm font-medium text-gray-700">How they celebrated your wins</Label>
+                        <Textarea
+                          id="celebratedWins"
+                          placeholder="Their way of sharing your joy..."
+                          value={enhancedMemories.celebratedWins}
+                          onChange={(e) => setEnhancedMemories(prev => ({ ...prev, celebratedWins: e.target.value }))}
+                          className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                          data-testid="textarea-celebrated-wins"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="comfortWhenUpset" className="text-sm font-medium text-gray-700">What they did when you were upset</Label>
+                        <Textarea
+                          id="comfortWhenUpset"
+                          placeholder="How they comforted you in tough times..."
+                          value={enhancedMemories.comfortWhenUpset}
+                          onChange={(e) => setEnhancedMemories(prev => ({ ...prev, comfortWhenUpset: e.target.value }))}
+                          className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                          data-testid="textarea-comfort-when-upset"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Relationship-Specific Questions */}
+                {relationship && (
+                  <Card className="bg-white/70 backdrop-blur-sm border-purple-100">
                     <CardHeader>
                       <CardTitle className="flex items-center space-x-3 text-lg">
-                        <Sparkles className="w-5 h-5 text-green-600" />
-                        <span>Early Personality Glimpse</span>
+                        <Users className="w-5 h-5 text-purple-600" />
+                        <span>More About Your {relationship.charAt(0).toUpperCase() + relationship.slice(1)}</span>
                       </CardTitle>
                       <p className="text-sm text-gray-600">
-                        Based on what you've shared, here's how {personaName} might begin to express themselves:
+                        Help us understand the unique aspects of your relationship
                       </p>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="space-y-3">
-                        <div className="flex items-start space-x-3">
-                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-xs font-medium text-green-700">T1</div>
-                          <p className="text-sm text-gray-800 flex-1">{seedTraits.trait1}</p>
-                        </div>
-                        <div className="flex items-start space-x-3">
-                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-xs font-medium text-green-700">T2</div>
-                          <p className="text-sm text-gray-800 flex-1">{seedTraits.trait2}</p>
-                        </div>
-                        {seedTraits.trait3 && (
-                          <div className="flex items-start space-x-3">
-                            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-xs font-medium text-green-700">T3</div>
-                            <p className="text-sm text-gray-800 flex-1">{seedTraits.trait3}</p>
+                      {relationship.toLowerCase().includes('parent') || relationship.toLowerCase() === 'mother' || relationship.toLowerCase() === 'father' ? (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="disciplineStyle" className="text-sm font-medium text-gray-700">How did they discipline or guide you?</Label>
+                            <Textarea
+                              id="disciplineStyle"
+                              placeholder="Their approach to guidance, rules, and teaching moments..."
+                              value={relationshipSpecific.parentData?.disciplineStyle || ''}
+                              onChange={(e) => setRelationshipSpecific(prev => ({
+                                ...prev,
+                                parentData: { ...prev.parentData, disciplineStyle: e.target.value, houseRules: prev.parentData?.houseRules || '', parenting: prev.parentData?.parenting || '' }
+                              }))}
+                              className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                              data-testid="textarea-discipline-style"
+                            />
                           </div>
-                        )}
-                      </div>
-                      
-                      <div className="bg-white/60 rounded-lg p-4 border border-green-100">
-                        <p className="text-sm text-green-800 italic">{seedTraits.affirmation}</p>
-                      </div>
-                      
-                      <div className="flex justify-between items-center pt-2">
-                        <p className="text-xs text-gray-500">
-                          This is just the beginning—they'll grow more complex as you add memories
-                        </p>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => setShowSeedPreview(false)}
-                            className="text-gray-600"
-                            data-testid="button-dismiss-preview"
-                          >
-                            Looks right
-                          </Button>
+                          <div className="space-y-2">
+                            <Label htmlFor="houseRules" className="text-sm font-medium text-gray-700">What were their rules for the house?</Label>
+                            <Textarea
+                              id="houseRules"
+                              placeholder="Family rules, expectations, traditions they maintained..."
+                              value={relationshipSpecific.parentData?.houseRules || ''}
+                              onChange={(e) => setRelationshipSpecific(prev => ({
+                                ...prev,
+                                parentData: { ...prev.parentData, houseRules: e.target.value, disciplineStyle: prev.parentData?.disciplineStyle || '', parenting: prev.parentData?.parenting || '' }
+                              }))}
+                              className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                              data-testid="textarea-house-rules"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="parenting" className="text-sm font-medium text-gray-700">What was their parenting style like?</Label>
+                            <Textarea
+                              id="parenting"
+                              placeholder="Strict, nurturing, hands-off, protective, etc..."
+                              value={relationshipSpecific.parentData?.parenting || ''}
+                              onChange={(e) => setRelationshipSpecific(prev => ({
+                                ...prev,
+                                parentData: { ...prev.parentData, parenting: e.target.value, disciplineStyle: prev.parentData?.disciplineStyle || '', houseRules: prev.parentData?.houseRules || '' }
+                              }))}
+                              className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                              data-testid="textarea-parenting"
+                            />
+                          </div>
                         </div>
-                      </div>
+                      ) : relationship.toLowerCase() === 'friend' ? (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="insideJokes" className="text-sm font-medium text-gray-700">Your inside jokes together</Label>
+                            <Textarea
+                              id="insideJokes"
+                              placeholder="Things only you two found funny, shared references..."
+                              value={relationshipSpecific.friendData?.insideJokes || ''}
+                              onChange={(e) => setRelationshipSpecific(prev => ({
+                                ...prev,
+                                friendData: { ...prev.friendData, insideJokes: e.target.value, activities: prev.friendData?.activities || '', friendship: prev.friendData?.friendship || '' }
+                              }))}
+                              className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                              data-testid="textarea-inside-jokes"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="activities" className="text-sm font-medium text-gray-700">What you always did together</Label>
+                            <Textarea
+                              id="activities"
+                              placeholder="Regular activities, traditions, shared hobbies..."
+                              value={relationshipSpecific.friendData?.activities || ''}
+                              onChange={(e) => setRelationshipSpecific(prev => ({
+                                ...prev,
+                                friendData: { ...prev.friendData, activities: e.target.value, insideJokes: prev.friendData?.insideJokes || '', friendship: prev.friendData?.friendship || '' }
+                              }))}
+                              className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                              data-testid="textarea-activities"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="friendship" className="text-sm font-medium text-gray-700">What made your friendship special?</Label>
+                            <Textarea
+                              id="friendship"
+                              placeholder="The unique bond you shared, what they meant to you..."
+                              value={relationshipSpecific.friendData?.friendship || ''}
+                              onChange={(e) => setRelationshipSpecific(prev => ({
+                                ...prev,
+                                friendData: { ...prev.friendData, friendship: e.target.value, insideJokes: prev.friendData?.insideJokes || '', activities: prev.friendData?.activities || '' }
+                              }))}
+                              className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                              data-testid="textarea-friendship"
+                            />
+                          </div>
+                        </div>
+                      ) : relationship.toLowerCase().includes('partner') || relationship.toLowerCase() === 'spouse' || relationship.toLowerCase() === 'husband' || relationship.toLowerCase() === 'wife' ? (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="petNames" className="text-sm font-medium text-gray-700">Pet names for each other</Label>
+                            <Textarea
+                              id="petNames"
+                              placeholder="Special names you called each other..."
+                              value={relationshipSpecific.partnerData?.petNames || ''}
+                              onChange={(e) => setRelationshipSpecific(prev => ({
+                                ...prev,
+                                partnerData: { ...prev.partnerData, petNames: e.target.value, disagreements: prev.partnerData?.disagreements || '', romance: prev.partnerData?.romance || '' }
+                              }))}
+                              className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                              data-testid="textarea-pet-names"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="disagreements" className="text-sm font-medium text-gray-700">How you handled disagreements</Label>
+                            <Textarea
+                              id="disagreements"
+                              placeholder="Your approach to conflicts, making up, communication..."
+                              value={relationshipSpecific.partnerData?.disagreements || ''}
+                              onChange={(e) => setRelationshipSpecific(prev => ({
+                                ...prev,
+                                partnerData: { ...prev.partnerData, disagreements: e.target.value, petNames: prev.partnerData?.petNames || '', romance: prev.partnerData?.romance || '' }
+                              }))}
+                              className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                              data-testid="textarea-disagreements"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="romance" className="text-sm font-medium text-gray-700">Your romantic moments together</Label>
+                            <Textarea
+                              id="romance"
+                              placeholder="Special dates, gestures, ways you showed love..."
+                              value={relationshipSpecific.partnerData?.romance || ''}
+                              onChange={(e) => setRelationshipSpecific(prev => ({
+                                ...prev,
+                                partnerData: { ...prev.partnerData, romance: e.target.value, petNames: prev.partnerData?.petNames || '', disagreements: prev.partnerData?.disagreements || '' }
+                              }))}
+                              className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                              data-testid="textarea-romance"
+                            />
+                          </div>
+                        </div>
+                      ) : relationship.toLowerCase().includes('grand') ? (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="stories" className="text-sm font-medium text-gray-700">Stories they used to tell</Label>
+                            <Textarea
+                              id="stories"
+                              placeholder="Their favorite stories about the past, family history..."
+                              value={relationshipSpecific.grandparentData?.stories || ''}
+                              onChange={(e) => setRelationshipSpecific(prev => ({
+                                ...prev,
+                                grandparentData: { ...prev.grandparentData, stories: e.target.value, traditions: prev.grandparentData?.traditions || '', wisdom: prev.grandparentData?.wisdom || '' }
+                              }))}
+                              className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                              data-testid="textarea-stories"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="traditions" className="text-sm font-medium text-gray-700">Traditions they maintained or started</Label>
+                            <Textarea
+                              id="traditions"
+                              placeholder="Holiday customs, family traditions, special rituals..."
+                              value={relationshipSpecific.grandparentData?.traditions || ''}
+                              onChange={(e) => setRelationshipSpecific(prev => ({
+                                ...prev,
+                                grandparentData: { ...prev.grandparentData, traditions: e.target.value, stories: prev.grandparentData?.stories || '', wisdom: prev.grandparentData?.wisdom || '' }
+                              }))}
+                              className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                              data-testid="textarea-traditions"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="wisdom" className="text-sm font-medium text-gray-700">Wisdom they shared with you</Label>
+                            <Textarea
+                              id="wisdom"
+                              placeholder="Life lessons, advice, values they passed down..."
+                              value={relationshipSpecific.grandparentData?.wisdom || ''}
+                              onChange={(e) => setRelationshipSpecific(prev => ({
+                                ...prev,
+                                grandparentData: { ...prev.grandparentData, wisdom: e.target.value, stories: prev.grandparentData?.stories || '', traditions: prev.grandparentData?.traditions || '' }
+                              }))}
+                              className="border-purple-200 focus:border-purple-400 min-h-[80px]"
+                              data-testid="textarea-wisdom"
+                            />
+                          </div>
+                        </div>
+                      ) : null}
                     </CardContent>
                   </Card>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                )}
+              </CollapsibleContent>
+            </Collapsible>
+
+            {/* Navigation */}
+            <div className="flex justify-between pt-4">
+              <Link href="/onboarding">
+                <Button variant="outline" className="px-6" data-testid="button-back-onboarding">
+                  <ChevronLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+              </Link>
+              <Button 
+                onClick={handleNext}
+                disabled={isCreatingPersona || createPersonaMutation.isPending}
+                className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-6"
+                data-testid="button-create-persona"
+              >
+                {isCreatingPersona || createPersonaMutation.isPending ? 'Creating Persona...' : 'Create Initial Persona'}
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </div>
         )}
 
         {/* Step 3: First Connection */}
