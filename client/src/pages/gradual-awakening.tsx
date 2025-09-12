@@ -1343,7 +1343,9 @@ export default function GradualAwakening() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="humorTriggers" className="text-sm font-medium text-gray-700">What always made them laugh?</Label>
+                        <div className="h-auto md:h-[56px] flex items-end">
+                          <Label htmlFor="humorTriggers" className="text-sm font-medium text-gray-700 line-clamp-2">What always made them laugh?</Label>
+                        </div>
                         <Textarea
                           id="humorTriggers"
                           placeholder="Dad jokes, silly pets, specific memories..."
@@ -1354,7 +1356,9 @@ export default function GradualAwakening() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="mainWorries" className="text-sm font-medium text-gray-700">What did they worry about most?</Label>
+                        <div className="h-auto md:h-[56px] flex items-end">
+                          <Label htmlFor="mainWorries" className="text-sm font-medium text-gray-700 line-clamp-2">What did they worry about most?</Label>
+                        </div>
                         <Textarea
                           id="mainWorries"
                           placeholder="Family safety, finances, your future..."
@@ -1379,7 +1383,9 @@ export default function GradualAwakening() {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="relationshipAdvice" className="text-sm font-medium text-gray-700">What advice would they give you about relationships?</Label>
+                        <div className="h-auto md:h-[56px] flex items-end">
+                          <Label htmlFor="relationshipAdvice" className="text-sm font-medium text-gray-700 line-clamp-2">What advice would they give you about relationships?</Label>
+                        </div>
                         <Textarea
                           id="relationshipAdvice"
                           placeholder="Their typical relationship wisdom..."
@@ -1390,7 +1396,9 @@ export default function GradualAwakening() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="promotionReaction" className="text-sm font-medium text-gray-700">How would they react if you got a promotion?</Label>
+                        <div className="h-auto md:h-[56px] flex items-end">
+                          <Label htmlFor="promotionReaction" className="text-sm font-medium text-gray-700 line-clamp-2">How would they react if you got a promotion?</Label>
+                        </div>
                         <Textarea
                           id="promotionReaction"
                           placeholder="Their way of celebrating your wins..."
@@ -1401,7 +1409,9 @@ export default function GradualAwakening() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="moneyStressResponse" className="text-sm font-medium text-gray-700">What would they say if you were stressed about money?</Label>
+                        <div className="h-auto md:h-[56px] flex items-end">
+                          <Label htmlFor="moneyStressResponse" className="text-sm font-medium text-gray-700 line-clamp-2">What would they say if you were stressed about money?</Label>
+                        </div>
                         <Textarea
                           id="moneyStressResponse"
                           placeholder="Their money advice or comfort..."
@@ -1412,7 +1422,9 @@ export default function GradualAwakening() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="complaintResponse" className="text-sm font-medium text-gray-700">Their typical response when you complained about something</Label>
+                        <div className="h-auto md:h-[56px] flex items-end">
+                          <Label htmlFor="complaintResponse" className="text-sm font-medium text-gray-700 line-clamp-2">Their typical response when you complained about something</Label>
+                        </div>
                         <Textarea
                           id="complaintResponse"
                           placeholder="How they handled your venting..."
@@ -1456,7 +1468,9 @@ export default function GradualAwakening() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="proudOf" className="text-sm font-medium text-gray-700">Something they were really proud of</Label>
+                        <div className="h-auto md:h-[56px] flex items-end">
+                          <Label htmlFor="proudOf" className="text-sm font-medium text-gray-700 line-clamp-2">Something they were really proud of</Label>
+                        </div>
                         <Textarea
                           id="proudOf"
                           placeholder="Their biggest accomplishment..."
@@ -1467,7 +1481,9 @@ export default function GradualAwakening() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="petPeeve" className="text-sm font-medium text-gray-700">Their biggest pet peeve</Label>
+                        <div className="h-auto md:h-[56px] flex items-end">
+                          <Label htmlFor="petPeeve" className="text-sm font-medium text-gray-700 line-clamp-2">Their biggest pet peeve</Label>
+                        </div>
                         <Textarea
                           id="petPeeve"
                           placeholder="What always annoyed them..."
@@ -1478,7 +1494,9 @@ export default function GradualAwakening() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="showsCare" className="text-sm font-medium text-gray-700">How they showed they cared about you</Label>
+                        <div className="h-auto md:h-[56px] flex items-end">
+                          <Label htmlFor="showsCare" className="text-sm font-medium text-gray-700 line-clamp-2">How they showed they cared about you</Label>
+                        </div>
                         <Textarea
                           id="showsCare"
                           placeholder="Their way of showing love..."
@@ -1503,7 +1521,9 @@ export default function GradualAwakening() {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="madeYouLaugh" className="text-sm font-medium text-gray-700">A time they made you laugh</Label>
+                        <div className="h-auto md:h-[56px] flex items-end">
+                          <Label htmlFor="madeYouLaugh" className="text-sm font-medium text-gray-700 line-clamp-2">A time they made you laugh</Label>
+                        </div>
                         <Textarea
                           id="madeYouLaugh"
                           placeholder="A funny moment you shared together..."
@@ -1514,7 +1534,9 @@ export default function GradualAwakening() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="adviceGiven" className="text-sm font-medium text-gray-700">Advice they gave that stuck with you</Label>
+                        <div className="h-auto md:h-[56px] flex items-end">
+                          <Label htmlFor="adviceGiven" className="text-sm font-medium text-gray-700 line-clamp-2">Advice they gave that stuck with you</Label>
+                        </div>
                         <Textarea
                           id="adviceGiven"
                           placeholder="Words of wisdom you'll never forget..."
@@ -1525,7 +1547,9 @@ export default function GradualAwakening() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="celebratedWins" className="text-sm font-medium text-gray-700">How they celebrated your wins</Label>
+                        <div className="h-auto md:h-[56px] flex items-end">
+                          <Label htmlFor="celebratedWins" className="text-sm font-medium text-gray-700 line-clamp-2">How they celebrated your wins</Label>
+                        </div>
                         <Textarea
                           id="celebratedWins"
                           placeholder="Their way of sharing your joy..."
@@ -1536,7 +1560,9 @@ export default function GradualAwakening() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="comfortWhenUpset" className="text-sm font-medium text-gray-700">What they did when you were upset</Label>
+                        <div className="h-auto md:h-[56px] flex items-end">
+                          <Label htmlFor="comfortWhenUpset" className="text-sm font-medium text-gray-700 line-clamp-2">What they did when you were upset</Label>
+                        </div>
                         <Textarea
                           id="comfortWhenUpset"
                           placeholder="How they comforted you in tough times..."
