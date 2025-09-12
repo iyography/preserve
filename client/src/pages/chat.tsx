@@ -421,13 +421,43 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
           .filter(item => item.personaId === persona.id && item.timestamp > thirtyMinutesAgo)
           .map(item => item.text);
         
-        // If API response was recently used, generate a fallback instead
+        // If API response was recently used, generate intent-aware fallback instead
         if (recentlyUsed.includes(data.response)) {
-          console.warn('⚠️ API response was recently used, generating fallback');
+          console.warn('⚠️ API response was recently used, generating intent-aware fallback');
+          
+          // Use same intent detection as in error fallback
+          const isHowAreYouQuestion = userMessage && /how are you|how've you been|how you doing|what's up|how you been/i.test(userMessage);
+          const isWhatUpQuestion = userMessage && /what's up|what up|sup|what have you been up to|what you been doing/i.test(userMessage);
+          
+          let duplicateFallbacks = [];
+          const catchphrase = onboardingData?.voiceCommunication?.catchphrase;
+          const favoriteTopics = onboardingData?.contextBuilders?.favoriteTopics;
+          const communicationStyle = onboardingData?.voiceCommunication?.communicationStyle?.[0] || 'direct';
+          
+          if (isHowAreYouQuestion) {
+            duplicateFallbacks = [
+              `I'm doing pretty well, thanks. ${catchphrase ? catchphrase + ' ' : ''}Just been thinking about ${favoriteTopics?.[0] || 'life'} lately.`,
+              `Not too bad. Been staying busy with ${favoriteTopics?.[0] || 'the usual'}.`,
+              `Pretty good actually. ${communicationStyle === 'playful' ? 'Living the dream!' : 'Can\'t complain.'}`
+            ];
+          } else if (isWhatUpQuestion) {
+            duplicateFallbacks = [
+              `Not much, just been pondering ${favoriteTopics?.[0] || 'things'}.`,
+              `Same old stuff. ${catchphrase ? catchphrase + ' ' : ''}Just taking it easy.`,
+              `Oh you know, ${communicationStyle === 'playful' ? 'causing trouble as usual' : 'the usual routine'}.`
+            ];
+          } else {
+            duplicateFallbacks = [
+              `${onboardingData?.voiceCommunication?.usualGreeting || 'Hello'}! That's interesting.`,
+              `I hear you. ${catchphrase ? catchphrase + ' ' : ''}Good point.`,
+              `Absolutely. ${favoriteTopics?.[0] ? `Reminds me of ${favoriteTopics[0].toLowerCase()}.` : 'I can relate.'}`
+            ];
+          }
+          
           const fallbackResponse = getAvailableResponses(
-            [`${onboardingData?.voiceCommunication?.usualGreeting || 'Hello'}! That's interesting - tell me more.`],
+            duplicateFallbacks,
             onboardingData, 
-            'fallback', 
+            'duplicate-fallback', 
             persona.id
           )[0];
           markResponseUsed(fallbackResponse, persona.id);
@@ -481,7 +511,7 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
         fallbackResponses = [
           `Not much, just been thinking about ${favoriteTopics?.[0] || 'life'} and ${favoriteTopics?.[1] || 'random stuff'}. ${catchphrase || ''}`,
           `Oh you know, ${communicationStyle === 'playful' ? 'getting into all sorts of mischief' : 'the usual routine'}. ${mainWorries ? `Trying not to worry too much about ${mainWorries.toLowerCase()}.` : ''}`,
-          `Just been relaxing and ${favoriteTopics?.[0] ? `reading up on ${favoriteTopics[0].toLowerCase()}` : 'taking it easy'}. ${showsCare ? 'What about you?' : ''}`,
+          `Just been relaxing and ${favoriteTopics?.[0] ? `reading up on ${favoriteTopics[0].toLowerCase()}` : 'taking it easy'}. ${showsCare ? 'Hope you\'re well too.' : ''}`,
           `Same old stuff really. ${proudOf ? `Still feeling pretty good about ${proudOf.toLowerCase()}.` : 'Nothing too exciting.'} ${communicationStyle === 'dramatic' ? 'But that\'s life, right?' : ''}`,
           `Just chilling. ${catchphrase ? catchphrase + ' ' : ''}Been wondering how you were doing actually.`
         ];
