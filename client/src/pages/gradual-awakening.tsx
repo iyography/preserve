@@ -10,6 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import type { Persona, OnboardingSession } from "@shared/schema";
 
 export default function GradualAwakening() {
   const [step, setStep] = useState<'intro' | 'minimal-start' | 'first-connection' | 'daily-setup'>('intro');
@@ -18,15 +21,169 @@ export default function GradualAwakening() {
   const [adjectives, setAdjectives] = useState(['', '', '']);
   const [favoriteMemory, setFavoriteMemory] = useState('');
   const [memoryType, setMemoryType] = useState<'text' | 'voice'>('text');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isCreatingPersona, setIsCreatingPersona] = useState(false);
+  const [currentPersona, setCurrentPersona] = useState<Persona | null>(null);
+  const [currentSession, setCurrentSession] = useState<OnboardingSession | null>(null);
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const progress = step === 'intro' ? 25 : step === 'minimal-start' ? 50 : step === 'first-connection' ? 75 : 100;
 
-  const handleNext = () => {
-    if (step === 'intro') setStep('minimal-start');
-    else if (step === 'minimal-start') {
+  // Load existing onboarding session
+  const { data: existingSession } = useQuery({
+    queryKey: ['/api/onboarding-sessions/gradual-awakening'],
+    enabled: !!user?.id,
+  });
+
+  // Create persona mutation
+  const createPersonaMutation = useMutation({
+    mutationFn: async (personaData: any) => {
+      const response = await fetch('/api/personas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': user?.id || '',
+        },
+        body: JSON.stringify(personaData),
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      return response.json();
+    },
+    onSuccess: (persona) => {
+      setCurrentPersona(persona);
+      queryClient.invalidateQueries({ queryKey: ['/api/personas'] });
+    },
+  });
+
+  // Create onboarding session mutation
+  const createSessionMutation = useMutation({
+    mutationFn: async (sessionData: any) => {
+      const response = await fetch('/api/onboarding-sessions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': user?.id || '',
+        },
+        body: JSON.stringify(sessionData),
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      return response.json();
+    },
+    onSuccess: (session) => {
+      setCurrentSession(session);
+      queryClient.invalidateQueries({ queryKey: ['/api/onboarding-sessions/gradual-awakening'] });
+    },
+  });
+
+  // Update session mutation
+  const updateSessionMutation = useMutation({
+    mutationFn: async ({ sessionId, updates }: { sessionId: string; updates: any }) => {
+      const response = await fetch(`/api/onboarding-sessions/${sessionId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': user?.id || '',
+        },
+        body: JSON.stringify(updates),
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      return response.json();
+    },
+    onSuccess: (session) => {
+      setCurrentSession(session);
+    },
+  });
+
+  // Upload photo mutation
+  const uploadPhotoMutation = useMutation({
+    mutationFn: async ({ personaId, file }: { personaId: string; file: File }) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch(`/api/personas/${personaId}/media`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-User-Id': user?.id || '',
+        },
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      return response.json();
+    },
+  });
+
+  // Load existing session data
+  useEffect(() => {
+    if (existingSession && typeof existingSession === 'object' && 'id' in existingSession && existingSession.id) {
+      const validSession = existingSession as OnboardingSession;
+      setCurrentSession(validSession);
+      const stepData = (validSession.stepData as any) || {};
+      setPersonaName(stepData.personaName || '');
+      setRelationship(stepData.relationship || '');
+      setAdjectives(stepData.adjectives || ['', '', '']);
+      setFavoriteMemory(stepData.favoriteMemory || '');
+      setMemoryType(stepData.memoryType || 'text');
+      if (validSession.currentStep) {
+        setStep(validSession.currentStep as any);
+      }
+    }
+  }, [existingSession]);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          variant: "destructive",
+          title: "Invalid File Type",
+          description: "Please select a valid image file (JPEG, PNG, GIF, or WebP)."
+        });
+        return;
+      }
+      
+      // Validate file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          variant: "destructive",
+          title: "File Too Large",
+          description: "Please select an image smaller than 10MB."
+        });
+        return;
+      }
+      
+      setSelectedFile(file);
+    }
+  };
+
+  const handleNext = async () => {
+    if (step === 'intro') {
+      setStep('minimal-start');
+    } else if (step === 'minimal-start') {
       if (!personaName || !relationship || adjectives.some(adj => !adj.trim()) || !favoriteMemory) {
         toast({
           variant: "destructive",
@@ -35,11 +192,95 @@ export default function GradualAwakening() {
         });
         return;
       }
-      setStep('first-connection');
-    }
-    else if (step === 'first-connection') setStep('daily-setup');
-    else {
+      
+      setIsCreatingPersona(true);
+      
+      try {
+        // Create persona
+        const personaData = {
+          name: personaName,
+          relationship,
+          onboardingApproach: 'gradual-awakening',
+          onboardingData: {
+            adjectives,
+            favoriteMemory,
+            memoryType,
+          },
+        };
+        
+        const persona = await createPersonaMutation.mutateAsync(personaData);
+        
+        // Upload photo if selected
+        if (selectedFile && persona.id) {
+          await uploadPhotoMutation.mutateAsync({
+            personaId: persona.id,
+            file: selectedFile,
+          });
+        }
+        
+        // Create onboarding session
+        const sessionData = {
+          approach: 'gradual-awakening',
+          currentStep: 'first-connection',
+          stepData: {
+            personaName,
+            relationship,
+            adjectives,
+            favoriteMemory,
+            memoryType,
+          },
+          personaId: persona.id,
+        };
+        
+        await createSessionMutation.mutateAsync(sessionData);
+        
+        setStep('first-connection');
+        
+        toast({
+          title: "Persona Created!",
+          description: `${personaName}'s persona has been created and is beginning to awaken.`
+        });
+      } catch (error) {
+        console.error('Error creating persona:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to create persona. Please try again."
+        });
+      } finally {
+        setIsCreatingPersona(false);
+      }
+    } else if (step === 'first-connection') {
+      // Update session to daily-setup step
+      if (currentSession) {
+        await updateSessionMutation.mutateAsync({
+          sessionId: currentSession.id,
+          updates: {
+            currentStep: 'daily-setup',
+            stepData: {
+              ...((currentSession.stepData as any) || {}),
+              personaName,
+              relationship,
+              adjectives,
+              favoriteMemory,
+              memoryType,
+            },
+          },
+        });
+      }
+      setStep('daily-setup');
+    } else {
       // Complete the onboarding
+      if (currentSession) {
+        await updateSessionMutation.mutateAsync({
+          sessionId: currentSession.id,
+          updates: {
+            isCompleted: true,
+            currentStep: 'completed',
+          },
+        });
+      }
+      
       toast({
         title: "Gradual Awakening Started!",
         description: `${personaName} is beginning to awaken. You'll receive gentle daily invitations to add more memories.`
@@ -219,10 +460,44 @@ export default function GradualAwakening() {
                 <div className="border-2 border-dashed border-green-200 rounded-lg p-6 text-center hover:border-green-300 transition-colors">
                   <Camera className="w-8 h-8 text-green-400 mx-auto mb-2" />
                   <p className="text-sm text-gray-600 mb-2">A favorite photo that captures who they were</p>
-                  <Button variant="outline" size="sm" className="border-green-200">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Choose Photo
-                  </Button>
+                  {selectedFile ? (
+                    <div className="space-y-2">
+                      <p className="text-sm text-green-600 font-medium">{selectedFile.name}</p>
+                      <img 
+                        src={URL.createObjectURL(selectedFile)} 
+                        alt="Selected photo" 
+                        className="max-w-32 max-h-32 mx-auto rounded-lg object-cover"
+                      />
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setSelectedFile(null)}
+                        className="border-green-200"
+                      >
+                        Change Photo
+                      </Button>
+                    </div>
+                  ) : (
+                    <div>
+                      <input
+                        type="file"
+                        id="photo-upload"
+                        accept="image/*"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        data-testid="input-photo-upload"
+                      />
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="border-green-200"
+                        onClick={() => document.getElementById('photo-upload')?.click()}
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        Choose Photo
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -296,10 +571,11 @@ export default function GradualAwakening() {
                 </Link>
                 <Button 
                   onClick={handleNext}
+                  disabled={isCreatingPersona || createPersonaMutation.isPending}
                   className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-6"
                   data-testid="button-create-persona"
                 >
-                  Create Initial Persona
+                  {isCreatingPersona || createPersonaMutation.isPending ? 'Creating Persona...' : 'Create Initial Persona'}
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </div>

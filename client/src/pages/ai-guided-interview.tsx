@@ -10,6 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import type { Persona, OnboardingSession } from "@shared/schema";
 
 interface InterviewStep {
   id: string;
@@ -55,11 +58,119 @@ export default function AIGuidedInterview() {
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [conversationHistory, setConversationHistory] = useState<Array<{speaker: string, message: string, timestamp: Date}>>([]);
   const [userResponse, setUserResponse] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isCreatingPersona, setIsCreatingPersona] = useState(false);
+  const [currentPersona, setCurrentPersona] = useState<Persona | null>(null);
+  const [currentSession, setCurrentSession] = useState<OnboardingSession | null>(null);
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const progress = ((currentStep + 1) / interviewSteps.length) * 100;
+
+  // Load existing onboarding session
+  const { data: existingSession } = useQuery({
+    queryKey: ['/api/onboarding-sessions/ai-guided-interview'],
+    enabled: !!user?.id,
+  });
+
+  // Create persona mutation
+  const createPersonaMutation = useMutation({
+    mutationFn: async (personaData: any) => {
+      const response = await fetch('/api/personas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': user?.id || '',
+        },
+        body: JSON.stringify(personaData),
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      return response.json();
+    },
+    onSuccess: (persona) => {
+      setCurrentPersona(persona);
+      queryClient.invalidateQueries({ queryKey: ['/api/personas'] });
+    },
+  });
+
+  // Create onboarding session mutation
+  const createSessionMutation = useMutation({
+    mutationFn: async (sessionData: any) => {
+      const response = await fetch('/api/onboarding-sessions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': user?.id || '',
+        },
+        body: JSON.stringify(sessionData),
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      return response.json();
+    },
+    onSuccess: (session) => {
+      setCurrentSession(session);
+      queryClient.invalidateQueries({ queryKey: ['/api/onboarding-sessions/ai-guided-interview'] });
+    },
+  });
+
+  // Update session mutation
+  const updateSessionMutation = useMutation({
+    mutationFn: async ({ sessionId, updates }: { sessionId: string; updates: any }) => {
+      const response = await fetch(`/api/onboarding-sessions/${sessionId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': user?.id || '',
+        },
+        body: JSON.stringify(updates),
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      return response.json();
+    },
+    onSuccess: (session) => {
+      setCurrentSession(session);
+    },
+  });
+
+  // Upload photo mutation
+  const uploadPhotoMutation = useMutation({
+    mutationFn: async ({ personaId, file }: { personaId: string; file: File }) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch(`/api/personas/${personaId}/media`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-User-Id': user?.id || '',
+        },
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      return response.json();
+    },
+  });
 
   const openingQuestions = [
     "Tell me about the first time you remember really laughing with {name}",
@@ -76,6 +187,29 @@ export default function AIGuidedInterview() {
     "What made that moment so special to you both?"
   ];
 
+  // Load existing session data
+  useEffect(() => {
+    if (existingSession && typeof existingSession === 'object' && 'id' in existingSession && existingSession.id) {
+      const validSession = existingSession as OnboardingSession;
+      setCurrentSession(validSession);
+      const stepData = (validSession.stepData as any) || {};
+      setPersonaName(stepData.personaName || '');
+      setRelationship(stepData.relationship || '');
+      setEmotionalState(stepData.emotionalState || '');
+      setConversationHistory(stepData.conversationHistory || []);
+      setCurrentQuestion(stepData.currentQuestion || '');
+      if (validSession.currentStep) {
+        const stepIndex = interviewSteps.findIndex(step => step.id === validSession.currentStep);
+        if (stepIndex >= 0) {
+          setCurrentStep(stepIndex);
+        }
+      }
+      if (stepData.interviewStarted) {
+        setInterviewStarted(stepData.interviewStarted);
+      }
+    }
+  }, [existingSession]);
+
   useEffect(() => {
     if (interviewStarted && currentQuestion === '') {
       // Start with a random opening question
@@ -91,11 +225,84 @@ export default function AIGuidedInterview() {
     }
   }, [interviewStarted, personaName]);
 
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
     if (currentStep < interviewSteps.length - 1) {
-      setCurrentStep(currentStep + 1);
+      const nextStep = currentStep + 1;
+      const nextStepId = interviewSteps[nextStep]?.id;
+      
+      setCurrentStep(nextStep);
+
+      // Update session progress in database
+      if (currentSession && nextStepId) {
+        try {
+          await updateSessionMutation.mutateAsync({
+            sessionId: currentSession.id,
+            updates: {
+              currentStep: nextStepId,
+              stepData: {
+                ...((currentSession.stepData as any) || {}),
+                conversationHistory,
+                currentQuestion,
+                personaName,
+                relationship,
+                emotionalState,
+                interviewStarted: true,
+              },
+            },
+          });
+        } catch (error) {
+          console.error('Error updating session progress:', error);
+        }
+      }
     } else {
       // Complete the interview
+      if (currentSession) {
+        try {
+          await updateSessionMutation.mutateAsync({
+            sessionId: currentSession.id,
+            updates: {
+              isCompleted: true,
+              currentStep: 'completed',
+              stepData: {
+                ...((currentSession.stepData as any) || {}),
+                conversationHistory,
+                currentQuestion,
+                personaName,
+                relationship,
+                emotionalState,
+                interviewStarted: true,
+              },
+            },
+          });
+        } catch (error) {
+          console.error('Error completing session:', error);
+        }
+      }
+
+      // Update persona status to completed
+      if (currentPersona) {
+        try {
+          await fetch(`/api/personas/${currentPersona.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-User-Id': user?.id || '',
+            },
+            body: JSON.stringify({
+              status: 'completed',
+              onboardingData: {
+                ...(currentPersona.onboardingData || {}),
+                conversationHistory,
+                completedAt: new Date().toISOString(),
+              },
+            }),
+            credentials: 'include',
+          });
+        } catch (error) {
+          console.error('Error updating persona status:', error);
+        }
+      }
+
       toast({
         title: "Interview Complete!",
         description: `${personaName}'s persona has been created and is ready for your first conversation.`
@@ -104,7 +311,7 @@ export default function AIGuidedInterview() {
     }
   };
 
-  const handleStartInterview = () => {
+  const handleStartInterview = async () => {
     if (!personaName || !relationship) {
       toast({
         variant: "destructive",
@@ -113,11 +320,67 @@ export default function AIGuidedInterview() {
       });
       return;
     }
-    setInterviewStarted(true);
-    handleNextStep();
+
+    setIsCreatingPersona(true);
+
+    try {
+      // Create persona
+      const personaData = {
+        name: personaName,
+        relationship,
+        onboardingApproach: 'ai-guided-interview',
+        onboardingData: {
+          emotionalState,
+        },
+      };
+
+      const persona = await createPersonaMutation.mutateAsync(personaData);
+
+      // Upload photo if selected
+      if (selectedFile && persona.id) {
+        await uploadPhotoMutation.mutateAsync({
+          personaId: persona.id,
+          file: selectedFile,
+        });
+      }
+
+      // Create onboarding session
+      const sessionData = {
+        approach: 'ai-guided-interview',
+        currentStep: 'interview',
+        stepData: {
+          personaName,
+          relationship,
+          emotionalState,
+          interviewStarted: true,
+          conversationHistory: [],
+          currentQuestion: '',
+        },
+        personaId: persona.id,
+      };
+
+      await createSessionMutation.mutateAsync(sessionData);
+
+      setInterviewStarted(true);
+      handleNextStep();
+
+      toast({
+        title: "Interview Started!",
+        description: `Starting your memory interview for ${personaName}.`
+      });
+    } catch (error) {
+      console.error('Error starting interview:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to start interview. Please try again."
+      });
+    } finally {
+      setIsCreatingPersona(false);
+    }
   };
 
-  const handleSubmitResponse = () => {
+  const handleSubmitResponse = async () => {
     if (!userResponse.trim()) return;
 
     // Add user's response to conversation
@@ -131,18 +394,95 @@ export default function AIGuidedInterview() {
     const randomFollowUp = followUpQuestions[Math.floor(Math.random() * followUpQuestions.length)];
     const traits = ['caring', 'funny', 'wise', 'stubborn', 'generous', 'creative'];
     const randomTrait = traits[Math.floor(Math.random() * traits.length)];
+    const newQuestion = randomFollowUp.replace('{name}', personaName).replace('{trait}', randomTrait);
     
-    setTimeout(() => {
-      setConversationHistory([...newHistory, {
-        speaker: 'Sarah',
-        message: randomFollowUp.replace('{name}', personaName).replace('{trait}', randomTrait),
-        timestamp: new Date()
-      }]);
-      setCurrentQuestion(randomFollowUp.replace('{name}', personaName).replace('{trait}', randomTrait));
-    }, 1500);
-
+    // Update conversation history immediately
     setConversationHistory(newHistory);
     setUserResponse('');
+
+    // Save conversation progress to database
+    if (currentSession) {
+      try {
+        await updateSessionMutation.mutateAsync({
+          sessionId: currentSession.id,
+          updates: {
+            stepData: {
+              ...((currentSession.stepData as any) || {}),
+              conversationHistory: newHistory,
+              currentQuestion,
+              personaName,
+              relationship,
+              emotionalState,
+              interviewStarted: true,
+            },
+          },
+        });
+      } catch (error) {
+        console.error('Error saving conversation:', error);
+      }
+    }
+    
+    // Add Sarah's follow-up after delay
+    setTimeout(async () => {
+      const updatedHistory = [...newHistory, {
+        speaker: 'Sarah',
+        message: newQuestion,
+        timestamp: new Date()
+      }];
+      
+      setConversationHistory(updatedHistory);
+      setCurrentQuestion(newQuestion);
+
+      // Save updated conversation with Sarah's response
+      if (currentSession) {
+        try {
+          await updateSessionMutation.mutateAsync({
+            sessionId: currentSession.id,
+            updates: {
+              stepData: {
+                ...((currentSession.stepData as any) || {}),
+                conversationHistory: updatedHistory,
+                currentQuestion: newQuestion,
+                personaName,
+                relationship,
+                emotionalState,
+                interviewStarted: true,
+              },
+            },
+          });
+        } catch (error) {
+          console.error('Error saving Sarah response:', error);
+        }
+      }
+    }, 1500);
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          variant: "destructive",
+          title: "Invalid File Type",
+          description: "Please select a valid image file (JPEG, PNG, GIF, or WebP)."
+        });
+        return;
+      }
+      
+      // Validate file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          variant: "destructive",
+          title: "File Too Large",
+          description: "Please select an image smaller than 10MB."
+        });
+        return;
+      }
+      
+      setSelectedFile(file);
+    }
   };
 
   const handleEmotionalPause = () => {
@@ -272,12 +612,54 @@ export default function AIGuidedInterview() {
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-700">Photo (optional)</Label>
                 <div className="border-2 border-dashed border-purple-200 rounded-lg p-8 text-center hover:border-purple-300 transition-colors">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    id="photo-upload"
+                    data-testid="input-photo"
+                  />
                   <Camera className="w-8 h-8 text-purple-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600 mb-2">Share a favorite photo to help bring their memory to life</p>
-                  <Button variant="outline" size="sm" className="border-purple-200">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Choose Photo
-                  </Button>
+                  {selectedFile ? (
+                    <div>
+                      <p className="text-sm text-gray-900 font-medium mb-1">{selectedFile.name}</p>
+                      <p className="text-xs text-gray-500 mb-3">File selected ({Math.round(selectedFile.size / 1024)}KB)</p>
+                      <div className="flex justify-center space-x-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="border-purple-200"
+                          onClick={() => document.getElementById('photo-upload')?.click()}
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          Change Photo
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="border-red-200 text-red-600"
+                          onClick={() => setSelectedFile(null)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-sm text-gray-600 mb-2">Share a favorite photo to help bring their memory to life</p>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="border-purple-200"
+                        onClick={() => document.getElementById('photo-upload')?.click()}
+                        data-testid="button-choose-photo"
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        Choose Photo
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -319,10 +701,11 @@ export default function AIGuidedInterview() {
                 </Link>
                 <Button 
                   onClick={handleStartInterview}
+                  disabled={isCreatingPersona || createPersonaMutation.isPending || createSessionMutation.isPending}
                   className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-6"
                   data-testid="button-start-interview"
                 >
-                  Begin Interview
+                  {isCreatingPersona ? 'Creating Persona...' : 'Begin Interview'}
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </div>
@@ -426,11 +809,11 @@ export default function AIGuidedInterview() {
                     </div>
                     <Button 
                       onClick={handleSubmitResponse}
-                      disabled={!userResponse.trim()}
+                      disabled={!userResponse.trim() || updateSessionMutation.isPending}
                       className="bg-purple-600 hover:bg-purple-700 text-white"
                       data-testid="button-submit-response"
                     >
-                      <ArrowRight className="w-4 h-4" />
+                      {updateSessionMutation.isPending ? '...' : <ArrowRight className="w-4 h-4" />}
                     </Button>
                   </div>
                 </div>
