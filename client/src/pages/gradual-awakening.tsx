@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -123,7 +122,7 @@ interface VoiceRecording {
 }
 
 export default function GradualAwakening() {
-  const [step, setStep] = useState<'intro' | 'minimal-start' | 'first-connection' | 'daily-setup'>('intro');
+  const [step, setStep] = useState<'intro' | 'minimal-start' | 'tell-us-more' | 'first-connection' | 'daily-setup'>('intro');
   const [personaName, setPersonaName] = useState('');
   const [relationship, setRelationship] = useState('');
   const [adjectives, setAdjectives] = useState(['', '', '']);
@@ -131,8 +130,8 @@ export default function GradualAwakening() {
   const [memoryType, setMemoryType] = useState<'text' | 'voice'>('text');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
-  // Progressive disclosure state
-  const [showTellUsMore, setShowTellUsMore] = useState(false);
+  // Progressive disclosure state (removed - now required step)
+  // const [showTellUsMore, setShowTellUsMore] = useState(false);
   
   // Enhanced features state
   const [showSeedPreview, setShowSeedPreview] = useState(false);
@@ -214,11 +213,12 @@ export default function GradualAwakening() {
   const queryClient = useQueryClient();
 
   // Enhanced progress with growth rings
-  const progress = step === 'intro' ? 25 : step === 'minimal-start' ? 50 : step === 'first-connection' ? 75 : 100;
+  const progress = step === 'intro' ? 20 : step === 'minimal-start' ? 40 : step === 'tell-us-more' ? 60 : step === 'first-connection' ? 80 : 100;
   const progressRings = [
-    { size: 20, completed: progress >= 25 },
-    { size: 30, completed: progress >= 50 },
-    { size: 40, completed: progress >= 75 },
+    { size: 20, completed: progress >= 20 },
+    { size: 30, completed: progress >= 40 },
+    { size: 40, completed: progress >= 60 },
+    { size: 45, completed: progress >= 80 },
     { size: 50, completed: progress >= 100 }
   ];
 
@@ -442,6 +442,134 @@ export default function GradualAwakening() {
     setHelloMessage(randomMessage);
   };
   
+  // Validation function for Tell us more fields
+  const validateTellUsMoreFields = () => {
+    const errors: string[] = [];
+    
+    // Voice communication validation
+    if (!voiceCommunication.usualGreeting.trim()) {
+      errors.push('How they usually greeted you');
+    }
+    if (!voiceCommunication.catchphrase.trim()) {
+      errors.push('Their catchphrase or common saying');
+    }
+    if (voiceCommunication.communicationStyle.length === 0) {
+      errors.push('At least one communication style');
+    }
+    
+    // Personality patterns validation
+    if (personalityPatterns.conflictHandling.length === 0) {
+      errors.push('At least one conflict handling style');
+    }
+    if (!personalityPatterns.humorTriggers.trim()) {
+      errors.push('What made them laugh');
+    }
+    if (!personalityPatterns.mainWorries.trim()) {
+      errors.push('What they worried about');
+    }
+    
+    // What they'd say validation
+    if (!whatTheydSay.relationshipAdvice.trim()) {
+      errors.push('Their relationship advice');
+    }
+    if (!whatTheydSay.promotionReaction.trim()) {
+      errors.push('How they\'d react to your promotion');
+    }
+    if (!whatTheydSay.moneyStressResponse.trim()) {
+      errors.push('Their response to money stress');
+    }
+    if (!whatTheydSay.complaintResponse.trim()) {
+      errors.push('How they handled your complaints');
+    }
+    
+    // Context builders validation
+    if (contextBuilders.favoriteTopics.some(topic => !topic.trim())) {
+      errors.push('All three favorite topics');
+    }
+    if (!contextBuilders.proudOf.trim()) {
+      errors.push('Something they were proud of');
+    }
+    if (!contextBuilders.petPeeve.trim()) {
+      errors.push('Their biggest pet peeve');
+    }
+    if (!contextBuilders.showsCare.trim()) {
+      errors.push('How they showed they cared');
+    }
+    
+    // Enhanced memories validation
+    if (!enhancedMemories.madeYouLaugh.trim()) {
+      errors.push('A time they made you laugh');
+    }
+    if (!enhancedMemories.adviceGiven.trim()) {
+      errors.push('Advice they gave that stuck');
+    }
+    if (!enhancedMemories.celebratedWins.trim()) {
+      errors.push('How they celebrated your wins');
+    }
+    if (!enhancedMemories.comfortWhenUpset.trim()) {
+      errors.push('What they did when you were upset');
+    }
+    
+    // Relationship-specific field validation
+    if (relationship) {
+      const lowerRelationship = relationship.toLowerCase();
+      
+      // Grandparent relationship validation (check first to avoid "parent" match)
+      if (lowerRelationship.includes('grand')) {
+        if (!relationshipSpecific.grandparentData?.stories?.trim()) {
+          errors.push('Stories they used to tell');
+        }
+        if (!relationshipSpecific.grandparentData?.traditions?.trim()) {
+          errors.push('Traditions they maintained or started');
+        }
+        if (!relationshipSpecific.grandparentData?.wisdom?.trim()) {
+          errors.push('Wisdom they shared with you');
+        }
+      }
+      
+      // Parent relationship validation
+      else if (lowerRelationship.includes('parent') || lowerRelationship === 'mother' || lowerRelationship === 'father') {
+        if (!relationshipSpecific.parentData?.disciplineStyle?.trim()) {
+          errors.push('How they disciplined or guided you');
+        }
+        if (!relationshipSpecific.parentData?.houseRules?.trim()) {
+          errors.push('Their rules for the house');
+        }
+        if (!relationshipSpecific.parentData?.parenting?.trim()) {
+          errors.push('Their parenting style');
+        }
+      }
+      
+      // Friend relationship validation
+      else if (lowerRelationship === 'friend') {
+        if (!relationshipSpecific.friendData?.insideJokes?.trim()) {
+          errors.push('Your inside jokes together');
+        }
+        if (!relationshipSpecific.friendData?.activities?.trim()) {
+          errors.push('What you always did together');
+        }
+        if (!relationshipSpecific.friendData?.friendship?.trim()) {
+          errors.push('What made your friendship special');
+        }
+      }
+      
+      // Partner relationship validation
+      else if (lowerRelationship.includes('partner') || lowerRelationship === 'spouse' || lowerRelationship === 'husband' || lowerRelationship === 'wife') {
+        if (!relationshipSpecific.partnerData?.petNames?.trim()) {
+          errors.push('Pet names for each other');
+        }
+        if (!relationshipSpecific.partnerData?.disagreements?.trim()) {
+          errors.push('How you handled disagreements');
+        }
+        if (!relationshipSpecific.partnerData?.romance?.trim()) {
+          errors.push('Your romantic moments together');
+        }
+      }
+    }
+    
+    return errors;
+  };
+  
   // Load existing session data
   useEffect(() => {
     if (existingSession && typeof existingSession === 'object' && 'id' in existingSession && existingSession.id) {
@@ -477,7 +605,6 @@ export default function GradualAwakening() {
         setContextBuilders(stepData.contextBuilders);
         setEnhancedMemories(stepData.enhancedMemories);
         setRelationshipSpecific(stepData.relationshipSpecific || {});
-        setShowTellUsMore(true); // Expand the section if data exists
       }
       
       if (validSession.currentStep) {
@@ -526,6 +653,18 @@ export default function GradualAwakening() {
         });
         return;
       }
+      setStep('tell-us-more');
+    } else if (step === 'tell-us-more') {
+      // Validate all Tell us more fields
+      const validationErrors = validateTellUsMoreFields();
+      if (validationErrors.length > 0) {
+        toast({
+          variant: "destructive",
+          title: "Missing Information",
+          description: `Please fill in the following required fields: ${validationErrors.slice(0, 3).join(', ')}${validationErrors.length > 3 ? ` and ${validationErrors.length - 3} more` : ''}`
+        });
+        return;
+      }
       
       setIsCreatingPersona(true);
       
@@ -539,15 +678,13 @@ export default function GradualAwakening() {
             adjectives,
             favoriteMemory,
             memoryType,
-            // Comprehensive persona data (only if "Tell us more" was used)
-            ...(showTellUsMore && {
-              voiceCommunication,
-              personalityPatterns,
-              whatTheydSay,
-              contextBuilders,
-              enhancedMemories,
-              relationshipSpecific,
-            }),
+            // Comprehensive persona data (now always included)
+            voiceCommunication,
+            personalityPatterns,
+            whatTheydSay,
+            contextBuilders,
+            enhancedMemories,
+            relationshipSpecific,
           },
         };
         
@@ -583,15 +720,13 @@ export default function GradualAwakening() {
             weeklyUpdates,
             milestoneAlerts,
             inviteFamily,
-            // Comprehensive persona data (only if "Tell us more" was used)
-            ...(showTellUsMore && {
-              voiceCommunication,
-              personalityPatterns,
-              whatTheydSay,
-              contextBuilders,
-              enhancedMemories,
-              relationshipSpecific,
-            }),
+            // Comprehensive persona data (now always included)
+            voiceCommunication,
+            personalityPatterns,
+            whatTheydSay,
+            contextBuilders,
+            enhancedMemories,
+            relationshipSpecific,
           },
           personaId: persona.id,
         };
@@ -1043,38 +1178,47 @@ export default function GradualAwakening() {
               </CardContent>
             </Card>
 
-            {/* Tell Us More Section - Collapsible */}
-            <Collapsible open={showTellUsMore} onOpenChange={setShowTellUsMore}>
-              <CollapsibleTrigger asChild>
-                <Card className="bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200 hover:from-purple-100 hover:to-indigo-100 transition-all duration-200 cursor-pointer">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                          <Sparkles className="w-4 h-4 text-purple-600" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">Tell us more</h3>
-                          <p className="text-sm text-gray-600">Help create a richer, more authentic persona (optional)</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                          Optional
-                        </Badge>
-                        {showTellUsMore ? (
-                          <ChevronUp className="w-5 h-5 text-purple-600" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5 text-purple-600" />
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </CollapsibleTrigger>
+            {/* Navigation */}
+            <div className="flex justify-between pt-4">
+              <Link href="/" className="inline-flex">
+                <Button variant="outline" className="px-6">
+                  <ChevronLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+              </Link>
+              <Button 
+                onClick={handleNext}
+                disabled={!personaName || !relationship || adjectives.some(adj => !adj.trim()) || !favoriteMemory}
+                className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-6"
+                data-testid="button-continue-to-tell-more"
+              >
+                Continue
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </div>
+        )}
 
-              <CollapsibleContent className="space-y-6 animate-in slide-in-from-top-2 duration-200">
-                {/* Voice & Communication Style */}
+        {/* Step 3: Tell Us More */}
+        {step === 'tell-us-more' && (
+          <div className="space-y-6">
+            {/* Header */}
+            <Card className="bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-3">
+                  <Sparkles className="w-6 h-6 text-purple-600" />
+                  <span>Tell us more about {personaName}</span>
+                  <Badge variant="outline" className="ml-auto bg-purple-50 text-purple-700 border-purple-200">
+                    Required
+                  </Badge>
+                </CardTitle>
+                <p className="text-gray-600">
+                  Help us create a rich, authentic persona by sharing deeper details about their personality, communication style, and memories.
+                </p>
+              </CardHeader>
+            </Card>
+
+            {/* Voice & Communication Style */}
                 <Card className="bg-white/70 backdrop-blur-sm border-purple-100">
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-3 text-lg">
@@ -1590,8 +1734,6 @@ export default function GradualAwakening() {
                     </CardContent>
                   </Card>
                 )}
-              </CollapsibleContent>
-            </Collapsible>
 
             {/* Navigation */}
             <div className="flex justify-between pt-4">
