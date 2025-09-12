@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import UserProfile from "@/components/UserProfile";
 import { useQuery } from "@tanstack/react-query";
@@ -18,6 +18,7 @@ export default function Dashboard() {
   const [mode, setMode] = useState<'grief' | 'legacy'>('grief');
   const [voiceSimilarity] = useState(82);
   const { user, loading } = useAuth();
+  const [, setLocation] = useLocation();
 
   // Fetch real personas data
   const { data: personas = [], isLoading: personasLoading } = useQuery<Persona[]>({
@@ -170,13 +171,13 @@ export default function Dashboard() {
                 </div>
                 
                 <div className="flex space-x-3">
-                  <Button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white shadow-lg">
+                  <Button 
+                    onClick={() => currentPersona && setLocation(`/chat/${currentPersona.id}`)}
+                    className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white shadow-lg"
+                    data-testid="button-continue-conversation"
+                  >
                     <MessageCircle className="w-4 h-4 mr-2" />
                     Continue Conversation
-                  </Button>
-                  <Button variant="outline" className="border-purple-200 hover:bg-purple-50">
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Light a Memory
                   </Button>
                 </div>
               </div>
@@ -260,7 +261,15 @@ export default function Dashboard() {
                 <CardContent>
                   <div className="space-y-4">
                     {personas.map((persona) => (
-                      <div key={persona.id} className={`flex items-center justify-between p-3 rounded-lg ${persona.id === selectedPersona ? 'bg-purple-50 border-2 border-purple-200' : 'bg-gray-50'}`}>
+                      <div 
+                        key={persona.id} 
+                        className={`flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-purple-100 transition-colors ${persona.id === selectedPersona ? 'bg-purple-50 border-2 border-purple-200' : 'bg-gray-50'}`}
+                        onClick={() => {
+                          setSelectedPersona(persona.id);
+                          setLocation(`/chat/${persona.id}`);
+                        }}
+                        data-testid={`persona-card-${persona.id}`}
+                      >
                         <div className="flex items-center space-x-3">
                           <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full flex items-center justify-center text-lg">
                             <Heart className="w-4 h-4 text-purple-600" />

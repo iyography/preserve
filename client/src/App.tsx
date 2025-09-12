@@ -41,6 +41,7 @@ import Waitlist from "@/pages/waitlist";
 
 import NotFound from "@/pages/not-found";
 import ConfirmEmail from "@/pages/confirm-email";
+import Chat from "@/pages/chat";
 
 function Router() {
   return (
@@ -56,6 +57,7 @@ function Router() {
       <Route path="/onboarding/digital-seance" component={DigitalSeance} />
       <Route path="/onboarding/living-archive" component={LivingArchive} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/chat/:personaId" component={Chat} />
       
       {/* For Families */}
       <Route path="/create-first-persona" component={CreateFirstPersona} />
