@@ -23,6 +23,146 @@ export default function Chat() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  
+  // Track used responses to prevent repetition within 30 minutes (scoped by persona, persisted)
+  const [usedResponses, setUsedResponses] = useState<{personaId: string, text: string, timestamp: number}[]>([]);
+  const [dedupInitialized, setDedupInitialized] = useState(false);
+  
+  // Load persisted dedup state on mount
+  useEffect(() => {
+    if (!user?.id) {
+      setDedupInitialized(true);
+      return;
+    }
+    
+    try {
+      const storageKey = `dedup_${user.id}`;
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
+        // Only load entries from the last 30 minutes
+        const recentEntries = parsed.filter((item: any) => item.timestamp > thirtyMinutesAgo);
+        setUsedResponses(recentEntries);
+      }
+    } catch (error) {
+      console.warn('Failed to load dedup state:', error);
+    } finally {
+      setDedupInitialized(true);
+    }
+  }, [user?.id]);
+  
+  // Persist dedup state changes to localStorage
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    try {
+      const storageKey = `dedup_${user.id}`;
+      localStorage.setItem(storageKey, JSON.stringify(usedResponses));
+    } catch (error) {
+      console.warn('Failed to persist dedup state:', error);
+    }
+  }, [user?.id, usedResponses]);
+  
+  // Helper function to get available responses (not used in last 30 minutes for this persona)
+  const getAvailableResponses = (allResponses: string[], onboardingData: any, responseType: 'welcome' | 'fallback', personaId: string): string[] => {
+    const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
+    
+    // Filter out recently used responses for this specific persona
+    const recentlyUsed = usedResponses
+      .filter(item => item.personaId === personaId && item.timestamp > thirtyMinutesAgo)
+      .map(item => item.text);
+    
+    const available = allResponses.filter(response => !recentlyUsed.includes(response));
+    
+    // If all responses have been used recently, synthesize new variants to avoid repeats
+    if (available.length === 0) {
+      const variants = synthesizeNewResponses(onboardingData, responseType, recentlyUsed);
+      // Guard against empty variants - create emergency fallbacks that don't repeat
+      if (variants.length === 0) {
+        return generateEmergencyFallbacks(onboardingData, recentlyUsed);
+      }
+      return variants;
+    }
+    
+    return available;
+  };
+  
+  // Synthesize new response variants when pool is exhausted
+  const synthesizeNewResponses = (onboardingData: any, responseType: 'welcome' | 'fallback', recentlyUsed: string[]): string[] => {
+    const greeting = onboardingData?.voiceCommunication?.usualGreeting || 'Hello';
+    const communicationStyle = onboardingData?.voiceCommunication?.communicationStyle?.[0] || 'direct';
+    const catchphrase = onboardingData?.voiceCommunication?.catchphrase;
+    const favoriteTopics = onboardingData?.contextBuilders?.favoriteTopics || [];
+    const traits = onboardingData?.adjectives || ['caring'];
+    
+    // Generate time-based and contextual variants
+    const hour = new Date().getHours();
+    const timeGreeting = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+    const isWeekend = [0, 6].includes(new Date().getDay());
+    
+    const variants = [
+      `${greeting}! Hope your ${timeGreeting} is going well.`,
+      `${greeting}! ${isWeekend ? 'How\'s your weekend?' : 'How\'s your week going?'}`,
+      `${greeting}! ${catchphrase ? catchphrase + ' ' : ''}Just checking in.`,
+      communicationStyle === 'playful' ? `${greeting}! What fun stuff have you been up to?` : `${greeting}! Hope things are good with you.`,
+      favoriteTopics.length > 1 ? `${greeting}! How are both ${favoriteTopics[0]} and ${favoriteTopics[1]} going?` : `${greeting}! Thinking about you.`,
+      `${greeting}! Hope you're being your usual ${traits[0] || 'wonderful'} self.`,
+      `${greeting}! It's good to connect with you ${timeGreeting}.`,
+      `${greeting}! ${communicationStyle === 'direct' ? 'Hope you\'re doing well.' : 'Hope you\'re having a good one!'}`
+    ];
+    
+    // Filter out any variants that match recently used responses
+    return variants.filter(variant => !recentlyUsed.includes(variant));
+  };
+  
+  // Generate emergency fallbacks when all pools are exhausted
+  const generateEmergencyFallbacks = (onboardingData: any, recentlyUsed: string[]): string[] => {
+    const greeting = onboardingData?.voiceCommunication?.usualGreeting || 'Hello';
+    const communicationStyle = onboardingData?.voiceCommunication?.communicationStyle?.[0] || 'direct';
+    const traits = onboardingData?.adjectives || ['caring'];
+    
+    // Generate multiple emergency templates to avoid repeats
+    const emergencyTemplates = [
+      `${greeting}! Good to connect with you.`,
+      `${greeting}! Nice to hear from you.`,
+      `${greeting}! Hope you're doing well.`,
+      `${greeting}! Always good to chat with you.`,
+      `${greeting}! Great to see you.`,
+      communicationStyle === 'playful' ? `${greeting}! What's up?` : `${greeting}! How are you?`,
+      `${greeting}! Hope things are good.`,
+      `${greeting}! Good to catch up.`,
+      traits.length > 0 ? `${greeting}! Hope you're staying ${traits[0]}.` : `${greeting}! Take care.`,
+      `${greeting}! Thinking of you.`
+    ];
+    
+    // Filter out recently used emergency responses
+    const availableEmergency = emergencyTemplates.filter(template => !recentlyUsed.includes(template));
+    
+    // If even emergency templates are exhausted, generate time-based unique variants
+    if (availableEmergency.length === 0) {
+      const timestamp = Date.now();
+      const uniqueVariant = `${greeting}! Good to connect (${timestamp.toString().slice(-4)}).`;
+      return [uniqueVariant];
+    }
+    
+    return availableEmergency;
+  };
+  
+  // Track when a response is used (scoped by persona)
+  const markResponseUsed = (responseText: string, personaId: string) => {
+    setUsedResponses(prev => [...prev, { personaId, text: responseText, timestamp: Date.now() }]);
+  };
+  
+  // Clean up old responses periodically to prevent memory bloat
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
+      setUsedResponses(prev => prev.filter(item => item.timestamp > thirtyMinutesAgo));
+    }, 5 * 60 * 1000); // Clean up every 5 minutes
+    
+    return () => clearInterval(cleanupInterval);
+  }, []);
 
   // Fetch persona data
   const { data: persona, isLoading: personaLoading } = useQuery<Persona>({
@@ -37,9 +177,9 @@ export default function Chat() {
     }
   }, [user, loading, setLocation]);
 
-  // Initialize first conversation with persona
+  // Initialize first conversation with persona (wait for dedup state to load)
   useEffect(() => {
-    if (persona && chatMessages.length === 0) {
+    if (persona && chatMessages.length === 0 && dedupInitialized) {
       const onboardingData = persona.onboardingData as any;
       const greeting = onboardingData?.voiceCommunication?.usualGreeting || "Hello";
       const traits = onboardingData?.adjectives?.slice(0, 2)?.join(' and ') || 'caring';
@@ -57,20 +197,33 @@ export default function Chat() {
         `${greeting}! ${communicationStyle === 'playful' ? 'What mischief are you up to?' : 'What have you been up to?'}`
       ];
       
+      // Select from available (non-recently-used) welcome messages
+      const availableWelcomes = getAvailableResponses(welcomeMessages, onboardingData, 'welcome', persona.id);
+      const selectedWelcome = availableWelcomes[Math.floor(Math.random() * availableWelcomes.length)];
+      
+      // Track that this welcome message was used
+      markResponseUsed(selectedWelcome, persona.id);
+      
       const welcomeMessage: ChatMessage = {
         id: Date.now(),
         sender: 'persona',
-        text: welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)],
+        text: selectedWelcome,
         timestamp: new Date()
       };
       setChatMessages([welcomeMessage]);
     }
-  }, [persona, chatMessages.length]);
+  }, [persona, chatMessages.length, dedupInitialized]);
 
   const generatePersonaResponse = async (userMessage: string, conversationHistory: ChatMessage[]): Promise<string> => {
     try {
       if (!persona) {
         throw new Error('No persona available');
+      }
+      
+      // Wait for deduplication state to be initialized
+      if (!dedupInitialized) {
+        console.warn('⚠️ Dedup not ready, waiting briefly...');
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       const onboardingData = persona?.onboardingData as any;
@@ -201,6 +354,30 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). V
         throw new Error('No response content received from API');
       }
       
+      // Check if API response was recently used and mark it as used
+      if (persona) {
+        const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
+        const recentlyUsed = usedResponses
+          .filter(item => item.personaId === persona.id && item.timestamp > thirtyMinutesAgo)
+          .map(item => item.text);
+        
+        // If API response was recently used, generate a fallback instead
+        if (recentlyUsed.includes(data.response)) {
+          console.warn('⚠️ API response was recently used, generating fallback');
+          const fallbackResponse = getAvailableResponses(
+            [`${onboardingData?.voiceCommunication?.usualGreeting || 'Hello'}! That's interesting - tell me more.`],
+            onboardingData, 
+            'fallback', 
+            persona.id
+          )[0];
+          markResponseUsed(fallbackResponse, persona.id);
+          return fallbackResponse;
+        }
+        
+        // Mark the unique API response as used
+        markResponseUsed(data.response, persona.id);
+      }
+      
       return data.response;
     } catch (error) {
       console.error('❌ Error generating persona response:', error);
@@ -231,7 +408,14 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). V
         `${greeting}! Been wondering about you. What's been keeping you busy?`
       ];
       
-      return fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+      // Select from available (non-recently-used) fallback responses
+      const availableFallbacks = getAvailableResponses(fallbackResponses, onboardingData, 'fallback', persona.id);
+      const selectedFallback = availableFallbacks[Math.floor(Math.random() * availableFallbacks.length)];
+      
+      // Track that this fallback response was used
+      markResponseUsed(selectedFallback, persona.id);
+      
+      return selectedFallback;
     }
   };
 
