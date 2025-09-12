@@ -56,7 +56,7 @@ export default function AIGuidedInterview() {
   const [relationship, setRelationship] = useState('');
   const [emotionalState, setEmotionalState] = useState('');
   const [currentQuestion, setCurrentQuestion] = useState('');
-  const [conversationHistory, setConversationHistory] = useState<Array<{speaker: string, message: string, timestamp: Date}>>([]);
+  const [conversationHistory, setConversationHistory] = useState<Array<{speaker: string, message: string, timestamp: string}>>([]);
   const [userResponse, setUserResponse] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isCreatingPersona, setIsCreatingPersona] = useState(false);
@@ -78,20 +78,7 @@ export default function AIGuidedInterview() {
   // Create persona mutation
   const createPersonaMutation = useMutation({
     mutationFn: async (personaData: any) => {
-      const response = await fetch('/api/personas', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-Id': user?.id || '',
-        },
-        body: JSON.stringify(personaData),
-        credentials: 'include',
-      });
-      
-      if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
-      }
-      
+      const response = await apiRequest('POST', '/api/personas', personaData);
       return response.json();
     },
     onSuccess: (persona) => {
@@ -103,20 +90,7 @@ export default function AIGuidedInterview() {
   // Create onboarding session mutation
   const createSessionMutation = useMutation({
     mutationFn: async (sessionData: any) => {
-      const response = await fetch('/api/onboarding-sessions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-Id': user?.id || '',
-        },
-        body: JSON.stringify(sessionData),
-        credentials: 'include',
-      });
-      
-      if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
-      }
-      
+      const response = await apiRequest('POST', '/api/onboarding-sessions', sessionData);
       return response.json();
     },
     onSuccess: (session) => {
@@ -128,24 +102,12 @@ export default function AIGuidedInterview() {
   // Update session mutation
   const updateSessionMutation = useMutation({
     mutationFn: async ({ sessionId, updates }: { sessionId: string; updates: any }) => {
-      const response = await fetch(`/api/onboarding-sessions/${sessionId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-Id': user?.id || '',
-        },
-        body: JSON.stringify(updates),
-        credentials: 'include',
-      });
-      
-      if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
-      }
-      
+      const response = await apiRequest('PUT', `/api/onboarding-sessions/${sessionId}`, updates);
       return response.json();
     },
     onSuccess: (session) => {
       setCurrentSession(session);
+      queryClient.invalidateQueries({ queryKey: ['/api/onboarding-sessions/ai-guided-interview'] });
     },
   });
 
@@ -211,7 +173,7 @@ export default function AIGuidedInterview() {
   }, [existingSession]);
 
   useEffect(() => {
-    if (interviewStarted && currentQuestion === '') {
+    if (interviewStarted && currentQuestion === '' && conversationHistory.length === 0) {
       // Start with a random opening question
       const randomQuestion = openingQuestions[Math.floor(Math.random() * openingQuestions.length)];
       setCurrentQuestion(randomQuestion.replace('{name}', personaName));
@@ -220,10 +182,10 @@ export default function AIGuidedInterview() {
       setConversationHistory([{
         speaker: 'Sarah',
         message: `Hello, I'm Sarah, and I'll be helping you share memories of ${personaName}. This will feel like talking to a friend who truly wants to understand who they were. We can pause anytime, and everything you share stays private until you decide otherwise. ${randomQuestion.replace('{name}', personaName)}`,
-        timestamp: new Date()
+        timestamp: new Date().toISOString()
       }]);
     }
-  }, [interviewStarted, personaName]);
+  }, [interviewStarted, personaName, conversationHistory.length]);
 
   const handleNextStep = async () => {
     if (currentStep < interviewSteps.length - 1) {
@@ -282,21 +244,13 @@ export default function AIGuidedInterview() {
       // Update persona status to completed
       if (currentPersona) {
         try {
-          await fetch(`/api/personas/${currentPersona.id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-User-Id': user?.id || '',
+          await apiRequest('PUT', `/api/personas/${currentPersona.id}`, {
+            status: 'completed',
+            onboardingData: {
+              ...(currentPersona.onboardingData || {}),
+              conversationHistory,
+              completedAt: new Date().toISOString(),
             },
-            body: JSON.stringify({
-              status: 'completed',
-              onboardingData: {
-                ...(currentPersona.onboardingData || {}),
-                conversationHistory,
-                completedAt: new Date().toISOString(),
-              },
-            }),
-            credentials: 'include',
           });
         } catch (error) {
           console.error('Error updating persona status:', error);
@@ -387,7 +341,7 @@ export default function AIGuidedInterview() {
     const newHistory = [...conversationHistory, {
       speaker: 'You',
       message: userResponse,
-      timestamp: new Date()
+      timestamp: new Date().toISOString()
     }];
 
     // Generate Sarah's follow-up question
@@ -427,7 +381,7 @@ export default function AIGuidedInterview() {
       const updatedHistory = [...newHistory, {
         speaker: 'Sarah',
         message: newQuestion,
-        timestamp: new Date()
+        timestamp: new Date().toISOString()
       }];
       
       setConversationHistory(updatedHistory);
@@ -493,7 +447,7 @@ export default function AIGuidedInterview() {
     setConversationHistory([...conversationHistory, {
       speaker: 'Sarah',
       message: "I can see this is bringing up a lot of emotions. That's completely natural and shows how much love you have for them. Would you like to take a break, or shall we continue gently?",
-      timestamp: new Date()
+      timestamp: new Date().toISOString()
     }]);
   };
 
