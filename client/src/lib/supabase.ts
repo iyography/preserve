@@ -9,7 +9,10 @@ if (!supabaseUrl || !supabaseKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
-    redirectTo: `${window.location.origin}/confirm-email`
+    redirectTo: `${window.location.origin}/confirm-email`,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
   }
 })
 
@@ -43,12 +46,17 @@ export const authHelpers = {
 
   // Sign in user
   async signIn(email: string, password: string) {
+    console.log('Supabase signIn called with:', { email });
+    
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
     })
     
+    console.log('Supabase signIn response:', { data, error });
+    
     if (error) {
+      console.error('Supabase signIn error:', error);
       throw new Error(error.message)
     }
     
