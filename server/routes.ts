@@ -356,6 +356,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Chat Generation Endpoint
+  app.post('/api/chat/generate', verifyJWT, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { message, personalityContext, conversationHistory, personaName } = req.body;
+
+      if (!message || !personalityContext || !personaName) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+
+      const openaiKey = process.env.OPENAI_API_KEY;
+      if (!openaiKey) {
+        console.error('OpenAI API key not found');
+        return res.status(500).json({ error: 'AI service not configured' });
+      }
+
+      const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: personalityContext
+            },
+            {
+              role: 'user',
+              content: `Recent conversation:\n${conversationHistory}\n\nLatest message: ${message}\n\nRespond as ${personaName} would, staying true to their personality and speaking patterns.`
+            }
+          ],
+          max_tokens: 300,
+          temperature: 0.8,
+        }),
+      });
+
+      if (!openaiResponse.ok) {
+        console.error('OpenAI API error:', await openaiResponse.text());
+        return res.status(500).json({ error: 'Failed to generate response' });
+      }
+
+      const data = await openaiResponse.json();
+      const response = data.choices[0]?.message?.content || 'I\'m having trouble connecting right now, but I\'m still here with you.';
+
+      res.json({ response });
+    } catch (error) {
+      console.error('Error generating chat response:', error);
+      res.status(500).json({ error: 'Failed to generate response' });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

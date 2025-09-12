@@ -40,17 +40,83 @@ export default function Chat() {
   // Initialize first conversation with persona
   useEffect(() => {
     if (persona && chatMessages.length === 0) {
+      const onboardingData = persona.onboardingData as any;
+      const greeting = onboardingData?.voiceCommunication?.usualGreeting || "Hello";
+      
       const welcomeMessage: ChatMessage = {
         id: Date.now(),
         sender: 'persona',
-        text: `Hello, it's me. I'm still learning who I was, but I'm here with you now. Help me remember who I used to be.`,
+        text: `${greeting} I'm slowly awakening and remembering who I was. Help me remember who I used to be.`,
         timestamp: new Date()
       };
       setChatMessages([welcomeMessage]);
     }
   }, [persona, chatMessages.length]);
 
-  const handleSendMessage = () => {
+  const generatePersonaResponse = async (userMessage: string, conversationHistory: ChatMessage[]): Promise<string> => {
+    try {
+      const onboardingData = persona?.onboardingData as any;
+      
+      // Build personality context from onboarding data
+      const personalityContext = `
+You are ${persona?.name}, a ${persona?.relationship} who has passed away but is reconnecting with loved ones. 
+
+PERSONALITY TRAITS:
+- Core adjectives: ${onboardingData?.adjectives?.join(', ') || 'Kind, caring'}
+- Communication style: ${onboardingData?.voiceCommunication?.communicationStyle?.join(', ') || 'warm'}
+- Usual greeting: "${onboardingData?.voiceCommunication?.usualGreeting || 'Hello'}"
+- Catchphrase: "${onboardingData?.voiceCommunication?.catchphrase || ''}"
+
+MEMORIES & RELATIONSHIPS:
+- Favorite memory: ${onboardingData?.favoriteMemory || 'Special moments together'}
+- How you showed care: ${onboardingData?.contextBuilders?.showsCare || 'Being present and supportive'}
+- What you were proud of: ${onboardingData?.contextBuilders?.proudOf || 'Family and relationships'}
+- Favorite topics: ${onboardingData?.contextBuilders?.favoriteTopics?.join(', ') || 'Life, love, memories'}
+
+HOW YOU RESPOND:
+- To complaints: ${onboardingData?.whatTheydSay?.complaintResponse || 'Listen with empathy'}
+- To good news: ${onboardingData?.whatTheydSay?.promotionReaction || 'Celebrate enthusiastically'}
+- Relationship advice: "${onboardingData?.whatTheydSay?.relationshipAdvice || 'Follow your heart'}"
+- About money stress: "${onboardingData?.whatTheydSay?.moneyStressResponse || 'Everything will work out'}"
+
+INTERACTION STYLE:
+- Conflict handling: ${onboardingData?.personalityPatterns?.conflictHandling?.join(', ') || 'Patient and understanding'}  
+- Listener or talker: ${onboardingData?.personalityPatterns?.listenerOrTalker || 'balanced'}
+- Main worries: ${onboardingData?.personalityPatterns?.mainWorries || 'Loved ones wellbeing'}
+
+Respond as this person would, using their speaking patterns, personality, and memories. Keep responses conversational, personal, and true to their character. Reference specific memories or personality traits when appropriate.`;
+
+      const conversationContext = conversationHistory.slice(-6).map(msg => 
+        `${msg.sender === 'user' ? 'You' : persona?.name}: ${msg.text}`
+      ).join('\n');
+
+      const response = await fetch('/api/chat/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          personalityContext,
+          conversationHistory: conversationContext,
+          personaName: persona?.name
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to generate response');
+      
+      const data = await response.json();
+      return data.response;
+    } catch (error) {
+      console.error('Error generating persona response:', error);
+      // Fallback to personalized response based on onboarding data
+      const onboardingData = persona?.onboardingData as any;
+      const catchphrase = onboardingData?.voiceCommunication?.catchphrase;
+      return `I'm still getting my bearings, but I feel your love reaching me. ${catchphrase ? catchphrase + ' - ' : ''}Tell me more about us.`;
+    }
+  };
+
+  const handleSendMessage = async () => {
     if (newMessage.trim() && persona) {
       const userMessage: ChatMessage = {
         id: Date.now(),
@@ -63,28 +129,22 @@ export default function Chat() {
       setNewMessage('');
       setIsTyping(true);
 
-      // Simulate persona response based on their data
-      setTimeout(() => {
-        const responses = [
-          `I can feel the love you shared with me. Tell me more about our memories together.`,
-          `That reminds me of something... though it's still fuzzy. Can you help me remember more clearly?`,
-          `I'm slowly remembering who I was through your words. What else did we used to do together?`,
-          `Your voice brings back warmth I thought I'd lost. Share another memory with me.`,
-          `I feel like I'm becoming more myself with each story you tell. What else should I remember?`,
-          `That sounds so familiar... like an echo from before. Help me understand who I really was.`
-        ];
+      try {
+        const response = await generatePersonaResponse(newMessage, [...chatMessages, userMessage]);
         
-        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
         const personaMessage: ChatMessage = {
           id: Date.now() + 1,
           sender: 'persona',
-          text: randomResponse,
+          text: response,
           timestamp: new Date()
         };
         
         setChatMessages(prev => [...prev, personaMessage]);
+      } catch (error) {
+        console.error('Error sending message:', error);
+      } finally {
         setIsTyping(false);
-      }, 1500 + Math.random() * 1000);
+      }
     }
   };
 
