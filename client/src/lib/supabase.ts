@@ -17,6 +17,8 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
 export const authHelpers = {
   // Sign up new user
   async signUp(email: string, password: string, userData: { first_name: string; last_name: string }) {
+    console.log('Supabase signUp called with:', { email, userData });
+    
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -29,7 +31,10 @@ export const authHelpers = {
       }
     })
     
+    console.log('Supabase signUp response:', { data, error });
+    
     if (error) {
+      console.error('Supabase signUp error:', error);
       throw new Error(error.message)
     }
     

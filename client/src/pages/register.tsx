@@ -30,8 +30,10 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Registration form submitted with:', { email: formData.email, firstName: formData.firstName, lastName: formData.lastName });
     
     if (formData.password !== formData.confirmPassword) {
+      console.log('Password mismatch error');
       toast({
         variant: "destructive",
         title: "Password Mismatch",
@@ -41,6 +43,7 @@ export default function Register() {
     }
 
     if (formData.password.length < 6) {
+      console.log('Password too short error');
       toast({
         variant: "destructive",
         title: "Password Too Short",
@@ -50,12 +53,15 @@ export default function Register() {
     }
 
     setIsLoading(true);
+    console.log('Starting Supabase registration...');
 
     try {
-      await signUp(formData.email, formData.password, {
+      const result = await signUp(formData.email, formData.password, {
         first_name: formData.firstName,
         last_name: formData.lastName
       });
+      
+      console.log('Supabase registration successful:', result);
 
       toast({
         title: "Success!",
@@ -68,6 +74,7 @@ export default function Register() {
       }, 2000);
 
     } catch (error) {
+      console.error('Registration error:', error);
       toast({
         variant: "destructive",
         title: "Registration Failed",
