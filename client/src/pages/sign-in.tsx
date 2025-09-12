@@ -19,8 +19,8 @@ export default function SignIn() {
   const { toast } = useToast();
 
   const fillTestCredentials = () => {
-    setEmail('test@preservingconnections.app');
-    setPassword('testuser123');
+    setEmail('demo@gmail.com');
+    setPassword('demouser123');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -176,8 +176,8 @@ export default function SignIn() {
               {/* Test Credentials Info */}
               <div className="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-100">
                 <p className="text-xs text-purple-700 font-medium mb-1">Test Account:</p>
-                <p className="text-xs text-purple-600">Email: test@preservingconnections.app</p>
-                <p className="text-xs text-purple-600">Password: testuser123</p>
+                <p className="text-xs text-purple-600">Email: demo@gmail.com</p>
+                <p className="text-xs text-purple-600">Password: demouser123</p>
                 <p className="text-xs text-purple-500 mt-1 italic">Click "Fill Test Credentials" to use these</p>
               </div>
             </CardContent>
