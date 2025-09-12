@@ -7,7 +7,11 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('Missing Supabase environment variables. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your environment.')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    redirectTo: `${window.location.origin}/confirm-email`
+  }
+})
 
 // Auth helper functions
 export const authHelpers = {

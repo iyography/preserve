@@ -40,6 +40,7 @@ import PartnerWithUs from "@/pages/partner-with-us";
 import Waitlist from "@/pages/waitlist";
 
 import NotFound from "@/pages/not-found";
+import ConfirmEmail from "@/pages/confirm-email";
 
 function Router() {
   return (
@@ -47,6 +48,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/sign-in" component={SignIn} />
       <Route path="/register" component={Register} />
+      <Route path="/confirm-email" component={ConfirmEmail} />
       <Route path="/community" component={Community} />
       <Route path="/onboarding" component={Onboarding} />
       <Route path="/onboarding/ai-guided-interview" component={AIGuidedInterview} />
