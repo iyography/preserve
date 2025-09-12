@@ -9,7 +9,6 @@ if (!supabaseUrl || !supabaseKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
-    redirectTo: `${window.location.origin}/confirm-email`,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true
