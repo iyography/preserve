@@ -3,7 +3,16 @@ import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { insertPersonaSchema, insertOnboardingSessionSchema, insertPersonaMediaSchema } from "@shared/schema";
+import { 
+  insertPersonaSchema, 
+  insertOnboardingSessionSchema, 
+  insertPersonaMediaSchema,
+  insertConversationSchema,
+  insertMessageSchema,
+  insertMemorySchema,
+  insertFeedbackSchema,
+  insertPatternMetricsSchema
+} from "@shared/schema";
 import multer from "multer";
 import { randomUUID } from "crypto";
 import path from "path";

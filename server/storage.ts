@@ -5,12 +5,27 @@ import {
   type InsertPersonaMedia,
   type OnboardingSession,
   type InsertOnboardingSession,
+  type Conversation,
+  type InsertConversation,
+  type Message,
+  type InsertMessage,
+  type Memory,
+  type InsertMemory,
+  type Feedback,
+  type InsertFeedback,
+  type PatternMetrics,
+  type InsertPatternMetrics,
   personas,
   personaMedia,
-  onboardingSessions
+  onboardingSessions,
+  conversations,
+  messages,
+  memories,
+  feedback,
+  patternMetrics
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 // modify the interface with any CRUD methods
@@ -37,6 +52,40 @@ export interface IStorage {
   getOnboardingSessionsByUser(userId: string): Promise<OnboardingSession[]>;
   createOnboardingSession(session: InsertOnboardingSession): Promise<OnboardingSession>;
   updateOnboardingSession(id: string, userId: string, updates: Partial<OnboardingSession>): Promise<OnboardingSession | undefined>;
+
+  // Conversation methods
+  getConversation(id: string, userId: string): Promise<Conversation | undefined>;
+  getConversationsByUser(userId: string): Promise<Conversation[]>;
+  getConversationsByPersona(personaId: string, userId: string): Promise<Conversation[]>;
+  createConversation(conversation: InsertConversation): Promise<Conversation>;
+  updateConversation(id: string, userId: string, updates: Partial<Conversation>): Promise<Conversation | undefined>;
+  deleteConversation(id: string, userId: string): Promise<boolean>;
+
+  // Message methods
+  getMessagesByConversation(conversationId: string, userId: string): Promise<Message[]>;
+  createMessage(message: InsertMessage): Promise<Message>;
+  updateMessage(id: string, userId: string, updates: Partial<Message>): Promise<Message | undefined>;
+  deleteMessage(id: string, userId: string): Promise<boolean>;
+
+  // Memory methods
+  getMemoriesByPersona(personaId: string, userId: string, limit?: number): Promise<Memory[]>;
+  getMemoryById(id: string, userId: string): Promise<Memory | undefined>;
+  searchMemoriesByTag(personaId: string, userId: string, tags: string[]): Promise<Memory[]>;
+  createMemory(memory: InsertMemory): Promise<Memory>;
+  updateMemory(id: string, userId: string, updates: Partial<Memory>): Promise<Memory | undefined>;
+  deleteMemory(id: string, userId: string): Promise<boolean>;
+
+  // Feedback methods
+  getFeedbackByPersona(personaId: string, userId: string): Promise<Feedback[]>;
+  getFeedbackByConversation(conversationId: string, userId: string): Promise<Feedback[]>;
+  createFeedback(feedback: InsertFeedback): Promise<Feedback>;
+  updateFeedback(id: string, userId: string, updates: Partial<Feedback>): Promise<Feedback | undefined>;
+  deleteFeedback(id: string, userId: string): Promise<boolean>;
+
+  // Pattern metrics methods
+  getPatternMetrics(personaId: string, userId: string, metric?: string, window?: string): Promise<PatternMetrics[]>;
+  upsertPatternMetric(metric: InsertPatternMetrics, userId: string): Promise<PatternMetrics>;
+  deletePatternMetric(id: string, userId: string): Promise<boolean>;
 }
 
 // Database storage implementation
@@ -75,17 +124,53 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePersona(id: string, userId: string): Promise<boolean> {
-    // First delete all related onboarding sessions
+    // First verify the persona belongs to the user
+    const personaCheck = await db
+      .select({ id: personas.id })
+      .from(personas)
+      .where(and(eq(personas.id, id), eq(personas.userId, userId)));
+    
+    if (personaCheck.length === 0) {
+      return false; // Persona doesn't exist or doesn't belong to user
+    }
+
+    // Delete all related learning data in proper cascade order
+    // First delete feedback (depends on conversations, messages, memories)
+    await db
+      .delete(feedback)
+      .where(eq(feedback.personaId, id));
+    
+    // Delete pattern metrics
+    await db
+      .delete(patternMetrics)
+      .where(eq(patternMetrics.personaId, id));
+    
+    // Delete memories
+    await db
+      .delete(memories)
+      .where(eq(memories.personaId, id));
+    
+    // Delete all messages from conversations for this persona
+    await db
+      .delete(messages)
+      .where(sql`${messages.conversationId} IN (SELECT id FROM ${conversations} WHERE ${conversations.personaId} = ${id})`);
+    
+    // Delete conversations
+    await db
+      .delete(conversations)
+      .where(eq(conversations.personaId, id));
+    
+    // Delete onboarding sessions
     await db
       .delete(onboardingSessions)
       .where(eq(onboardingSessions.personaId, id));
     
-    // Then delete all related media
+    // Delete related media
     await db
       .delete(personaMedia)
       .where(eq(personaMedia.personaId, id));
     
-    // Finally delete the persona (only if it belongs to the authenticated user)
+    // Finally delete the persona
     const result = await db
       .delete(personas)
       .where(and(eq(personas.id, id), eq(personas.userId, userId)))
@@ -173,6 +258,369 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(onboardingSessions.id, id), eq(onboardingSessions.userId, userId)))
       .returning();
     return session || undefined;
+  }
+
+  // Conversation methods
+  async getConversation(id: string, userId: string): Promise<Conversation | undefined> {
+    const [conversation] = await db
+      .select()
+      .from(conversations)
+      .where(and(eq(conversations.id, id), eq(conversations.userId, userId)));
+    return conversation || undefined;
+  }
+
+  async getConversationsByUser(userId: string): Promise<Conversation[]> {
+    return await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.userId, userId))
+      .orderBy(desc(conversations.lastMessageAt));
+  }
+
+  async getConversationsByPersona(personaId: string, userId: string): Promise<Conversation[]> {
+    return await db
+      .select()
+      .from(conversations)
+      .where(and(eq(conversations.personaId, personaId), eq(conversations.userId, userId)))
+      .orderBy(desc(conversations.lastMessageAt));
+  }
+
+  async createConversation(insertConversation: InsertConversation): Promise<Conversation> {
+    // Verify the persona belongs to the user
+    const personaCheck = await db
+      .select({ id: personas.id })
+      .from(personas)
+      .where(and(eq(personas.id, insertConversation.personaId), eq(personas.userId, insertConversation.userId)));
+    
+    if (personaCheck.length === 0) {
+      throw new Error("Persona not found or access denied");
+    }
+
+    const [conversation] = await db
+      .insert(conversations)
+      .values(insertConversation)
+      .returning();
+    return conversation;
+  }
+
+  async updateConversation(id: string, userId: string, updates: Partial<Conversation>): Promise<Conversation | undefined> {
+    const [conversation] = await db
+      .update(conversations)
+      .set(updates)
+      .where(and(eq(conversations.id, id), eq(conversations.userId, userId)))
+      .returning();
+    return conversation || undefined;
+  }
+
+  async deleteConversation(id: string, userId: string): Promise<boolean> {
+    // First verify the conversation belongs to the user
+    const conversationCheck = await db
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(and(eq(conversations.id, id), eq(conversations.userId, userId)));
+    
+    if (conversationCheck.length === 0) {
+      return false; // Conversation doesn't exist or doesn't belong to user
+    }
+
+    // Now safe to delete all related messages
+    await db
+      .delete(messages)
+      .where(eq(messages.conversationId, id));
+    
+    // Then delete the conversation
+    const result = await db
+      .delete(conversations)
+      .where(and(eq(conversations.id, id), eq(conversations.userId, userId)))
+      .returning();
+    
+    return result.length > 0;
+  }
+
+  // Message methods
+  async getMessagesByConversation(conversationId: string, userId: string): Promise<Message[]> {
+    // First verify the conversation belongs to the user
+    const conversationCheck = await db
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(and(eq(conversations.id, conversationId), eq(conversations.userId, userId)));
+    
+    if (conversationCheck.length === 0) {
+      return []; // Conversation doesn't exist or doesn't belong to user
+    }
+
+    return await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(asc(messages.createdAt));
+  }
+
+  async createMessage(insertMessage: InsertMessage): Promise<Message> {
+    // Verify the conversation exists and belongs to the user (assuming userId will be provided via context)
+    // Note: This will need userId parameter when implementing API routes
+    const [message] = await db
+      .insert(messages)
+      .values(insertMessage)
+      .returning();
+    return message;
+  }
+
+  async updateMessage(id: string, userId: string, updates: Partial<Message>): Promise<Message | undefined> {
+    // First verify the message belongs to a conversation owned by the user
+    const messageCheck = await db
+      .select({ messageId: messages.id })
+      .from(messages)
+      .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+      .where(and(eq(messages.id, id), eq(conversations.userId, userId)));
+    
+    if (messageCheck.length === 0) {
+      return undefined; // Message doesn't exist or doesn't belong to user
+    }
+
+    const [message] = await db
+      .update(messages)
+      .set(updates)
+      .where(eq(messages.id, id))
+      .returning();
+    return message || undefined;
+  }
+
+  async deleteMessage(id: string, userId: string): Promise<boolean> {
+    // First verify the message belongs to a conversation owned by the user
+    const messageCheck = await db
+      .select({ messageId: messages.id })
+      .from(messages)
+      .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+      .where(and(eq(messages.id, id), eq(conversations.userId, userId)));
+    
+    if (messageCheck.length === 0) {
+      return false; // Message doesn't exist or doesn't belong to user
+    }
+
+    const result = await db.delete(messages).where(eq(messages.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Memory methods
+  async getMemoriesByPersona(personaId: string, userId: string, limit?: number): Promise<Memory[]> {
+    // First verify the persona belongs to the user
+    const personaCheck = await db
+      .select({ id: personas.id })
+      .from(personas)
+      .where(and(eq(personas.id, personaId), eq(personas.userId, userId)));
+    
+    if (personaCheck.length === 0) {
+      return []; // Persona doesn't exist or doesn't belong to user
+    }
+
+    const query = db
+      .select()
+      .from(memories)
+      .where(eq(memories.personaId, personaId))
+      .orderBy(desc(memories.salience), desc(memories.createdAt));
+
+    if (limit) {
+      return await query.limit(limit);
+    }
+    
+    return await query;
+  }
+
+  async getMemoryById(id: string, userId: string): Promise<Memory | undefined> {
+    const [memory] = await db
+      .select()
+      .from(memories)
+      .innerJoin(personas, eq(memories.personaId, personas.id))
+      .where(and(eq(memories.id, id), eq(personas.userId, userId)));
+    
+    return memory?.memories || undefined;
+  }
+
+  async searchMemoriesByTag(personaId: string, userId: string, tags: string[]): Promise<Memory[]> {
+    // First verify the persona belongs to the user
+    const personaCheck = await db
+      .select({ id: personas.id })
+      .from(personas)
+      .where(and(eq(personas.id, personaId), eq(personas.userId, userId)));
+    
+    if (personaCheck.length === 0) {
+      return []; // Persona doesn't exist or doesn't belong to user
+    }
+
+    // Use array overlap operator to check if any of the searched tags exist in the memory's tags
+    return await db
+      .select()
+      .from(memories)
+      .where(and(
+        eq(memories.personaId, personaId),
+        // Use PostgreSQL array overlap operator
+        sql`${memories.tags} && ${tags}`
+      ))
+      .orderBy(desc(memories.salience));
+  }
+
+  async createMemory(insertMemory: InsertMemory): Promise<Memory> {
+    // Note: Ownership verification will be handled at API layer with userId context
+    const [memory] = await db
+      .insert(memories)
+      .values(insertMemory)
+      .returning();
+    return memory;
+  }
+
+  async updateMemory(id: string, userId: string, updates: Partial<Memory>): Promise<Memory | undefined> {
+    // First verify the memory belongs to a persona owned by the user
+    const memoryCheck = await db
+      .select({ memoryId: memories.id })
+      .from(memories)
+      .innerJoin(personas, eq(memories.personaId, personas.id))
+      .where(and(eq(memories.id, id), eq(personas.userId, userId)));
+    
+    if (memoryCheck.length === 0) {
+      return undefined; // Memory doesn't exist or doesn't belong to user
+    }
+
+    const [memory] = await db
+      .update(memories)
+      .set(updates)
+      .where(eq(memories.id, id))
+      .returning();
+    return memory || undefined;
+  }
+
+  async deleteMemory(id: string, userId: string): Promise<boolean> {
+    // First verify the memory belongs to a persona owned by the user
+    const memoryCheck = await db
+      .select({ memoryId: memories.id })
+      .from(memories)
+      .innerJoin(personas, eq(memories.personaId, personas.id))
+      .where(and(eq(memories.id, id), eq(personas.userId, userId)));
+    
+    if (memoryCheck.length === 0) {
+      return false; // Memory doesn't exist or doesn't belong to user
+    }
+
+    const result = await db.delete(memories).where(eq(memories.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Feedback methods
+  async getFeedbackByPersona(personaId: string, userId: string): Promise<Feedback[]> {
+    return await db
+      .select()
+      .from(feedback)
+      .where(and(eq(feedback.personaId, personaId), eq(feedback.userId, userId)))
+      .orderBy(desc(feedback.createdAt));
+  }
+
+  async getFeedbackByConversation(conversationId: string, userId: string): Promise<Feedback[]> {
+    return await db
+      .select()
+      .from(feedback)
+      .where(and(eq(feedback.conversationId, conversationId), eq(feedback.userId, userId)))
+      .orderBy(desc(feedback.createdAt));
+  }
+
+  async createFeedback(insertFeedback: InsertFeedback): Promise<Feedback> {
+    // Note: Ownership verification will be handled at API layer with userId context
+    const [feedbackRecord] = await db
+      .insert(feedback)
+      .values(insertFeedback)
+      .returning();
+    return feedbackRecord;
+  }
+
+  async updateFeedback(id: string, userId: string, updates: Partial<Feedback>): Promise<Feedback | undefined> {
+    const [feedbackRecord] = await db
+      .update(feedback)
+      .set(updates)
+      .where(and(eq(feedback.id, id), eq(feedback.userId, userId)))
+      .returning();
+    return feedbackRecord || undefined;
+  }
+
+  async deleteFeedback(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(feedback)
+      .where(and(eq(feedback.id, id), eq(feedback.userId, userId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Pattern metrics methods
+  async getPatternMetrics(personaId: string, userId: string, metric?: string, window?: string): Promise<PatternMetrics[]> {
+    // First verify the persona belongs to the user
+    const personaCheck = await db
+      .select({ id: personas.id })
+      .from(personas)
+      .where(and(eq(personas.id, personaId), eq(personas.userId, userId)));
+    
+    if (personaCheck.length === 0) {
+      return []; // Persona doesn't exist or doesn't belong to user
+    }
+
+    const conditions = [eq(patternMetrics.personaId, personaId)];
+    if (metric) conditions.push(eq(patternMetrics.metric, metric));
+    if (window) conditions.push(eq(patternMetrics.window, window));
+
+    return await db
+      .select()
+      .from(patternMetrics)
+      .where(and(...conditions))
+      .orderBy(desc(patternMetrics.updatedAt));
+  }
+
+  async upsertPatternMetric(insertPatternMetrics: InsertPatternMetrics, userId: string): Promise<PatternMetrics> {
+    // First verify the persona belongs to the user
+    const personaCheck = await db
+      .select({ id: personas.id })
+      .from(personas)
+      .where(and(eq(personas.id, insertPatternMetrics.personaId), eq(personas.userId, userId)));
+    
+    if (personaCheck.length === 0) {
+      throw new Error("Persona not found or access denied");
+    }
+    // Now safe to try to update first
+    const [updated] = await db
+      .update(patternMetrics)
+      .set({ 
+        value: insertPatternMetrics.value, 
+        updatedAt: new Date() 
+      })
+      .where(and(
+        eq(patternMetrics.personaId, insertPatternMetrics.personaId),
+        eq(patternMetrics.metric, insertPatternMetrics.metric),
+        eq(patternMetrics.window, insertPatternMetrics.window)
+      ))
+      .returning();
+
+    if (updated) {
+      return updated;
+    }
+
+    // If no update, insert new
+    const [inserted] = await db
+      .insert(patternMetrics)
+      .values(insertPatternMetrics)
+      .returning();
+    return inserted;
+  }
+
+  async deletePatternMetric(id: string, userId: string): Promise<boolean> {
+    // First verify the pattern metric belongs to a persona owned by the user
+    const metricCheck = await db
+      .select({ metricId: patternMetrics.id })
+      .from(patternMetrics)
+      .innerJoin(personas, eq(patternMetrics.personaId, personas.id))
+      .where(and(eq(patternMetrics.id, id), eq(personas.userId, userId)));
+    
+    if (metricCheck.length === 0) {
+      return false; // Metric doesn't exist or doesn't belong to user
+    }
+
+    const result = await db.delete(patternMetrics).where(eq(patternMetrics.id, id)).returning();
+    return result.length > 0;
   }
 }
 
