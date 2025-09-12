@@ -172,15 +172,7 @@ export default function Dashboard() {
                 
                 <div className="flex space-x-3">
                   <Button 
-                    onClick={() => {
-                      console.log('Continue conversation clicked, currentPersona:', currentPersona);
-                      if (currentPersona) {
-                        console.log('Navigating to:', `/chat/${currentPersona.id}`);
-                        setLocation(`/chat/${currentPersona.id}`);
-                      } else {
-                        console.log('No currentPersona available');
-                      }
-                    }}
+                    onClick={() => currentPersona && setLocation(`/chat/${currentPersona.id}`)}
                     className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white shadow-lg"
                     data-testid="button-continue-conversation"
                   >

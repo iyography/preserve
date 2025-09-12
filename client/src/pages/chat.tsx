@@ -26,7 +26,7 @@ export default function Chat() {
 
   // Fetch persona data
   const { data: persona, isLoading: personaLoading } = useQuery<Persona>({
-    queryKey: ['/api/personas', params?.personaId],
+    queryKey: [`/api/personas/${params?.personaId}`],
     enabled: !!user && !!params?.personaId,
   });
 
