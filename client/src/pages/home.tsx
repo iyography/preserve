@@ -127,7 +127,7 @@ export default function Home() {
     ethics: [
       {
         question: "Is this meant to replace someone who's passed away?",
-        answer: "Absolutely not. Evermore is about honoring and preserving. Just like saving voicemails or watching old home videos — except now, those moments can talk back."
+        answer: "Absolutely not. Preserving Connections is about honoring and preserving. Just like saving voicemails or watching old home videos — except now, those moments can talk back."
       },
       {
         question: "Is this emotionally healthy?",
