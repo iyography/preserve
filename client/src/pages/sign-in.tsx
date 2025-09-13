@@ -9,17 +9,28 @@ import ParticleSystem from "@/components/ParticleSystem";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
 
 // Helper function to determine where to route user after sign-in
 async function determineUserRoute(): Promise<string> {
   try {
-    // Helper function to make authenticated requests
+    // Get the current session to extract the access token (same as apiRequest)
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // Helper function to make authenticated requests using the same pattern as apiRequest
     const makeAuthenticatedRequest = async (url: string) => {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add Authorization header if user is authenticated
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+      
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         credentials: 'include',
       });
       return response;
