@@ -1,79 +1,24 @@
 import { useState, useEffect } from "react";
-import { Heart, MessageCircle, Clock, Users, Sparkles, ArrowRight, ChevronLeft, Star, Shield, Brain, TreePine } from "lucide-react";
+import { Heart, Clock, ArrowRight, ChevronLeft, Shield, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import EmailConfirmationModal from "@/components/EmailConfirmationModal";
 
-interface OnboardingApproach {
-  id: string;
-  name: string;
-  subtitle: string;
-  description: string;
-  duration: string;
-  comfortLevel: 'gentle' | 'moderate' | 'deep' | 'collaborative';
-  icon: any;
-  features: string[];
-  recommended?: boolean;
-  premium?: boolean;
-}
-
-const approaches: OnboardingApproach[] = [
-  {
-    id: 'gradual-awakening',
-    name: 'Taking it slow',
-    subtitle: 'Start simple, grow together',
-    description: 'Begin with basic memories and watch your loved one\'s persona develop naturally over time through family contributions.',
-    duration: '3 minutes to start',
-    comfortLevel: 'gentle',
-    icon: TreePine,
-    features: [
-      'Minimal initial setup',
-      'Daily memory invitations',
-      'Family collaboration',
-      'Progressive sophistication'
-    ],
-    recommended: true
-  },
-  {
-    id: 'digital-seance',
-    name: 'Seeking profound connection',
-    subtitle: 'Sacred connection ritual',
-    description: 'A profound, ceremonial experience that honors the gravity of connecting with your loved one through structured ritual.',
-    duration: '45 minutes',
-    comfortLevel: 'deep',
-    icon: Sparkles,
-    features: [
-      'Sacred setup ceremony',
-      'Memory offering ritual',
-      'Guided first conversation',
-      'Maximum emotional impact'
-    ],
-    premium: true
-  },
-  {
-    id: 'living-archive',
-    name: 'Bringing others in',
-    subtitle: 'Community celebration',
-    description: 'Create a comprehensive life documentation with contributions from extended family, friends, and community members.',
-    duration: '15 minutes setup',
-    comfortLevel: 'collaborative',
-    icon: Users,
-    features: [
-      'Community contribution system',
-      'Professional life integration',
-      'Crowdsourced memory validation',
-      'Broad social engagement'
-    ]
-  }
-];
 
 
 export default function Onboarding() {
-  const [step, setStep] = useState<'welcome' | 'approach'>('welcome');
-  const [selectedApproach, setSelectedApproach] = useState<string>('');
+  const [step, setStep] = useState<'welcome' | 'essential'>('welcome');
+  // Essential info state
+  const [personaName, setPersonaName] = useState('');
+  const [relationship, setRelationship] = useState('');
+  const [adjectives, setAdjectives] = useState(['', '', '']);
+  const [favoriteMemory, setFavoriteMemory] = useState('');
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   
@@ -139,21 +84,26 @@ export default function Onboarding() {
       return;
     }
     
-    if (step === 'welcome') setStep('approach');
-    else if (step === 'approach') {
-      // Redirect to the specific approach flow
-      if (selectedApproach) {
-        setLocation(`/onboarding/${selectedApproach}`);
+    if (step === 'welcome') {
+      setStep('essential');
+    } else if (step === 'essential') {
+      // Validate essential info
+      if (!personaName || !relationship || adjectives.some(adj => !adj.trim()) || !favoriteMemory) {
+        return; // Stay on current step if validation fails
       }
+      // Redirect to gradual awakening with essential data populated
+      setLocation('/onboarding/gradual-awakening?step=tell-us-more');
     }
   };
 
   const handleBack = () => {
-    if (step === 'approach') setStep('welcome');
+    if (step === 'essential') setStep('welcome');
   };
 
   const canContinue = () => {
-    if (step === 'approach') return selectedApproach;
+    if (step === 'essential') {
+      return personaName && relationship && adjectives.every(adj => adj.trim()) && favoriteMemory;
+    }
     return true;
   };
 
@@ -254,99 +204,102 @@ export default function Onboarding() {
           </div>
         )}
 
-        {/* Approach Selection Step */}
-        {step === 'approach' && (
-          <div>
+        {/* Essential Information Step */}
+        {step === 'essential' && (
+          <div className="space-y-6">
             <div className="text-center mb-12">
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">Choose Your Path</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-4">Essential Information</h1>
               <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Each approach is designed to honor your loved one's memory in a meaningful way. 
-                Choose the one that feels right for you today.
+                Just the essentials to bring them back. We'll add more memories together over time.
               </p>
             </div>
 
-            <div className="grid gap-6 max-w-4xl mx-auto">
-              {approaches.map((approach) => {
-                const IconComponent = approach.icon;
-                return (
-                  <Card
-                    key={approach.id}
-                    className={`cursor-pointer transition-all duration-200 border-2 ${
-                      selectedApproach === approach.id
-                        ? 'border-purple-500 bg-purple-50/50 shadow-lg'
-                        : 'border-gray-200 bg-white/70 hover:border-purple-200 hover:shadow-md'
-                    } backdrop-blur-sm`}
-                    onClick={() => setSelectedApproach(approach.id)}
-                    data-testid={`card-approach-${approach.id}`}
-                  >
-                    <CardContent className="p-6">
-                      <div className="flex items-start space-x-6">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                          selectedApproach === approach.id
-                            ? 'bg-purple-500 text-white'
-                            : 'bg-purple-100 text-purple-600'
-                        }`}>
-                          <IconComponent className="w-6 h-6" />
-                        </div>
-                        
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <h3 className="text-xl font-semibold text-gray-900">{approach.name}</h3>
-                            {approach.recommended && (
-                              <Badge className="bg-green-100 text-green-700 border-green-200">
-                                <Star className="w-3 h-3 mr-1" />
-                                Recommended
-                              </Badge>
-                            )}
-                            {approach.premium && (
-                              <Badge className="bg-gradient-to-r from-purple-500 to-purple-700 text-white">
-                                Premium
-                              </Badge>
-                            )}
-                          </div>
-                          
-                          <p className="text-purple-600 font-medium mb-2">{approach.subtitle}</p>
-                          <p className="text-gray-600 mb-4">{approach.description}</p>
-                          
-                          <div className="flex items-center space-x-4 text-sm text-gray-500 mb-4">
-                            <div className="flex items-center space-x-1">
-                              <Clock className="w-4 h-4" />
-                              <span>{approach.duration}</span>
-                            </div>
-                          </div>
+            <Card className="bg-white/70 backdrop-blur-sm border-green-100 shadow-lg max-w-2xl mx-auto">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-3">
+                  <Heart className="w-6 h-6 text-green-600" />
+                  <span>Essential Details</span>
+                  <Badge variant="outline" className="ml-auto bg-green-50 text-green-700 border-green-200">
+                    <Clock className="w-3 h-3 mr-1" />
+                    3 minutes
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="personaName" className="text-sm font-medium text-gray-700">
+                      Their name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="personaName"
+                      placeholder="What did you call them?"
+                      value={personaName}
+                      onChange={(e) => setPersonaName(e.target.value)}
+                      className="border-green-200 focus:border-green-400"
+                      data-testid="input-persona-name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="relationship" className="text-sm font-medium text-gray-700">
+                      Your relationship <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="relationship"
+                      placeholder="e.g., mother, father, beloved friend"
+                      value={relationship}
+                      onChange={(e) => setRelationship(e.target.value)}
+                      className="border-green-200 focus:border-green-400"
+                      data-testid="input-relationship"
+                    />
+                  </div>
+                </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            {approach.features.map((feature, index) => (
-                              <div key={index} className="flex items-center space-x-2 text-sm text-gray-600">
-                                <div className="w-1.5 h-1.5 bg-purple-400 rounded-full"></div>
-                                <span>{feature}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                <div className="space-y-4">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Three words that describe them <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {adjectives.map((adjective, index) => (
+                      <Input
+                        key={index}
+                        placeholder={`Word ${index + 1}`}
+                        value={adjective}
+                        onChange={(e) => {
+                          const newAdjectives = [...adjectives];
+                          newAdjectives[index] = e.target.value;
+                          setAdjectives(newAdjectives);
+                        }}
+                        className="border-green-200 focus:border-green-400"
+                        data-testid={`input-adjective-${index + 1}`}
+                      />
+                    ))}
+                  </div>
+                </div>
 
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                          selectedApproach === approach.id
-                            ? 'border-purple-500 bg-purple-500'
-                            : 'border-gray-300'
-                        }`}>
-                          {selectedApproach === approach.id && (
-                            <div className="w-3 h-3 bg-white rounded-full"></div>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="favoriteMemory" className="text-sm font-medium text-gray-700">
+                    Share one favorite memory <span className="text-red-500">*</span>
+                  </Label>
+                  <Textarea
+                    id="favoriteMemory"
+                    placeholder="Tell us about a moment that captures who they were..."
+                    value={favoriteMemory}
+                    onChange={(e) => setFavoriteMemory(e.target.value)}
+                    rows={4}
+                    className="border-green-200 focus:border-green-400"
+                    data-testid="textarea-favorite-memory"
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
             <div className="flex justify-between mt-12 max-w-4xl mx-auto">
               <Button 
                 variant="outline" 
                 onClick={handleBack}
                 className="px-6"
-                data-testid="button-back-approach"
+                data-testid="button-back-essential"
               >
                 <ChevronLeft className="w-4 h-4 mr-2" />
                 Back
@@ -355,9 +308,9 @@ export default function Onboarding() {
                 onClick={handleNext}
                 disabled={!canContinue()}
                 className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-6"
-                data-testid="button-continue-approach"
+                data-testid="button-continue-essential"
               >
-                Start My Journey
+                Continue to Tell Us More
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
