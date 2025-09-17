@@ -9,7 +9,6 @@ import Register from "@/pages/register";
 import Dashboard from "@/pages/dashboard";
 import Community from "@/pages/community";
 import Onboarding from "@/pages/onboarding";
-import AIGuidedInterview from "@/pages/ai-guided-interview";
 import GradualAwakening from "@/pages/gradual-awakening";
 import DigitalSeance from "@/pages/digital-seance";
 import LivingArchive from "@/pages/living-archive";
@@ -52,7 +51,6 @@ function Router() {
       <Route path="/email-confirmed" component={EmailConfirmed} />
       <Route path="/community" component={Community} />
       <Route path="/onboarding" component={Onboarding} />
-      <Route path="/onboarding/ai-guided-interview" component={AIGuidedInterview} />
       <Route path="/onboarding/gradual-awakening" component={GradualAwakening} />
       <Route path="/onboarding/digital-seance" component={DigitalSeance} />
       <Route path="/onboarding/living-archive" component={LivingArchive} />

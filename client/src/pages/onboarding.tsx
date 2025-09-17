@@ -39,22 +39,6 @@ const approaches: OnboardingApproach[] = [
     recommended: true
   },
   {
-    id: 'ai-guided-interview',
-    name: 'Ready to share', 
-    subtitle: 'Therapeutic conversation',
-    description: 'An empathetic AI interviewer guides you through sharing memories in a natural, supportive conversation.',
-    duration: '35-60 minutes',
-    comfortLevel: 'moderate',
-    icon: MessageCircle,
-    features: [
-      'Natural conversation flow',
-      'Real-time persona building',
-      'Emotional safety protocols',
-      'Live persona testing'
-    ],
-    recommended: true
-  },
-  {
     id: 'digital-seance',
     name: 'Seeking profound connection',
     subtitle: 'Sacred connection ritual',
@@ -97,9 +81,15 @@ export default function Onboarding() {
   // Email confirmation handling
   const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
   const [emailConfirmed, setEmailConfirmed] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>('');
   
   // Check URL parameters for email confirmation status
   useEffect(() => {
+    // Store user email when available
+    if (user?.email) {
+      setUserEmail(user.email);
+    }
+    
     const urlParams = new URLSearchParams(window.location.search);
     const emailConfirmedParam = urlParams.get('email_confirmed');
     const emailErrorParam = urlParams.get('email_confirmation_error');
@@ -112,11 +102,11 @@ export default function Onboarding() {
     } else if (emailErrorParam === 'true') {
       console.error('Email confirmation error:', errorMessage);
       setShowEmailConfirmation(true);
-    } else if (!user?.email_confirmed_at) {
-      // Show confirmation modal if email is not confirmed
+    } else if (!user?.email_confirmed_at && !emailConfirmed) {
+      // Show confirmation modal only if email is truly not confirmed
       setShowEmailConfirmation(true);
     }
-  }, [user]);
+  }, [user, emailConfirmed]);
   
   // Handle email confirmation resend
   const [isResending, setIsResending] = useState(false);
@@ -392,7 +382,7 @@ export default function Onboarding() {
             setShowEmailConfirmation(false);
           }
         }}
-        email={user?.email || ''}
+        email={userEmail || user?.email || ''}
         onResend={handleResendEmail}
         isResending={isResending}
       />
