@@ -19,6 +19,7 @@ import path from "path";
 import fs from "fs/promises";
 import { Storage } from "@google-cloud/storage";
 import { verifyJWT, type AuthenticatedRequest } from "./middleware/auth";
+import { EmailService } from "./services/email";
 
 // Extend AuthenticatedRequest interface to include file property
 interface AuthenticatedMulterRequest extends AuthenticatedRequest {
@@ -69,11 +70,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.head('/api', (req, res) => {
     res.status(200).end();
   });
-  
+
   // Middleware to parse JSON
   app.use('/api', express.json());
+
+  // Test email endpoint (no auth required) - placed after JSON parsing
+  app.post('/api/test-email', async (req, res) => {
+    try {
+      const { to, subject, message } = req.body;
+
+      if (!to) {
+        return res.status(400).json({ error: 'Email address is required' });
+      }
+
+      const emailSubject = subject || 'Test Email from Preserving Connections';
+      const emailMessage = message || `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #7c3aed;">Test Email Confirmation</h1>
+          <p>This is a test email to confirm that the Resend integration is working properly with Preserving Connections.</p>
+          <p>If you're receiving this email, it means:</p>
+          <ul>
+            <li>✅ Resend API key is configured correctly</li>
+            <li>✅ Email service is operational</li>
+            <li>✅ Emails are being sent from support@preservingconnections.com</li>
+          </ul>
+          <p>The email service is now ready for production use!</p>
+          <p>Best regards,<br>The Preserving Connections Team</p>
+        </div>
+      `;
+
+      const result = await EmailService.sendNotificationEmail(to, emailSubject, emailMessage);
+
+      if (result && result.success) {
+        res.json({ 
+          success: true, 
+          message: 'Test email sent successfully',
+          emailId: result.data?.id
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          error: 'Failed to send test email',
+          details: result?.error || 'Unknown error'
+        });
+      }
+    } catch (error) {
+      console.error('Test email endpoint error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
   
-  // Apply JWT verification to all protected routes (except health check)
+  // Apply JWT verification to all protected routes 
   app.use('/api/*', verifyJWT);
   
   // Personas API - All routes now properly authenticated and authorized

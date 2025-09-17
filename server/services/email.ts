@@ -15,7 +15,7 @@ export class EmailService {
 
     try {
       const { data, error } = await resend.emails.send({
-        from: 'noreply@preservingconnections.app', // Update with your domain
+        from: 'support@preservingconnections.com',
         to: [to],
         subject: 'Welcome to Preserving Connections',
         html: `
@@ -53,7 +53,7 @@ export class EmailService {
 
     try {
       const { data, error } = await resend.emails.send({
-        from: 'notifications@preservingconnections.app', // Update with your domain
+        from: 'support@preservingconnections.com',
         to: [to],
         subject,
         html: content,
