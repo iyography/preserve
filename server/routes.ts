@@ -276,8 +276,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Apply JWT verification to all protected routes 
-  app.use('/api/*', verifyJWT);
+  // Apply JWT verification to all protected routes (except confirmation endpoints)
+  app.use('/api/*', (req, res, next) => {
+    // Skip JWT verification for specific routes
+    const skipAuthRoutes = ['/api', '/api/send-confirmation', '/api/confirm-email'];
+    
+    if (skipAuthRoutes.includes(req.path)) {
+      return next();
+    }
+    
+    return verifyJWT(req as AuthenticatedRequest, res, next);
+  });
   
   // Personas API - All routes now properly authenticated and authorized
   app.get('/api/personas', async (req: AuthenticatedRequest, res) => {
