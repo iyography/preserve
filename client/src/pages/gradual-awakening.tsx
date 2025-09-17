@@ -1,29 +1,48 @@
 import { useState } from "react";
-import { Heart, Clock, ArrowRight, ChevronLeft, TreePine, Calendar, Sparkles } from "lucide-react";
+import { Heart, Clock, ArrowRight, ChevronLeft, TreePine, Calendar, Sparkles, Upload, MessageCircle, User, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 // Simplified types
 type GradualStep = 'minimal-start' | 'daily-invitations' | 'natural-growth';
+type MinimalSubStep = 'essentials' | 'communication-style' | 'finalize-personality';
 type MemoryCadence = 'daily' | 'every-few-days' | 'weekly';
+type TextingStyle = 'formal' | 'casual' | 'lots-of-emojis' | 'abbreviated' | 'dramatic' | 'dry-humor';
+type ListenerTalker = 'listener' | 'talker' | 'balanced';
+type ConflictStyle = 'avoided-it' | 'tackled-head-on' | 'made-jokes' | 'got-quiet' | 'needed-time';
 
 export default function GradualAwakening() {
   const [step, setStep] = useState<GradualStep>('minimal-start');
+  const [minimalSubStep, setMinimalSubStep] = useState<MinimalSubStep>('essentials');
   
-  // Basic persona info
+  // Basic persona info - Essentials sub-step
   const [personaName, setPersonaName] = useState('');
   const [relationship, setRelationship] = useState('');
   const [adjectives, setAdjectives] = useState(['', '', '']);
   const [favoriteMemory, setFavoriteMemory] = useState('');
+  
+  // Communication Style - Communication sub-step
+  const [usualGreeting, setUsualGreeting] = useState('');
+  const [catchphrase, setCatchphrase] = useState('');
+  const [textingStyles, setTextingStyles] = useState<TextingStyle[]>([]);
+  const [listenerTalker, setListenerTalker] = useState<ListenerTalker>('balanced');
+  const [conflictStyles, setConflictStyles] = useState<ConflictStyle[]>([]);
+  const [whatMadeThemLaugh, setWhatMadeThemLaugh] = useState('');
+  const [whatTheyWorried, setWhatTheyWorried] = useState('');
+  
+  // Finalize Personality - Final sub-step
+  const [finalNotes, setFinalNotes] = useState('');
   
   // Daily setup
   const [cadence, setCadence] = useState<MemoryCadence>('every-few-days');
@@ -33,11 +52,96 @@ export default function GradualAwakening() {
   const { toast } = useToast();
 
   // Calculate progress
-  const progress = step === 'minimal-start' ? 33 : step === 'daily-invitations' ? 66 : 100;
+  const getStepProgress = () => {
+    if (step === 'minimal-start') {
+      // Sub-step progress within minimal start (0-33%)
+      if (minimalSubStep === 'essentials') return 11;
+      if (minimalSubStep === 'communication-style') return 22;
+      if (minimalSubStep === 'finalize-personality') return 30;
+      return 33;
+    }
+    if (step === 'daily-invitations') return 66;
+    if (step === 'natural-growth') return 100;
+    return 0;
+  };
+  const progress = getStepProgress();
+  
+  // Helper functions for multi-select toggles
+  const toggleTextingStyle = (style: TextingStyle) => {
+    setTextingStyles(prev => 
+      prev.includes(style) 
+        ? prev.filter(s => s !== style)
+        : [...prev, style]
+    );
+  };
+  
+  const toggleConflictStyle = (style: ConflictStyle) => {
+    setConflictStyles(prev => 
+      prev.includes(style) 
+        ? prev.filter(s => s !== style)
+        : [...prev, style]
+    );
+  };
 
   const handleNext = async () => {
     if (step === 'minimal-start') {
-      setStep('daily-invitations');
+      if (minimalSubStep === 'essentials') {
+        setMinimalSubStep('communication-style');
+      } else if (minimalSubStep === 'communication-style') {
+        setMinimalSubStep('finalize-personality');
+      } else if (minimalSubStep === 'finalize-personality') {
+        // Move to Daily Invitations step
+        setStep('daily-invitations');
+        // Store all collected data in proper structure for PersonaPromptBuilder
+        const onboardingData = {
+          voiceCommunication: {
+            usualGreeting: usualGreeting || "Hello",
+            communicationStyle: textingStyles.length > 0 ? textingStyles : ['casual'],
+            catchphrase: catchphrase
+          },
+          contextBuilders: {
+            favoriteTopics: [],
+            hobbies: [],
+            supportStyle: listenerTalker === 'listener' ? 'listening' : listenerTalker === 'talker' ? 'advising' : 'balanced conversation',
+            importantValues: [],
+            dailyRoutines: [],
+            uniqueQuirks: [whatMadeThemLaugh, whatTheyWorried].filter(Boolean)
+          },
+          adjectives: adjectives.filter(Boolean),
+          relationship: {
+            howWeMet: "",
+            petNames: [],
+            insideJokes: [],
+            specialMemories: favoriteMemory ? [favoriteMemory] : [],
+            conflictResolution: conflictStyles.map(style => {
+              const styleMap: Record<ConflictStyle, string> = {
+                'avoided-it': 'avoided conflict',
+                'tackled-head-on': 'addressed directly',
+                'made-jokes': 'used humor',
+                'got-quiet': 'withdrew quietly',
+                'needed-time': 'needed time to process'
+              };
+              return styleMap[style];
+            }).join(', ') || 'balanced approach',
+            sharedDreams: []
+          },
+          storyTelling: {
+            specialPhrases: catchphrase ? [catchphrase] : [],
+            celebrationStyle: "",
+            memorableStories: favoriteMemory ? [favoriteMemory] : [],
+            sharedExperiences: []
+          },
+          recentContext: {
+            recentEvents: [],
+            lastConversationTopics: [],
+            currentConcerns: whatTheyWorried ? [whatTheyWorried] : [],
+            upcomingPlans: [],
+            additionalNotes: finalNotes
+          }
+        };
+        // This data would be saved to the database
+        console.log('Onboarding data prepared:', onboardingData);
+      }
     } else if (step === 'daily-invitations') {
       setStep('natural-growth');
     } else if (step === 'natural-growth') {
@@ -51,11 +155,28 @@ export default function GradualAwakening() {
   };
 
   const handleBack = () => {
-    if (step === 'daily-invitations') {
+    if (step === 'minimal-start') {
+      if (minimalSubStep === 'communication-style') {
+        setMinimalSubStep('essentials');
+      } else if (minimalSubStep === 'finalize-personality') {
+        setMinimalSubStep('communication-style');
+      }
+    } else if (step === 'daily-invitations') {
       setStep('minimal-start');
+      setMinimalSubStep('finalize-personality');
     } else if (step === 'natural-growth') {
       setStep('daily-invitations');
     }
+  };
+
+  // Styling helper for multi-select buttons
+  const getButtonClassName = (isSelected: boolean) => {
+    return cn(
+      "px-4 py-2 rounded-lg border-2 transition-all duration-200",
+      isSelected
+        ? "bg-green-100 border-green-500 text-green-700 font-medium"
+        : "bg-white border-gray-200 hover:border-gray-300 text-gray-600"
+    );
   };
 
   return (
@@ -102,117 +223,398 @@ export default function GradualAwakening() {
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex justify-between text-sm text-gray-500 mb-2">
-            <span className={step === 'minimal-start' ? 'text-green-600 font-medium' : ''}>Minimal Start</span>
+            <span className={step === 'minimal-start' ? 'text-green-600 font-medium' : ''}>
+              Minimal Start
+              {step === 'minimal-start' && minimalSubStep === 'essentials' && ' (1/3)'}
+              {step === 'minimal-start' && minimalSubStep === 'communication-style' && ' (2/3)'}
+              {step === 'minimal-start' && minimalSubStep === 'finalize-personality' && ' (3/3)'}
+            </span>
             <span className={step === 'daily-invitations' ? 'text-green-600 font-medium' : ''}>Daily Invitations</span>
             <span className={step === 'natural-growth' ? 'text-green-600 font-medium' : ''}>Natural Growth</span>
           </div>
           <Progress value={progress} className="h-2" />
         </div>
 
-        {/* Step 1: Minimal Start */}
+        {/* Step 1: Minimal Start with Sub-steps */}
         {step === 'minimal-start' && (
-          <div className="space-y-6">
-            <div className="text-center mb-12">
-              <div className="w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg">
-                <TreePine className="w-10 h-10 text-green-600" />
-              </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">Minimal Start</h1>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Let's start with just a few essential details. You can always add more memories later.
-              </p>
-            </div>
-
-            <Card className="bg-white/70 backdrop-blur-sm border-green-100 shadow-lg max-w-2xl mx-auto">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-3">
-                  <Heart className="w-6 h-6 text-green-600" />
-                  <span>Essential Details</span>
-                  <Badge variant="outline" className="ml-auto bg-green-50 text-green-700 border-green-200">
-                    <Clock className="w-3 h-3 mr-1" />
-                    Optional
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="personaName" className="text-sm font-medium text-gray-700">
-                      Their name
-                    </Label>
-                    <Input
-                      id="personaName"
-                      placeholder="What did you call them?"
-                      value={personaName}
-                      onChange={(e) => setPersonaName(e.target.value)}
-                      className="border-green-200 focus:border-green-400"
-                      data-testid="input-persona-name"
-                    />
+          <>
+            {/* Sub-step 1: Essentials */}
+            {minimalSubStep === 'essentials' && (
+              <div className="space-y-6">
+                <div className="text-center mb-12">
+                  <div className="w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg">
+                    <Heart className="w-10 h-10 text-green-600" />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="relationship" className="text-sm font-medium text-gray-700">
-                      Your relationship
-                    </Label>
-                    <Input
-                      id="relationship"
-                      placeholder="e.g., mother, father, friend"
-                      value={relationship}
-                      onChange={(e) => setRelationship(e.target.value)}
-                      className="border-green-200 focus:border-green-400"
-                      data-testid="input-relationship"
-                    />
-                  </div>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-4">The Essentials</h1>
+                  <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                    Let's start with the basics. Every field is optional - share what feels right.
+                  </p>
                 </div>
 
-                <div className="space-y-4">
-                  <Label className="text-sm font-medium text-gray-700">
-                    Three words that describe them
-                  </Label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {adjectives.map((adjective, index) => (
-                      <Input
-                        key={index}
-                        placeholder={`Word ${index + 1}`}
-                        value={adjective}
-                        onChange={(e) => {
-                          const newAdjectives = [...adjectives];
-                          newAdjectives[index] = e.target.value;
-                          setAdjectives(newAdjectives);
-                        }}
+                <Card className="bg-white/70 backdrop-blur-sm border-green-100 shadow-lg max-w-2xl mx-auto">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-3">
+                      <User className="w-6 h-6 text-green-600" />
+                      <span>Basic Information</span>
+                      <Badge variant="outline" className="ml-auto bg-green-50 text-green-700 border-green-200">
+                        <Clock className="w-3 h-3 mr-1" />
+                        All Optional
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="personaName" className="text-sm font-medium text-gray-700">
+                          Their name
+                        </Label>
+                        <Input
+                          id="personaName"
+                          placeholder="What did you call them?"
+                          value={personaName}
+                          onChange={(e) => setPersonaName(e.target.value)}
+                          className="border-green-200 focus:border-green-400"
+                          data-testid="input-persona-name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="relationship" className="text-sm font-medium text-gray-700">
+                          Your relationship
+                        </Label>
+                        <Input
+                          id="relationship"
+                          placeholder="e.g., mother, father, friend"
+                          value={relationship}
+                          onChange={(e) => setRelationship(e.target.value)}
+                          className="border-green-200 focus:border-green-400"
+                          data-testid="input-relationship"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <Label className="text-sm font-medium text-gray-700">
+                        Three words that describe them
+                      </Label>
+                      <div className="grid grid-cols-3 gap-3">
+                        {adjectives.map((adjective, index) => (
+                          <Input
+                            key={index}
+                            placeholder={`Word ${index + 1}`}
+                            value={adjective}
+                            onChange={(e) => {
+                              const newAdjectives = [...adjectives];
+                              newAdjectives[index] = e.target.value;
+                              setAdjectives(newAdjectives);
+                            }}
+                            className="border-green-200 focus:border-green-400"
+                            data-testid={`input-adjective-${index + 1}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="favoriteMemory" className="text-sm font-medium text-gray-700">
+                        Share one favorite memory
+                      </Label>
+                      <Textarea
+                        id="favoriteMemory"
+                        placeholder="Tell us about a moment that captures who they were..."
+                        value={favoriteMemory}
+                        onChange={(e) => setFavoriteMemory(e.target.value)}
+                        rows={4}
                         className="border-green-200 focus:border-green-400"
-                        data-testid={`input-adjective-${index + 1}`}
+                        data-testid="textarea-favorite-memory"
                       />
-                    ))}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">
+                        Upload a photo (optional)
+                      </Label>
+                      <Button 
+                        variant="outline" 
+                        className="w-full justify-center border-green-200 hover:bg-green-50"
+                        data-testid="button-upload-photo"
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        Choose a photo
+                      </Button>
+                      <p className="text-xs text-gray-500">You can always add more photos later</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <div className="flex justify-between mt-8">
+                  <div></div>
+                  <Button 
+                    onClick={handleNext}
+                    className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-6"
+                    data-testid="button-next-essentials"
+                  >
+                    Continue to Communication Style
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Sub-step 2: Communication Style */}
+            {minimalSubStep === 'communication-style' && (
+              <div className="space-y-6">
+                <div className="text-center mb-12">
+                  <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg">
+                    <MessageCircle className="w-10 h-10 text-blue-600" />
                   </div>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-4">Communication Style</h1>
+                  <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                    Help us understand how they communicated. All fields are optional.
+                  </p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="favoriteMemory" className="text-sm font-medium text-gray-700">
-                    Share one favorite memory
-                  </Label>
-                  <Textarea
-                    id="favoriteMemory"
-                    placeholder="Tell us about a moment that captures who they were..."
-                    value={favoriteMemory}
-                    onChange={(e) => setFavoriteMemory(e.target.value)}
-                    rows={4}
-                    className="border-green-200 focus:border-green-400"
-                    data-testid="textarea-favorite-memory"
-                  />
-                </div>
-              </CardContent>
-            </Card>
+                <Card className="bg-white/70 backdrop-blur-sm border-blue-100 shadow-lg max-w-2xl mx-auto mb-6">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold">Voice & Communication Style</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="greeting" className="text-sm font-medium text-gray-700">
+                        How did they usually greet you?
+                      </Label>
+                      <Input
+                        id="greeting"
+                        placeholder="e.g., Hey kiddo, What's up buttercup"
+                        value={usualGreeting}
+                        onChange={(e) => setUsualGreeting(e.target.value)}
+                        className="border-blue-200 focus:border-blue-400"
+                        data-testid="input-usual-greeting"
+                      />
+                    </div>
 
-            <div className="flex justify-end mt-8">
-              <Button 
-                onClick={handleNext}
-                className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-6"
-                data-testid="button-next-minimal-start"
-              >
-                Continue to Daily Invitations
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </div>
-          </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="catchphrase" className="text-sm font-medium text-gray-700">
+                        A phrase they said all the time
+                      </Label>
+                      <Input
+                        id="catchphrase"
+                        placeholder="Their catchphrase or inside joke"
+                        value={catchphrase}
+                        onChange={(e) => setCatchphrase(e.target.value)}
+                        className="border-blue-200 focus:border-blue-400"
+                        data-testid="input-catchphrase"
+                      />
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium text-gray-700">
+                        How they texted/talked
+                      </Label>
+                      <div className="flex flex-wrap gap-2">
+                        {(['formal', 'casual', 'lots-of-emojis', 'abbreviated', 'dramatic', 'dry-humor'] as const).map((style) => (
+                          <button
+                            key={style}
+                            onClick={() => toggleTextingStyle(style)}
+                            className={getButtonClassName(textingStyles.includes(style))}
+                            data-testid={`button-texting-${style}`}
+                          >
+                            {style.replace(/-/g, ' ')}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white/70 backdrop-blur-sm border-blue-100 shadow-lg max-w-2xl mx-auto">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold">Personality Patterns</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium text-gray-700">
+                        Were they more of a listener or a talker?
+                      </Label>
+                      <RadioGroup value={listenerTalker} onValueChange={(value: ListenerTalker) => setListenerTalker(value)}>
+                        <div className="flex gap-4">
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="listener" id="listener" />
+                            <Label htmlFor="listener">Listener</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="talker" id="talker" />
+                            <Label htmlFor="talker">Talker</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="balanced" id="balanced" />
+                            <Label htmlFor="balanced">Balanced</Label>
+                          </div>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium text-gray-700">
+                        How did they handle conflict?
+                      </Label>
+                      <div className="flex flex-wrap gap-2">
+                        {(['avoided-it', 'tackled-head-on', 'made-jokes', 'got-quiet', 'needed-time'] as const).map((style) => (
+                          <button
+                            key={style}
+                            onClick={() => toggleConflictStyle(style)}
+                            className={getButtonClassName(conflictStyles.includes(style))}
+                            data-testid={`button-conflict-${style}`}
+                          >
+                            {style.replace(/-/g, ' ')}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="madeThemLaugh" className="text-sm font-medium text-gray-700">
+                        What always made them laugh?
+                      </Label>
+                      <Textarea
+                        id="madeThemLaugh"
+                        placeholder="Dad jokes, silly pets, specific memories..."
+                        value={whatMadeThemLaugh}
+                        onChange={(e) => setWhatMadeThemLaugh(e.target.value)}
+                        rows={3}
+                        className="border-blue-200 focus:border-blue-400"
+                        data-testid="textarea-made-them-laugh"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="theyWorried" className="text-sm font-medium text-gray-700">
+                        What did they worry about most?
+                      </Label>
+                      <Textarea
+                        id="theyWorried"
+                        placeholder="Family safety, finances, your future..."
+                        value={whatTheyWorried}
+                        onChange={(e) => setWhatTheyWorried(e.target.value)}
+                        rows={3}
+                        className="border-blue-200 focus:border-blue-400"
+                        data-testid="textarea-they-worried"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <div className="flex justify-between mt-8">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleBack}
+                    className="px-6"
+                    data-testid="button-back-communication"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-2" />
+                    Back
+                  </Button>
+                  <Button 
+                    onClick={handleNext}
+                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white px-6"
+                    data-testid="button-next-communication"
+                  >
+                    Continue to Review
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Sub-step 3: Finalize Personality */}
+            {minimalSubStep === 'finalize-personality' && (
+              <div className="space-y-6">
+                <div className="text-center mb-12">
+                  <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg">
+                    <CheckCircle2 className="w-10 h-10 text-purple-600" />
+                  </div>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-4">Finalize Personality</h1>
+                  <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                    Review what you've shared and add any final context.
+                  </p>
+                </div>
+
+                <Card className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg max-w-2xl mx-auto">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold">Summary</CardTitle>
+                    <CardDescription>Here's what you've shared about {personaName || 'your loved one'}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {personaName && (
+                      <div className="flex justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Name:</span>
+                        <span className="font-medium">{personaName}</span>
+                      </div>
+                    )}
+                    {relationship && (
+                      <div className="flex justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Relationship:</span>
+                        <span className="font-medium">{relationship}</span>
+                      </div>
+                    )}
+                    {adjectives.filter(Boolean).length > 0 && (
+                      <div className="flex justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Personality:</span>
+                        <span className="font-medium">{adjectives.filter(Boolean).join(', ')}</span>
+                      </div>
+                    )}
+                    {usualGreeting && (
+                      <div className="flex justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Greeting:</span>
+                        <span className="font-medium">"{usualGreeting}"</span>
+                      </div>
+                    )}
+                    {textingStyles.length > 0 && (
+                      <div className="flex justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Communication:</span>
+                        <span className="font-medium">{textingStyles.join(', ').replace(/-/g, ' ')}</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg max-w-2xl mx-auto">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold">Anything else to add?</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Textarea
+                      placeholder="Any additional context, memories, or details you'd like to share..."
+                      value={finalNotes}
+                      onChange={(e) => setFinalNotes(e.target.value)}
+                      rows={5}
+                      className="border-purple-200 focus:border-purple-400"
+                      data-testid="textarea-final-notes"
+                    />
+                  </CardContent>
+                </Card>
+
+                <div className="flex justify-between mt-8">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleBack}
+                    className="px-6"
+                    data-testid="button-back-finalize"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-2" />
+                    Back
+                  </Button>
+                  <Button 
+                    onClick={handleNext}
+                    className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-6"
+                    data-testid="button-complete-minimal-start"
+                  >
+                    Complete Minimal Start
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Step 2: Daily Invitations */}
