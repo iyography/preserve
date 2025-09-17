@@ -78,6 +78,42 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 const openaiApiKey = process.env.OPENAI_API_KEY;
 const openai = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
 
+// IP-based demo response tracking
+interface IPTracker {
+  responseCount: number;
+  firstRequest: Date;
+  lastRequest: Date;
+}
+
+const demoIPTracker = new Map<string, IPTracker>();
+const DEMO_RESPONSE_LIMIT = 5;
+const TRACKING_RESET_HOURS = 24;
+
+// Helper function to get client IP address
+function getClientIP(req: express.Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string') {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.connection.remoteAddress || req.socket.remoteAddress || 'unknown';
+}
+
+// Helper function to clean up old IP tracking entries
+function cleanupOldIPEntries(): void {
+  const now = new Date();
+  const cutoffTime = new Date(now.getTime() - (TRACKING_RESET_HOURS * 60 * 60 * 1000));
+  
+  const entries = Array.from(demoIPTracker.entries());
+  for (const [ip, tracker] of entries) {
+    if (tracker.lastRequest < cutoffTime) {
+      demoIPTracker.delete(ip);
+    }
+  }
+}
+
+// Run cleanup every hour
+setInterval(cleanupOldIPEntries, 60 * 60 * 1000);
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint (no auth required)
   app.get('/api', (req, res) => {
@@ -151,6 +187,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     emailConfirmationService.resetRateLimits();
     res.json({ success: true, message: 'Rate limits reset successfully' });
+  });
+
+  // Development only - check demo IP tracking status
+  app.get('/api/demo-ip-status', async (req, res) => {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ error: 'Not available in production' });
+    }
+    
+    const clientIP = getClientIP(req);
+    const ipTracker = demoIPTracker.get(clientIP);
+    const totalTrackedIPs = demoIPTracker.size;
+    
+    res.json({
+      clientIP,
+      tracker: ipTracker || null,
+      responseCount: ipTracker?.responseCount || 0,
+      limit: DEMO_RESPONSE_LIMIT,
+      remainingResponses: Math.max(0, DEMO_RESPONSE_LIMIT - (ipTracker?.responseCount || 0)),
+      totalTrackedIPs,
+      trackingResetHours: TRACKING_RESET_HOURS
+    });
+  });
+
+  // Development only - reset demo IP tracking
+  app.post('/api/reset-demo-tracking', async (req, res) => {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ error: 'Not available in production' });
+    }
+    
+    const { resetAll } = req.body;
+    
+    if (resetAll) {
+      demoIPTracker.clear();
+      res.json({ success: true, message: 'All demo IP tracking reset successfully', clearedCount: 'all' });
+    } else {
+      const clientIP = getClientIP(req);
+      const existed = demoIPTracker.has(clientIP);
+      demoIPTracker.delete(clientIP);
+      res.json({ 
+        success: true, 
+        message: `Demo IP tracking reset for ${clientIP}`, 
+        existed,
+        clientIP 
+      });
+    }
   });
 
   app.post('/api/send-confirmation', async (req, res) => {
@@ -253,6 +334,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Message is required' });
       }
 
+      // Get client IP and check response limit
+      const clientIP = getClientIP(req);
+      const now = new Date();
+      let ipTracker = demoIPTracker.get(clientIP);
+
+      // Initialize or update IP tracker
+      if (!ipTracker) {
+        ipTracker = {
+          responseCount: 0,
+          firstRequest: now,
+          lastRequest: now
+        };
+        demoIPTracker.set(clientIP, ipTracker);
+      }
+
+      // Check if IP has exceeded the response limit
+      if (ipTracker.responseCount >= DEMO_RESPONSE_LIMIT) {
+        return res.status(429).json({
+          error: 'Demo limit reached',
+          message: "Oh sweetheart, we've had such a wonderful chat! To continue our conversations and create your own personalized memories, please sign up for Preserving Connections. I'd love to keep talking with you!",
+          actionRequired: 'signup',
+          responseCount: ipTracker.responseCount,
+          limit: DEMO_RESPONSE_LIMIT
+        });
+      }
+
       // Check if OpenAI is configured
       if (!openai) {
         // Fallback responses if OpenAI is not configured
@@ -265,6 +372,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "Oh honey, come here and give your grandma a hug! You always know just what to say to make my heart full."
         ];
         const randomResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+        
+        // Increment IP response count for successful fallback response
+        ipTracker.responseCount++;
+        ipTracker.lastRequest = now;
+        
         return res.json({ response: randomResponse });
       }
 
@@ -380,6 +492,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           { input: Math.ceil(message.length / 4), output: Math.ceil(cachedResponse.response.length / 4) },
           'gpt-4o-mini'
         );
+        
+        // Increment IP response count for successful cached response
+        ipTracker.responseCount++;
+        ipTracker.lastRequest = now;
+        
         return res.json({ response: cachedResponse.response, cached: true });
       }
 
@@ -431,6 +548,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           model
         );
 
+        // Increment IP response count for successful OpenAI response
+        ipTracker.responseCount++;
+        ipTracker.lastRequest = now;
+        
         // Return the response
         res.json({ response, model });
 
@@ -444,6 +565,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "Oh honey, I couldn't quite understand that. You know how it is with us old folks and technology! But I love hearing from you."
         ];
         const fallbackResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+        
+        // Increment IP response count for successful fallback error response
+        ipTracker.responseCount++;
+        ipTracker.lastRequest = now;
         
         res.json({ response: fallbackResponse, fallback: true });
       }
@@ -460,7 +585,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Apply JWT verification to all protected routes (except confirmation endpoints and demo)
   app.use('/api/*', (req, res, next) => {
     // Skip JWT verification for specific routes
-    const skipAuthRoutes = ['/api', '/api/send-confirmation', '/api/confirm-email', '/api/chat/demo'];
+    const skipAuthRoutes = [
+      '/api', 
+      '/api/send-confirmation', 
+      '/api/confirm-email', 
+      '/api/chat/demo',
+      '/api/test-email',
+      '/api/reset-rate-limits',
+      '/api/demo-ip-status',
+      '/api/reset-demo-tracking'
+    ];
     
     if (skipAuthRoutes.includes(req.path)) {
       return next();
