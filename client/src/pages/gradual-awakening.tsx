@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
+import { supabase } from "@/lib/supabase";
 import type { Persona, OnboardingSession } from "@shared/schema";
 
 // TypeScript types for enhanced features
@@ -245,16 +246,13 @@ export default function GradualAwakening() {
     },
     onError: (error: Error) => {
       console.error('Persona creation failed:', error);
-      // Check if it's an authentication error
+      // During onboarding, we want to be more permissive with auth errors
+      // Show warning but allow user to continue without saved state
       if (error.message.includes('401') || error.message.toLowerCase().includes('unauthorized') || error.message.toLowerCase().includes('missing authorization')) {
         toast({
-          variant: "destructive",
-          title: "Authentication Required",
-          description: "Please sign in again to create your persona. You'll be redirected to the login page."
+          title: "Session Expired",
+          description: "Your session has expired, but you can continue creating your persona. You may need to sign in again later to save your progress.",
         });
-        // Redirect to login with return URL
-        const returnUrl = encodeURIComponent('/gradual-awakening');
-        setLocation(`/sign-in?returnTo=${returnUrl}`);
       } else if (error.message.includes('403') || error.message.toLowerCase().includes('forbidden')) {
         toast({
           variant: "destructive",
@@ -265,7 +263,7 @@ export default function GradualAwakening() {
         toast({
           variant: "destructive",
           title: "Failed to Create Persona",
-          description: `Unable to create your persona: ${error.message}. Please try again or contact support if the issue persists.`
+          description: `Unable to create your persona: ${error.message}. You can continue with the onboarding process.`
         });
       }
     },
@@ -281,6 +279,18 @@ export default function GradualAwakening() {
       setCurrentSession(session);
       queryClient.invalidateQueries({ queryKey: ['/api/onboarding-sessions/gradual-awakening'] });
     },
+    onError: (error: Error) => {
+      console.warn('Failed to create onboarding session:', error);
+      // For onboarding sessions, we don't want to block the user - just log the issue
+      if (error.message.includes('401') || error.message.toLowerCase().includes('unauthorized')) {
+        console.log('Session expired during onboarding - continuing without saved state');
+      } else {
+        toast({
+          title: "Cannot Save Progress",
+          description: "We couldn't save your progress, but you can continue with the onboarding process."
+        });
+      }
+    },
   });
 
   // Update session mutation
@@ -292,6 +302,18 @@ export default function GradualAwakening() {
     onSuccess: (session) => {
       setCurrentSession(session);
     },
+    onError: (error: Error) => {
+      console.warn('Failed to update onboarding session:', error);
+      // For onboarding sessions, we don't want to block the user - just log the issue
+      if (error.message.includes('401') || error.message.toLowerCase().includes('unauthorized')) {
+        console.log('Session expired during onboarding - continuing without saved state');
+      } else {
+        toast({
+          title: "Cannot Save Progress",
+          description: "We couldn't save your progress, but you can continue with the onboarding process."
+        });
+      }
+    },
   });
 
   // Upload photo mutation
@@ -300,11 +322,19 @@ export default function GradualAwakening() {
       const formData = new FormData();
       formData.append('file', file);
       
+      // Get session for auth header
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: HeadersInit = {};
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+      
       // For file uploads, we need to use fetch directly but with proper credentials
       const response = await fetch(`/api/personas/${personaId}/media`, {
         method: 'POST',
         body: formData,
         credentials: 'include',
+        headers,
       });
       
       if (!response.ok) {
@@ -313,6 +343,21 @@ export default function GradualAwakening() {
       }
       
       return response.json();
+    },
+    onError: (error: Error) => {
+      console.error('Photo upload failed:', error);
+      if (error.message.includes('401') || error.message.toLowerCase().includes('unauthorized')) {
+        toast({
+          title: "Session Expired",
+          description: "Your session expired. You can continue the onboarding and upload the photo later."
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Upload Failed",
+          description: "Could not upload the photo. You can try again later or continue without it."
+        });
+      }
     },
   });
 
@@ -353,6 +398,20 @@ export default function GradualAwakening() {
         description: "Your progress has been saved. You can continue creating your persona or come back later."
       });
       // Don't redirect - let user continue the onboarding process
+    },
+    onError: (error: Error) => {
+      console.warn('Failed to save progress:', error);
+      if (error.message.includes('401') || error.message.toLowerCase().includes('unauthorized')) {
+        toast({
+          title: "Session Expired",
+          description: "Your session expired so we couldn't save your progress, but you can continue the onboarding process."
+        });
+      } else {
+        toast({
+          title: "Could Not Save Progress",
+          description: "We encountered an issue saving your progress, but you can continue with the onboarding."
+        });
+      }
     },
   });
 
