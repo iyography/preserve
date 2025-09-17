@@ -69,7 +69,7 @@ export class ResponseCache {
     const now = new Date();
     const toDelete: string[] = [];
     
-    for (const [hash, entry] of this.cache.entries()) {
+    for (const [hash, entry] of Array.from(this.cache.entries())) {
       if (entry.expiresAt < now) {
         toDelete.push(hash);
       }
@@ -109,8 +109,8 @@ export class ResponseCache {
     const words1 = new Set(query1.toLowerCase().split(/\s+/));
     const words2 = new Set(query2.toLowerCase().split(/\s+/));
     
-    const intersection = new Set([...words1].filter(x => words2.has(x)));
-    const union = new Set([...words1, ...words2]);
+    const intersection = new Set(Array.from(words1).filter(x => words2.has(x)));
+    const union = new Set([...Array.from(words1), ...Array.from(words2)]);
     
     // Jaccard similarity
     return intersection.size / union.size;
@@ -127,7 +127,7 @@ export class ResponseCache {
     const hash = this.generateHash(query, model);
     
     // Try exact match first
-    let cached = this.cache.get(hash);
+    let cached = this.cache.get(hash) || null;
     
     if (!cached && allowSimilar) {
       // Try to find similar query
@@ -159,7 +159,7 @@ export class ResponseCache {
     let bestMatch: CachedResponse | null = null;
     let bestSimilarity = 0;
     
-    for (const entry of this.cache.values()) {
+    for (const entry of Array.from(this.cache.values())) {
       // Skip if model doesn't match (when specified)
       if (model && entry.model !== model) continue;
       
@@ -213,7 +213,7 @@ export class ResponseCache {
     let oldestEntry: CachedResponse | null = null;
     let oldestHash: string | null = null;
     
-    for (const [hash, entry] of this.cache.entries()) {
+    for (const [hash, entry] of Array.from(this.cache.entries())) {
       if (!oldestEntry || entry.hits < oldestEntry.hits) {
         oldestEntry = entry;
         oldestHash = hash;
@@ -256,7 +256,7 @@ export class ResponseCache {
     let totalSatisfaction = 0;
     let count = 0;
     
-    for (const entry of this.cache.values()) {
+    for (const entry of Array.from(this.cache.values())) {
       totalBytes += JSON.stringify(entry).length;
       totalSatisfaction += entry.satisfaction;
       count++;
@@ -317,7 +317,7 @@ export class ResponseCache {
   }> {
     const entries = [];
     
-    for (const entry of this.cache.values()) {
+    for (const entry of Array.from(this.cache.values())) {
       entries.push({
         query: entry.query,
         model: entry.model,

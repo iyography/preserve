@@ -654,7 +654,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       // STEP 3: Cost Protection Check
-      const userTier = req.user!.tier || 'free'; // Get from user profile
+      const userTier = 'free'; // Default to free tier for now
       const costCheck = await costGuardian.checkRequest(
         userId,
         routingDecision.estimatedTokens,
@@ -858,7 +858,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/chat/status', async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user!.id;
-      const userTier = req.user!.tier || 'free';
+      const userTier = 'free'; // Default to free tier for now
       
       // Get current usage stats
       const costStats = costGuardian.getUserStats(userId, userTier);

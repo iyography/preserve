@@ -106,7 +106,7 @@ export class CostGuardian {
   private resetDailyUsage(): void {
     const today = new Date().toISOString().split('T')[0];
     
-    for (const [userId, usage] of this.userUsage.entries()) {
+    for (const [userId, usage] of Array.from(this.userUsage.entries())) {
       if (usage.lastResetDate !== today) {
         usage.dailyCost = 0;
         usage.requests = 0;
