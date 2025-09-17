@@ -182,91 +182,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { token } = req.query;
 
       if (!token || typeof token !== 'string') {
-        return res.status(400).send(`
-          <html>
-            <head>
-              <title>Email Confirmation - Preserving Connections</title>
-              <style>
-                body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
-                .error { color: #dc3545; }
-                .logo { color: #7c3aed; font-size: 24px; margin-bottom: 20px; }
-              </style>
-            </head>
-            <body>
-              <div class="logo">Preserving Connections</div>
-              <h2 class="error">Invalid Confirmation Link</h2>
-              <p>The confirmation link is missing or invalid. Please check your email for the correct link.</p>
-            </body>
-          </html>
-        `);
+        // Redirect to error page with message
+        return res.redirect(302, '/email-confirmed?error=true&message=' + encodeURIComponent('Invalid confirmation link. Please check your email for the correct link.'));
       }
 
       // Verify the token
       const result = emailConfirmationService.verifyToken(token);
 
       if (!result.valid) {
-        return res.status(400).send(`
-          <html>
-            <head>
-              <title>Email Confirmation - Preserving Connections</title>
-              <style>
-                body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
-                .error { color: #dc3545; }
-                .logo { color: #7c3aed; font-size: 24px; margin-bottom: 20px; }
-              </style>
-            </head>
-            <body>
-              <div class="logo">Preserving Connections</div>
-              <h2 class="error">Confirmation Failed</h2>
-              <p>${result.error}</p>
-              <p>Please request a new confirmation email if needed.</p>
-            </body>
-          </html>
-        `);
+        // Redirect to error page with specific error message
+        const errorMessage = result.error || 'Email confirmation failed';
+        return res.redirect(302, '/email-confirmed?error=true&message=' + encodeURIComponent(errorMessage));
       }
 
-      // Success! Email confirmed
-      res.status(200).send(`
-        <html>
-          <head>
-            <title>Email Confirmed - Preserving Connections</title>
-            <style>
-              body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
-              .success { color: #28a745; }
-              .logo { color: #7c3aed; font-size: 24px; margin-bottom: 20px; }
-              .btn { background: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 20px; }
-            </style>
-          </head>
-          <body>
-            <div class="logo">Preserving Connections</div>
-            <h2 class="success">✅ Email Confirmed!</h2>
-            <p>Your email address <strong>${result.email}</strong> has been successfully confirmed.</p>
-            <p>You can now sign in to your account and start preserving precious memories.</p>
-            <a href="/sign-in" class="btn">Sign In to Your Account</a>
-          </body>
-        </html>
-      `);
-
+      // Success! Email confirmed - redirect to success page
       console.log('Email confirmed successfully:', result.email);
+      res.redirect(302, '/email-confirmed?confirmed=true');
+      
     } catch (error) {
       console.error('Confirm email endpoint error:', error);
-      res.status(500).send(`
-        <html>
-          <head>
-            <title>Error - Preserving Connections</title>
-            <style>
-              body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
-              .error { color: #dc3545; }
-              .logo { color: #7c3aed; font-size: 24px; margin-bottom: 20px; }
-            </style>
-          </head>
-          <body>
-            <div class="logo">Preserving Connections</div>
-            <h2 class="error">Something Went Wrong</h2>
-            <p>An error occurred while confirming your email. Please try again later.</p>
-          </body>
-        </html>
-      `);
+      // Redirect to error page with generic error message
+      const errorMessage = 'An error occurred while confirming your email. Please try again later.';
+      res.redirect(302, '/email-confirmed?error=true&message=' + encodeURIComponent(errorMessage));
     }
   });
   

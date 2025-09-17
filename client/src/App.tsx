@@ -41,6 +41,7 @@ import Waitlist from "@/pages/waitlist";
 
 import NotFound from "@/pages/not-found";
 import Chat from "@/pages/chat";
+import EmailConfirmed from "@/pages/email-confirmed";
 
 function Router() {
   return (
@@ -48,6 +49,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/sign-in" component={SignIn} />
       <Route path="/register" component={Register} />
+      <Route path="/email-confirmed" component={EmailConfirmed} />
       <Route path="/community" component={Community} />
       <Route path="/onboarding" component={Onboarding} />
       <Route path="/onboarding/ai-guided-interview" component={AIGuidedInterview} />
