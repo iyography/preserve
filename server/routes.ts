@@ -22,6 +22,11 @@ import { verifyJWT, type AuthenticatedRequest } from "./middleware/auth";
 import { EmailService } from "./services/email";
 import { emailConfirmationService } from "./services/emailConfirmation";
 import { createClient } from '@supabase/supabase-js';
+import { abuseDetector } from "./services/abuseDetector";
+import { costGuardian } from "./services/costGuardian";
+import { modelRouter } from "./services/modelRouter";
+import { responseCache } from "./services/responseCache";
+import OpenAI from 'openai';
 
 // Extend AuthenticatedRequest interface to include file property
 interface AuthenticatedMulterRequest extends AuthenticatedRequest {
@@ -66,6 +71,10 @@ const bucket = gcs.bucket(bucketName || '');
 const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+// Initialize OpenAI client if API key is available
+const openaiApiKey = process.env.OPENAI_API_KEY;
+const openai = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint (no auth required)
@@ -584,8 +593,324 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Comprehensive Protected Chat Endpoint with All Safety Systems
+  app.post('/api/chat', async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const { message, conversationId, personaId, model: preferredModel } = req.body;
+      
+      // Validate request
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({ error: 'Message is required' });
+      }
+      
+      if (!personaId) {
+        return res.status(400).json({ error: 'Persona ID is required' });
+      }
+      
+      // Verify persona belongs to user
+      const persona = await storage.getPersona(personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(404).json({ error: 'Persona not found' });
+      }
+      
+      // Get conversation history for context
+      let conversationHistory: string[] = [];
+      if (conversationId) {
+        const conversation = await storage.getConversation(conversationId, userId);
+        if (conversation) {
+          const messages = await storage.getMessagesByConversation(conversationId, userId);
+          conversationHistory = messages.map(m => m.content).slice(-10); // Last 10 messages
+        }
+      }
+      
+      // STEP 1: Abuse Detection
+      const abusePattern = await abuseDetector.detectAbuse(userId, message, conversationHistory);
+      
+      if (abusePattern) {
+        console.log(`Abuse detected for user ${userId}:`, abusePattern);
+        
+        if (abusePattern.action === 'block' || abusePattern.action === 'throttle') {
+          return res.status(429).json({ 
+            error: abusePattern.reason,
+            retryAfter: abusePattern.type === 'rate_limit' ? 60 : undefined
+          });
+        }
+        
+        // Apply message transformation if needed
+        const transformedMessage = abuseDetector.applyAction(message, abusePattern);
+        if (transformedMessage === null) {
+          return res.status(429).json({ error: abusePattern.reason });
+        }
+      }
+      
+      // STEP 2: Intelligent Model Routing
+      const routingDecision = await modelRouter.routeQuery(
+        userId,
+        message,
+        preferredModel,
+        undefined,
+        conversationHistory.join(' ')
+      );
+      
+      // STEP 3: Cost Protection Check
+      const userTier = req.user!.tier || 'free'; // Get from user profile
+      const costCheck = await costGuardian.checkRequest(
+        userId,
+        routingDecision.estimatedTokens,
+        routingDecision.model,
+        userTier
+      );
+      
+      if (!costCheck.allowed) {
+        return res.status(429).json({ 
+          error: costCheck.reason,
+          remainingBudget: costCheck.remainingBudget
+        });
+      }
+      
+      // Apply degradation if suggested
+      let finalModel = routingDecision.model;
+      if (costCheck.suggestedAction) {
+        switch (costCheck.suggestedAction) {
+          case 'force_mini_model':
+            finalModel = 'gpt-4o-mini';
+            break;
+          case 'cache_only':
+            // Only use cached responses
+            const cachedResponse = await responseCache.get(message, finalModel, true);
+            if (cachedResponse) {
+              return res.json({
+                response: cachedResponse.response,
+                cached: true,
+                model: cachedResponse.model,
+                remainingBudget: costCheck.remainingBudget
+              });
+            } else {
+              return res.status(503).json({ 
+                error: 'Service limited. No cached response available.',
+                remainingBudget: costCheck.remainingBudget
+              });
+            }
+          case 'block':
+            return res.status(429).json({ 
+              error: 'Daily usage limit reached',
+              remainingBudget: 0
+            });
+        }
+      }
+      
+      // STEP 4: Check Response Cache
+      if (costCheck.suggestedAction === 'prefer_cache') {
+        const cachedResponse = await responseCache.get(message, finalModel, true);
+        if (cachedResponse) {
+          // Use cached response to save costs
+          return res.json({
+            response: cachedResponse.response,
+            cached: true,
+            model: cachedResponse.model,
+            remainingBudget: costCheck.remainingBudget
+          });
+        }
+      }
+      
+      // STEP 5: Prepare and Optimize Prompt
+      const systemPrompt = `You are having a conversation as ${persona.name}. Maintain consistency with their personality and previous conversations.`;
+      
+      // Build context from conversation history
+      let context = systemPrompt;
+      if (conversationHistory.length > 0) {
+        context += '\n\nRecent conversation:\n' + conversationHistory.slice(-5).join('\n');
+      }
+      
+      // Optimize prompt to stay under token limits
+      const optimizedMessage = modelRouter.optimizePrompt(message, 4000);
+      const optimizedContext = modelRouter.optimizePrompt(context, 2000);
+      
+      // STEP 6: Make API Call
+      if (!openai) {
+        return res.status(503).json({ error: 'AI service not configured' });
+      }
+      
+      let completion;
+      let actualTokens = { input: 0, output: 0 };
+      
+      try {
+        // Make the OpenAI API call
+        completion = await openai.chat.completions.create({
+          model: finalModel,
+          messages: [
+            { role: 'system', content: optimizedContext },
+            { role: 'user', content: optimizedMessage }
+          ],
+          max_tokens: 2000,
+          temperature: 0.7,
+          stream: false,
+        });
+        
+        // Track actual token usage
+        actualTokens = {
+          input: completion.usage?.prompt_tokens || 0,
+          output: completion.usage?.completion_tokens || 0
+        };
+        
+      } catch (apiError: any) {
+        console.error('OpenAI API error:', apiError);
+        
+        // Handle API errors gracefully
+        if (apiError.status === 429) {
+          return res.status(429).json({ 
+            error: 'AI service rate limited. Please try again later.' 
+          });
+        }
+        
+        if (apiError.status === 401) {
+          return res.status(503).json({ 
+            error: 'AI service authentication failed. Please contact support.' 
+          });
+        }
+        
+        // For other errors, try to use cache
+        const fallbackCache = await responseCache.get(message, finalModel, true);
+        if (fallbackCache) {
+          return res.json({
+            response: fallbackCache.response,
+            cached: true,
+            model: fallbackCache.model,
+            fallback: true,
+            remainingBudget: costCheck.remainingBudget
+          });
+        }
+        
+        return res.status(503).json({ 
+          error: 'AI service temporarily unavailable' 
+        });
+      }
+      
+      const aiResponse = completion.choices[0]?.message?.content || 'I apologize, but I couldn\'t generate a response.';
+      
+      // STEP 7: Record Usage
+      await costGuardian.recordUsage(userId, actualTokens, finalModel);
+      
+      // STEP 8: Cache Response if Appropriate
+      if (responseCache.shouldCache(aiResponse, actualTokens)) {
+        await responseCache.set(message, aiResponse, finalModel, actualTokens);
+      }
+      
+      // STEP 9: Store Message in Database (if conversation exists)
+      if (conversationId) {
+        try {
+          // Store user message
+          await storage.createMessage({
+            conversationId,
+            role: 'user',
+            content: message,
+            tokens: actualTokens.input,
+            meta: { model: finalModel }
+          });
+          
+          // Store AI response
+          await storage.createMessage({
+            conversationId,
+            role: 'persona',
+            content: aiResponse,
+            tokens: actualTokens.output,
+            meta: { model: finalModel, cached: false }
+          });
+          
+          // Update conversation's last message time
+          await storage.updateConversation(conversationId, userId, {
+            lastMessageAt: new Date()
+          });
+        } catch (dbError) {
+          console.error('Failed to store messages:', dbError);
+          // Don't fail the request if database storage fails
+        }
+      }
+      
+      // STEP 10: Get Updated Stats
+      const userStats = costGuardian.getUserStats(userId, userTier);
+      
+      // Return response with metadata
+      res.json({
+        response: aiResponse,
+        model: finalModel,
+        cached: false,
+        usage: {
+          tokens: actualTokens,
+          dailyCost: userStats.dailyCost,
+          remainingBudget: userStats.remainingBudget,
+          usagePercentage: userStats.usagePercentage
+        },
+        rateLimits: abuseDetector.getUserRateLimitStatus(userId)
+      });
+      
+    } catch (error) {
+      console.error('Chat endpoint error:', error);
+      res.status(500).json({ 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
+  // Chat Status Endpoint - Get current limits and usage
+  app.get('/api/chat/status', async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const userTier = req.user!.tier || 'free';
+      
+      // Get current usage stats
+      const costStats = costGuardian.getUserStats(userId, userTier);
+      const rateLimits = abuseDetector.getUserRateLimitStatus(userId);
+      const cacheStats = responseCache.getStats();
+      const modelRecommendations = modelRouter.getModelRecommendations();
+      
+      res.json({
+        usage: {
+          daily: {
+            spent: costStats.dailyCost,
+            limit: costStats.dailyLimit,
+            remaining: costStats.remainingBudget,
+            percentage: costStats.usagePercentage
+          },
+          requests: costStats.requests,
+          degradationStage: costStats.degradationStage,
+          isBlocked: costStats.isBlocked
+        },
+        rateLimits,
+        cache: {
+          hitRate: cacheStats.hitRate,
+          totalHits: cacheStats.totalHits,
+          totalMisses: cacheStats.totalMisses,
+          entries: cacheStats.entriesCount
+        },
+        models: modelRecommendations,
+        tier: userTier
+      });
+    } catch (error) {
+      console.error('Status endpoint error:', error);
+      res.status(500).json({ error: 'Failed to fetch status' });
+    }
+  });
+  
+  // Admin endpoint to reset user limits (development only)
+  app.post('/api/admin/reset-limits', async (req: AuthenticatedRequest, res) => {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ error: 'Not available in production' });
+    }
+    
+    const userId = req.user!.id;
+    
+    // Reset all limits
+    costGuardian.emergencyReset(userId);
+    abuseDetector.resetUserLimits(userId);
+    
+    res.json({ success: true, message: 'Limits reset successfully' });
+  });
+  
   // API Status Check Endpoint
-  app.get('/api/chat/status', async (req, res) => {
+  app.get('/api/chat/api-status', async (req, res) => {
     try {
       // Quick check of OpenAI API availability
       const openaiApiKey = process.env.OPENAI_API_KEY;
