@@ -2,6 +2,42 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
+// Environment variable validation for production
+function validateEnvironmentVariables() {
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  if (isProduction) {
+    const requiredVars = [
+      'DATABASE_URL',
+      'VITE_SUPABASE_URL',
+      'VITE_SUPABASE_ANON_KEY',
+      'RESEND_API_KEY',
+      'OPENAI_API_KEY'
+    ];
+    
+    const missingVars = requiredVars.filter(varName => !process.env[varName]);
+    
+    if (missingVars.length > 0) {
+      console.error('❌ Missing required environment variables in production:', missingVars.join(', '));
+      console.error('Please ensure all required environment variables are set before deploying.');
+      // Log warning but don't exit - allow deployment to complete
+      console.warn('⚠️ Application may not function correctly without these variables.');
+    } else {
+      console.log('✅ All required environment variables are set');
+    }
+    
+    // Log deployment information
+    console.log('🚀 Starting in PRODUCTION mode');
+    console.log('📍 Will listen on port:', process.env.PORT || '80');
+  } else {
+    console.log('🔧 Starting in DEVELOPMENT mode');
+    console.log('📍 Will listen on port:', process.env.PORT || '5000');
+  }
+}
+
+// Validate environment variables at startup
+validateEnvironmentVariables();
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -57,10 +93,12 @@ app.use((req, res, next) => {
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
+  // Other ports are firewalled. Default to port 80 for production, 5000 for development.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
+  const isProduction = process.env.NODE_ENV === 'production';
+  const defaultPort = isProduction ? '80' : '5000';
+  const port = parseInt(process.env.PORT || defaultPort, 10);
   server.listen({
     port,
     host: "0.0.0.0",

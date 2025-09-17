@@ -115,13 +115,43 @@ function cleanupOldIPEntries(): void {
 setInterval(cleanupOldIPEntries, 60 * 60 * 1000);
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Health check endpoint (no auth required)
+  // Health check endpoint (no auth required) - primary health check for deployment
+  app.get('/health', (req, res) => {
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      service: 'preserving-connections-api'
+    });
+  });
+  
+  // Alternative health check at /api/health (no auth required)
+  app.get('/api/health', (req, res) => {
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      service: 'preserving-connections-api'
+    });
+  });
+  
+  // Legacy health check endpoint (no auth required)
   app.get('/api', (req, res) => {
     res.json({ status: 'ok', message: 'API is running' });
   });
   
   // Health check for HEAD requests too (fixes the continuous 401s)
   app.head('/api', (req, res) => {
+    res.status(200).end();
+  });
+  
+  // HEAD request for /health endpoint
+  app.head('/health', (req, res) => {
+    res.status(200).end();
+  });
+  
+  // HEAD request for /api/health endpoint  
+  app.head('/api/health', (req, res) => {
     res.status(200).end();
   });
 
@@ -586,7 +616,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/*', (req, res, next) => {
     // Skip JWT verification for specific routes
     const skipAuthRoutes = [
-      '/api', 
+      '/api',
+      '/api/health', // Health check endpoint
       '/api/send-confirmation', 
       '/api/confirm-email', 
       '/api/chat/demo',
