@@ -23,15 +23,28 @@ export const authHelpers = {
   async signUp(email: string, password: string, userData: { first_name: string; last_name: string }) {
     console.log('Supabase signUp called with:', { email, userData });
     
+    // First, check if user already exists to avoid duplicate signups
+    const { data: existingUser, error: checkError } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+    
+    if (existingUser?.user && !checkError) {
+      console.log('User already exists, signing in instead of signing up');
+      return existingUser;
+    }
+    
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: undefined, // Disable email confirmation redirect - this ensures no Supabase emails are sent
+        emailRedirectTo: undefined, // Disable email confirmation redirect
+        captchaToken: undefined,
         data: {
           first_name: userData.first_name,
           last_name: userData.last_name,
-          full_name: `${userData.first_name} ${userData.last_name}`
+          full_name: `${userData.first_name} ${userData.last_name}`,
+          email_confirmed: false // Mark as not confirmed until our custom system confirms
         }
       }
     })
