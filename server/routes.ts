@@ -208,6 +208,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Welcome email endpoint (no auth required)
+  app.post('/api/welcome-email', async (req, res) => {
+    try {
+      const { email, firstName } = req.body;
+
+      if (!email || !firstName) {
+        return res.status(400).json({ error: 'Email and first name are required' });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: 'Invalid email format' });
+      }
+
+      // Send welcome email
+      const result = await EmailService.sendWelcomeEmail(email, firstName);
+
+      if (result && result.success) {
+        res.json({ 
+          success: true, 
+          message: 'Welcome email sent successfully',
+          emailId: result.data?.id
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          error: 'Failed to send welcome email',
+          details: result?.error || 'Unknown error'
+        });
+      }
+    } catch (error) {
+      console.error('Send welcome email endpoint error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Email confirmation endpoints (no auth required)
   // Development only - reset rate limits
   app.post('/api/reset-rate-limits', async (req, res) => {

@@ -11,7 +11,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true, // Enable to handle magic link authentication
+    detectSessionInUrl: false, // Disable magic link detection since we're not using email confirmation
     storageKey: 'preserving-connections-auth',
     flowType: 'pkce'
   }
@@ -38,13 +38,12 @@ export const authHelpers = {
       email,
       password,
       options: {
-        emailRedirectTo: undefined, // Disable email confirmation redirect
         captchaToken: undefined,
         data: {
           first_name: userData.first_name,
           last_name: userData.last_name,
           full_name: `${userData.first_name} ${userData.last_name}`,
-          email_confirmed: false // Mark as not confirmed until our custom system confirms
+          email_confirmed: true // Mark as confirmed since we're not using email confirmation
         }
       }
     })

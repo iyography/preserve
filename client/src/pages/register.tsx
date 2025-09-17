@@ -5,8 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ParticleSystem from "@/components/ParticleSystem";
-import EmailConfirmationModal from "@/components/EmailConfirmationModal";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
@@ -90,8 +89,6 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showEmailModal, setShowEmailModal] = useState(false);
-  const [isResendingEmail, setIsResendingEmail] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -102,60 +99,33 @@ export default function Register() {
 
   const { signUp } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Function to send confirmation email via our custom endpoint
-  const sendConfirmationEmail = async (email: string) => {
+  // Function to send welcome email after registration
+  const sendWelcomeEmail = async (email: string, firstName: string) => {
     try {
-      const response = await fetch('/api/send-confirmation', {
+      const response = await fetch('/api/welcome-email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, firstName }),
       });
-
-      const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || result.message || 'Failed to send confirmation email');
+        console.warn('Failed to send welcome email - this is not critical');
+        // Don't throw error - welcome email failure shouldn't block registration
+      } else {
+        console.log('Welcome email sent successfully');
       }
-
-      return result;
     } catch (error) {
-      console.error('Error sending confirmation email:', error);
-      throw error;
+      console.warn('Error sending welcome email:', error);
+      // Don't throw error - welcome email failure shouldn't block registration
     }
-  };
-
-  // Handle resending confirmation email
-  const handleResendEmail = async () => {
-    setIsResendingEmail(true);
-    try {
-      await sendConfirmationEmail(formData.email);
-      toast({
-        title: "Email Resent!",
-        description: "We've sent another confirmation email to your address."
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Failed to Resend Email",
-        description: error instanceof Error ? error.message : "An error occurred while resending the email."
-      });
-    } finally {
-      setIsResendingEmail(false);
-    }
-  };
-
-  // Handle closing the modal (when user confirms they'll check email)
-  const handleCloseModal = () => {
-    setShowEmailModal(false);
-    // Optionally redirect to sign-in page or stay on the same page
-    // For now, let's stay on the registration page
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -186,7 +156,7 @@ export default function Register() {
     console.log('Starting Supabase registration...');
 
     try {
-      // Step 1: Register with Supabase (no email confirmation)
+      // Step 1: Register with Supabase (no email confirmation required)
       const result = await signUp(formData.email, formData.password, {
         first_name: formData.firstName,
         last_name: formData.lastName
@@ -194,32 +164,20 @@ export default function Register() {
       
       console.log('Supabase registration successful:', result);
 
-      // Step 2: Send our custom confirmation email
-      try {
-        await sendConfirmationEmail(formData.email);
-        console.log('Custom confirmation email sent successfully');
+      // Step 2: Send welcome email (non-blocking)
+      sendWelcomeEmail(formData.email, formData.firstName);
         
-        // Step 3: Show success message and email confirmation modal
-        toast({
-          title: "Account Created Successfully!",
-          description: "Please check your email to verify your account."
-        });
-        
-        // Show the email confirmation modal
-        setShowEmailModal(true);
-        
-      } catch (emailError) {
-        console.error('Failed to send confirmation email:', emailError);
-        
-        // Account was created but email failed - still show success but with different message
-        toast({
-          title: "Account Created!",
-          description: "Your account was created, but we had trouble sending the confirmation email. You can try resending it."
-        });
-        
-        // Still show the modal so user can resend email
-        setShowEmailModal(true);
-      }
+      // Step 3: Show success message and redirect to onboarding
+      toast({
+        title: "Account Created Successfully!",
+        description: "Welcome to Preserving Connections! Let's get you started."
+      });
+      
+      // Wait a moment for the toast to show, then redirect
+      setTimeout(() => {
+        // Redirect directly to onboarding - user is now fully authenticated
+        setLocation('/onboarding');
+      }, 1500);
 
     } catch (error) {
       console.error('Registration error:', error);
@@ -431,14 +389,6 @@ export default function Register() {
         </div>
       </div>
 
-      {/* Email Confirmation Modal */}
-      <EmailConfirmationModal
-        isOpen={showEmailModal}
-        onClose={handleCloseModal}
-        email={formData.email}
-        onResend={handleResendEmail}
-        isResending={isResendingEmail}
-      />
     </div>
   );
 }
