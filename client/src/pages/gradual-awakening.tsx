@@ -531,132 +531,10 @@ export default function GradualAwakening() {
     setHelloMessage(randomMessage);
   };
   
-  // Validation function for Tell us more fields
+  // All fields are now optional - no validation needed
   const validateTellUsMoreFields = () => {
-    const errors: string[] = [];
-    
-    // Voice communication validation
-    if (!voiceCommunication.usualGreeting.trim()) {
-      errors.push('How they usually greeted you');
-    }
-    if (!voiceCommunication.catchphrase.trim()) {
-      errors.push('Their catchphrase or common saying');
-    }
-    if (voiceCommunication.communicationStyle.length === 0) {
-      errors.push('At least one communication style');
-    }
-    
-    // Personality patterns validation
-    if (personalityPatterns.conflictHandling.length === 0) {
-      errors.push('At least one conflict handling style');
-    }
-    if (!personalityPatterns.humorTriggers.trim()) {
-      errors.push('What made them laugh');
-    }
-    if (!personalityPatterns.mainWorries.trim()) {
-      errors.push('What they worried about');
-    }
-    
-    // What they'd say validation
-    if (!whatTheydSay.relationshipAdvice.trim()) {
-      errors.push('Their relationship advice');
-    }
-    if (!whatTheydSay.promotionReaction.trim()) {
-      errors.push('How they\'d react to your promotion');
-    }
-    if (!whatTheydSay.moneyStressResponse.trim()) {
-      errors.push('Their response to money stress');
-    }
-    if (!whatTheydSay.complaintResponse.trim()) {
-      errors.push('How they handled your complaints');
-    }
-    
-    // Context builders validation
-    if (contextBuilders.favoriteTopics.some(topic => !topic.trim())) {
-      errors.push('All three favorite topics');
-    }
-    if (!contextBuilders.proudOf.trim()) {
-      errors.push('Something they were proud of');
-    }
-    if (!contextBuilders.petPeeve.trim()) {
-      errors.push('Their biggest pet peeve');
-    }
-    if (!contextBuilders.showsCare.trim()) {
-      errors.push('How they showed they cared');
-    }
-    
-    // Enhanced memories validation
-    if (!enhancedMemories.madeYouLaugh.trim()) {
-      errors.push('A time they made you laugh');
-    }
-    if (!enhancedMemories.adviceGiven.trim()) {
-      errors.push('Advice they gave that stuck');
-    }
-    if (!enhancedMemories.celebratedWins.trim()) {
-      errors.push('How they celebrated your wins');
-    }
-    if (!enhancedMemories.comfortWhenUpset.trim()) {
-      errors.push('What they did when you were upset');
-    }
-    
-    // Relationship-specific field validation
-    if (relationship) {
-      const lowerRelationship = relationship.toLowerCase();
-      
-      // Grandparent relationship validation (check first to avoid "parent" match)
-      if (lowerRelationship.includes('grand')) {
-        if (!relationshipSpecific.grandparentData?.stories?.trim()) {
-          errors.push('Stories they used to tell');
-        }
-        if (!relationshipSpecific.grandparentData?.traditions?.trim()) {
-          errors.push('Traditions they maintained or started');
-        }
-        if (!relationshipSpecific.grandparentData?.wisdom?.trim()) {
-          errors.push('Wisdom they shared with you');
-        }
-      }
-      
-      // Parent relationship validation
-      else if (lowerRelationship.includes('parent') || lowerRelationship === 'mother' || lowerRelationship === 'father') {
-        if (!relationshipSpecific.parentData?.disciplineStyle?.trim()) {
-          errors.push('How they disciplined or guided you');
-        }
-        if (!relationshipSpecific.parentData?.houseRules?.trim()) {
-          errors.push('Their rules for the house');
-        }
-        if (!relationshipSpecific.parentData?.parenting?.trim()) {
-          errors.push('Their parenting style');
-        }
-      }
-      
-      // Friend relationship validation
-      else if (lowerRelationship === 'friend') {
-        if (!relationshipSpecific.friendData?.insideJokes?.trim()) {
-          errors.push('Your inside jokes together');
-        }
-        if (!relationshipSpecific.friendData?.activities?.trim()) {
-          errors.push('What you always did together');
-        }
-        if (!relationshipSpecific.friendData?.friendship?.trim()) {
-          errors.push('What made your friendship special');
-        }
-      }
-      
-      // Partner relationship validation
-      else if (lowerRelationship.includes('partner') || lowerRelationship === 'spouse' || lowerRelationship === 'husband' || lowerRelationship === 'wife') {
-        if (!relationshipSpecific.partnerData?.petNames?.trim()) {
-          errors.push('Pet names for each other');
-        }
-        if (!relationshipSpecific.partnerData?.disagreements?.trim()) {
-          errors.push('How you handled disagreements');
-        }
-        if (!relationshipSpecific.partnerData?.romance?.trim()) {
-          errors.push('Your romantic moments together');
-        }
-      }
-    }
-    
-    return errors;
+    // Return empty array since all fields are optional
+    return [];
   };
   
   // Load existing session data
@@ -734,27 +612,10 @@ export default function GradualAwakening() {
     if (step === 'intro') {
       setStep('minimal-start');
     } else if (step === 'minimal-start') {
-      if (!personaName || !relationship || adjectives.some(adj => !adj.trim()) || !favoriteMemory) {
-        toast({
-          variant: "destructive",
-          title: "Missing Information",
-          description: "Please fill in all required fields to continue."
-        });
-        return;
-      }
+      // All fields are optional - no validation needed
       setStep('tell-us-more');
     } else if (step === 'tell-us-more') {
-      // Validate all Tell us more fields
-      const validationErrors = validateTellUsMoreFields();
-      if (validationErrors.length > 0) {
-        toast({
-          variant: "destructive",
-          title: "Missing Information",
-          description: `Please fill in the following required fields: ${validationErrors.slice(0, 3).join(', ')}${validationErrors.length > 3 ? ` and ${validationErrors.length - 3} more` : ''}`
-        });
-        return;
-      }
-      
+      // All fields are optional - skip validation
       setIsCreatingPersona(true);
       
       try {
@@ -1107,14 +968,14 @@ export default function GradualAwakening() {
                   </Badge>
                 </CardTitle>
                 <p className="text-gray-600">
-                  Just the essentials to bring them back. We'll add more memories together over time.
+                  Share as much or as little as you'd like. You can always add more later.
                 </p>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Basic Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="personaName" className="text-sm font-medium text-gray-700">Their name</Label>
+                    <Label htmlFor="personaName" className="text-sm font-medium text-gray-700">Their name (optional)</Label>
                     <Input
                       id="personaName"
                       placeholder="What did you call them?"
@@ -1125,7 +986,7 @@ export default function GradualAwakening() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="relationship" className="text-sm font-medium text-gray-700">Your relationship</Label>
+                    <Label htmlFor="relationship" className="text-sm font-medium text-gray-700">Your relationship (optional)</Label>
                     <Input
                       id="relationship"
                       placeholder="e.g., mother, father, grandmother"
@@ -1139,7 +1000,7 @@ export default function GradualAwakening() {
 
                 {/* Photo Upload */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">One photo</Label>
+                  <Label className="text-sm font-medium text-gray-700">One photo (optional)</Label>
                   <div className="border-2 border-dashed border-green-200 rounded-lg p-6 text-center hover:border-green-300 transition-colors">
                     <Camera className="w-8 h-8 text-green-400 mx-auto mb-2" />
                     <p className="text-sm text-gray-600 mb-2">A favorite photo that captures who they were</p>
@@ -1188,7 +1049,7 @@ export default function GradualAwakening() {
 
                 {/* Three Adjectives */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Three adjectives that describe them</Label>
+                  <Label className="text-sm font-medium text-gray-700">Three adjectives that describe them (optional)</Label>
                   <p className="text-xs text-gray-500 mb-3">The first words that come to mind when you think of them</p>
                   <div className="grid grid-cols-3 gap-3">
                     {adjectives.map((adj, index) => (
@@ -1325,7 +1186,6 @@ export default function GradualAwakening() {
                 </Button>
                 <Button 
                   onClick={handleNext}
-                  disabled={!personaName || !relationship || adjectives.some(adj => !adj.trim()) || !favoriteMemory}
                   className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-6"
                   data-testid="button-continue-to-tell-more"
                 >
@@ -1347,11 +1207,11 @@ export default function GradualAwakening() {
                   <Sparkles className="w-6 h-6 text-purple-600" />
                   <span>Tell us more about {personaName}</span>
                   <Badge variant="outline" className="ml-auto bg-purple-50 text-purple-700 border-purple-200">
-                    Required
+                    Optional
                   </Badge>
                 </CardTitle>
                 <p className="text-gray-600">
-                  Help us create a rich, authentic persona by sharing deeper details about their personality, communication style, and memories.
+                  Share as much as you'd like to help create a richer persona. All fields are optional - you can skip any you prefer not to fill.
                 </p>
               </CardHeader>
             </Card>

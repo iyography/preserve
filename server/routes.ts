@@ -21,7 +21,7 @@ import { Storage } from "@google-cloud/storage";
 import { verifyJWT, type AuthenticatedRequest } from "./middleware/auth";
 import { EmailService } from "./services/email";
 import { emailConfirmationService } from "./services/emailConfirmation";
-import { createClient } from '@supabase/supabase-js';
+// Removed Supabase createClient import - using shared client from auth middleware
 import { abuseDetector } from "./services/abuseDetector";
 import { costGuardian } from "./services/costGuardian";
 import { modelRouter } from "./services/modelRouter";
@@ -69,10 +69,8 @@ const gcs = new Storage();
 const bucketName = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
 const bucket = gcs.bucket(bucketName || '');
 
-// Initialize server-side Supabase client with service role key for admin operations
-const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+// Note: Using Supabase client from auth middleware to avoid duplication
+// No need for separate admin client for current operations
 
 // Initialize OpenAI client if API key is available
 const openaiApiKey = process.env.OPENAI_API_KEY;

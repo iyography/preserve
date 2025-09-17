@@ -27,10 +27,7 @@ export default function Onboarding() {
     if (step === 'welcome') {
       setStep('essential');
     } else if (step === 'essential') {
-      // Validate essential info
-      if (!personaName || !relationship || adjectives.some(adj => !adj.trim()) || !favoriteMemory) {
-        return; // Stay on current step if validation fails
-      }
+      // No validation needed - all fields are optional
       // Redirect to gradual awakening with essential data populated
       setLocation('/onboarding/gradual-awakening?step=tell-us-more');
     }
@@ -41,9 +38,7 @@ export default function Onboarding() {
   };
 
   const canContinue = () => {
-    if (step === 'essential') {
-      return personaName && relationship && adjectives.every(adj => adj.trim()) && favoriteMemory;
-    }
+    // All fields are optional - user can always continue
     return true;
   };
 
@@ -150,7 +145,7 @@ export default function Onboarding() {
             <div className="text-center mb-12">
               <h1 className="text-3xl font-bold text-gray-900 mb-4">Essential Information</h1>
               <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Just the essentials to bring them back. We'll add more memories together over time.
+                Share as much or as little as you'd like. You can always add more memories later.
               </p>
             </div>
 
@@ -169,7 +164,7 @@ export default function Onboarding() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="personaName" className="text-sm font-medium text-gray-700">
-                      Their name <span className="text-red-500">*</span>
+                      Their name
                     </Label>
                     <Input
                       id="personaName"
@@ -182,7 +177,7 @@ export default function Onboarding() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="relationship" className="text-sm font-medium text-gray-700">
-                      Your relationship <span className="text-red-500">*</span>
+                      Your relationship
                     </Label>
                     <Input
                       id="relationship"
@@ -197,7 +192,7 @@ export default function Onboarding() {
 
                 <div className="space-y-4">
                   <Label className="text-sm font-medium text-gray-700">
-                    Three words that describe them <span className="text-red-500">*</span>
+                    Three words that describe them
                   </Label>
                   <div className="grid grid-cols-3 gap-3">
                     {adjectives.map((adjective, index) => (
@@ -219,7 +214,7 @@ export default function Onboarding() {
 
                 <div className="space-y-2">
                   <Label htmlFor="favoriteMemory" className="text-sm font-medium text-gray-700">
-                    Share one favorite memory <span className="text-red-500">*</span>
+                    Share one favorite memory
                   </Label>
                   <Textarea
                     id="favoriteMemory"
@@ -246,7 +241,6 @@ export default function Onboarding() {
               </Button>
               <Button 
                 onClick={handleNext}
-                disabled={!canContinue()}
                 className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-6"
                 data-testid="button-continue-essential"
               >
