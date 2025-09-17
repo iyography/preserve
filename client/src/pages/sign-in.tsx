@@ -99,10 +99,6 @@ export default function SignIn() {
   const { signIn } = useAuth();
   const { toast } = useToast();
 
-  const fillTestCredentials = () => {
-    setEmail('secondgavel@gmail.com');
-    setPassword('testuser123');
-  };
 
   // Function to send confirmation email via our custom endpoint
   const sendConfirmationEmail = async (emailAddress: string) => {
@@ -303,16 +299,6 @@ export default function SignIn() {
                   </Label>
                 </div>
 
-                {/* Test Credentials Button */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={fillTestCredentials}
-                  className="w-full bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 hover:border-purple-300"
-                  data-testid="button-fill-test-credentials"
-                >
-                  Fill Test Credentials
-                </Button>
 
                 <Button
                   type="submit"
@@ -333,13 +319,6 @@ export default function SignIn() {
                 </p>
               </div>
 
-              {/* Test Credentials Info */}
-              <div className="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-100">
-                <p className="text-xs text-purple-700 font-medium mb-1">Test Account:</p>
-                <p className="text-xs text-purple-600">Email: secondgavel@gmail.com</p>
-                <p className="text-xs text-purple-600">Password: testuser123</p>
-                <p className="text-xs text-purple-500 mt-1 italic">Click "Fill Test Credentials" to use these</p>
-              </div>
             </CardContent>
           </Card>
 
