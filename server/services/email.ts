@@ -80,10 +80,21 @@ export class EmailService {
       return { success: false, error: 'Email service not configured' };
     }
 
-    // Construct the confirmation URL
-    const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://preservingconnections.com' 
-      : 'http://localhost:5000';
+    // Construct the confirmation URL using Replit environment variables
+    let baseUrl: string;
+    
+    if (process.env.REPLIT_DEPLOYMENT === '1') {
+      // Production deployment - use the primary domain
+      const domains = process.env.REPLIT_DOMAINS?.split(',');
+      baseUrl = domains?.[0] ? `https://${domains[0]}` : 'https://preservingconnections.replit.app';
+    } else if (process.env.REPLIT_DEV_DOMAIN) {
+      // Development in Replit workspace
+      baseUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
+    } else {
+      // Fallback for local development
+      baseUrl = 'http://localhost:5000';
+    }
+    
     const confirmationUrl = `${baseUrl}/api/confirm-email?token=${confirmationToken}`;
 
     try {
