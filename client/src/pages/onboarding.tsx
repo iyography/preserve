@@ -180,12 +180,12 @@ export default function Onboarding() {
 
       <div className="max-w-4xl mx-auto px-6 py-12">
         {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-medium text-gray-600">Setting up your experience</h2>
-            <span className="text-sm text-gray-500">{progress}% complete</span>
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-xs font-medium text-gray-500">Setting up your experience</h2>
+            <span className="text-xs text-gray-400">{progress}% complete</span>
           </div>
-          <Progress value={progress} className="h-2" />
+          <Progress value={progress} className="h-1" />
         </div>
 
         {/* Welcome Step */}
