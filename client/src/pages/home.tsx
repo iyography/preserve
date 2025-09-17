@@ -24,6 +24,8 @@ export default function Home() {
   const [isDemoOpen, setIsDemoOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [currentImproveModule, setCurrentImproveModule] = useState<string | null>(null);
   const [improveData, setImproveData] = useState({
     facebookUrl: '',
@@ -44,25 +46,77 @@ export default function Home() {
     setExpandedFAQ(expandedFAQ === index ? null : index);
   };
 
-  const handleSendMessage = () => {
-    if (newMessage.trim()) {
+  const handleSendMessage = async () => {
+    if (newMessage.trim() && !isLoading) {
       const userMessage = { id: Date.now(), sender: 'user' as const, text: newMessage };
       setChatMessages(prev => [...prev, userMessage]);
+      setError(null);
+      setIsLoading(true);
       
-      // Simulate grandma's empathetic response after a short delay
-      setTimeout(() => {
-        const responses = [
-          "Oh sweetheart! I'm so happy to hear from you! How have you been, my dear? I was just thinking about you this morning.",
-          "Oh honey, you work too hard! You know, when your grandfather was your age, he used to work long hours too. Are you eating enough? You know how worried I get!",
-          "My precious child, that brings back such lovely memories! You've always been such a blessing in my life.",
-          "Sweet child, I'm so proud of you! You know, you remind me so much of your grandfather - he had that same gentle heart.",
-          "Oh darling, that sounds wonderful! You always were so thoughtful. I remember when you were little, you had that same caring spirit.",
-          "Oh honey, come here and give your grandma a hug! You always know just what to say to make my heart full."
-        ];
-        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-        const grandmaMessage = { id: Date.now() + 1, sender: 'grandma' as const, text: randomResponse };
+      try {
+        // Call the demo API endpoint
+        const response = await fetch('/api/chat/demo', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: newMessage,
+            conversationHistory: chatMessages.slice(-10) // Send last 10 messages for context
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          
+          // Handle rate limiting with a friendly message
+          if (response.status === 429) {
+            throw new Error(errorData.message || "Oh dear, we've been chatting so much! Please give me a moment to catch my breath, sweetheart.");
+          }
+          
+          throw new Error(errorData.message || 'Failed to get response');
+        }
+
+        const data = await response.json();
+        const grandmaMessage = { 
+          id: Date.now() + 1, 
+          sender: 'grandma' as const, 
+          text: data.response 
+        };
         setChatMessages(prev => [...prev, grandmaMessage]);
-      }, 1500);
+        
+      } catch (error) {
+        console.error('Chat error:', error);
+        
+        // Show error as a message from grandma
+        const errorMessage = error instanceof Error ? error.message : "Oh my, I'm having a bit of trouble right now, dear. Let's try again in a moment.";
+        
+        // For serious errors, show as grandma message
+        if (error instanceof Error && (error.message.includes('chatting so much') || error.message.includes('Demo limit'))) {
+          const grandmaError = { 
+            id: Date.now() + 1, 
+            sender: 'grandma' as const, 
+            text: error.message 
+          };
+          setChatMessages(prev => [...prev, grandmaError]);
+        } else {
+          // For other errors, use fallback responses
+          const fallbackResponses = [
+            "Oh my, I'm having a bit of trouble hearing you right now, dear. Sometimes these modern gadgets confuse me! But I'm always here for you.",
+            "Sweetheart, grandma's having a senior moment! Why don't you tell me again what's on your mind?",
+            "Oh honey, I couldn't quite understand that. You know how it is with us old folks and technology! But I love hearing from you."
+          ];
+          const randomFallback = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+          const grandmaMessage = { 
+            id: Date.now() + 1, 
+            sender: 'grandma' as const, 
+            text: randomFallback 
+          };
+          setChatMessages(prev => [...prev, grandmaMessage]);
+        }
+      } finally {
+        setIsLoading(false);
+      }
       
       setNewMessage('');
     }
@@ -623,17 +677,35 @@ export default function Home() {
                   </div>
                 </div>
               ) : (
-                chatMessages.map((message) => (
-                  <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[75%] rounded-2xl px-4 py-3 ${
-                      message.sender === 'user' 
-                        ? 'bg-purple-600 text-white' 
-                        : 'bg-purple-50 text-gray-800 border border-purple-100'
-                    }`}>
-                      <p className="text-sm leading-relaxed">{message.text}</p>
+                <>
+                  {chatMessages.map((message) => (
+                    <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[75%] rounded-2xl px-4 py-3 ${
+                        message.sender === 'user' 
+                          ? 'bg-purple-600 text-white' 
+                          : 'bg-purple-50 text-gray-800 border border-purple-100'
+                      }`}>
+                        <p className="text-sm leading-relaxed">{message.text}</p>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                  
+                  {/* Loading indicator */}
+                  {isLoading && (
+                    <div className="flex justify-start">
+                      <div className="max-w-[75%] rounded-2xl px-4 py-3 bg-purple-50 text-gray-600 border border-purple-100">
+                        <div className="flex items-center gap-2">
+                          <div className="animate-pulse flex space-x-1">
+                            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '200ms' }}></div>
+                            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '400ms' }}></div>
+                          </div>
+                          <p className="text-sm italic">Grandma is thinking...</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
             
@@ -643,15 +715,21 @@ export default function Home() {
                 <Input
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type your message to Grandma Rose..."
-                  className="flex-1 rounded-xl border-purple-200 focus:border-purple-400 focus:ring-purple-400"
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  placeholder={isLoading ? "Please wait for Grandma to respond..." : "Type your message to Grandma Rose..."}
+                  className="flex-1 rounded-xl border-purple-200 focus:border-purple-400 focus:ring-purple-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
+                  disabled={isLoading}
                 />
                 <Button
                   onClick={handleSendMessage}
-                  className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 rounded-xl px-6"
+                  className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 rounded-xl px-6 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isLoading || !newMessage.trim()}
                 >
-                  <Send className="w-4 h-4" />
+                  {isLoading ? (
+                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
                 </Button>
               </div>
             </div>

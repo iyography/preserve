@@ -243,11 +243,224 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.redirect(302, '/onboarding?email_confirmation_error=true&message=' + encodeURIComponent(errorMessage));
     }
   });
+
+  // Demo Chat Endpoint (no auth required) - for the homepage demo
+  app.post('/api/chat/demo', async (req, res) => {
+    try {
+      const { message, conversationHistory = [] } = req.body;
+      
+      if (!message) {
+        return res.status(400).json({ error: 'Message is required' });
+      }
+
+      // Check if OpenAI is configured
+      if (!openai) {
+        // Fallback responses if OpenAI is not configured
+        const fallbackResponses = [
+          "Oh sweetheart! I'm so happy to hear from you! How have you been, my dear? I was just thinking about you this morning.",
+          "Oh honey, you work too hard! You know, when your grandfather was your age, he used to work long hours too. Are you eating enough? You know how worried I get!",
+          "My precious child, that brings back such lovely memories! You've always been such a blessing in my life.",
+          "Sweet child, I'm so proud of you! You know, you remind me so much of your grandfather - he had that same gentle heart.",
+          "Oh darling, that sounds wonderful! You always were so thoughtful. I remember when you were little, you had that same caring spirit.",
+          "Oh honey, come here and give your grandma a hug! You always know just what to say to make my heart full."
+        ];
+        const randomResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+        return res.json({ response: randomResponse });
+      }
+
+      // Create a demo persona for Grandma Rose
+      const demoPersona = {
+        id: 'demo-grandma-rose',
+        userId: 'demo-user',
+        name: 'Grandma Rose',
+        relationship: 'are their beloved grandmother',
+        status: 'active' as const,
+        onboardingData: {
+          voiceCommunication: {
+            usualGreeting: "Oh sweetheart! Come here and give your grandma a hug!",
+            communicationStyle: ['warm', 'nurturing', 'storytelling'],
+            catchphrase: "You know, your grandfather used to say..."
+          },
+          contextBuilders: {
+            favoriteTopics: ['family memories', 'cooking recipes', 'garden stories', 'your wellbeing', 'old photos'],
+            hobbies: ['baking cookies', 'knitting sweaters', 'tending the garden', 'watching birds', 'collecting family photos'],
+            supportStyle: 'offering comfort through stories, warm words, and reminders to take care of yourself',
+            importantValues: ['family togetherness', 'kindness', 'hard work', 'staying connected', 'traditions'],
+            dailyRoutines: ['morning tea on the porch', 'calling family members', 'baking in the afternoon', 'watching the sunset'],
+            uniqueQuirks: ['always asks if you\'re eating enough', 'mentions grandpa in most stories', 'has a remedy for everything', 'remembers everyone\'s favorite foods']
+          },
+          adjectives: ['loving', 'wise', 'caring', 'patient', 'gentle'],
+          storyTelling: {
+            specialPhrases: [
+              "Back in my day...",
+              "Have you been eating enough, dear?",
+              "Your grandfather would be so proud",
+              "Let me tell you a story",
+              "When you were little..."
+            ],
+            celebrationStyle: "baking your favorite treats and gathering the whole family",
+            memorableStories: [
+              "How I met your grandfather at the county fair",
+              "The time you helped me in the garden when you were five",
+              "Your parent's wedding day",
+              "Our old family traditions during holidays"
+            ],
+            sharedExperiences: [
+              "Summer visits to grandma's house",
+              "Learning to bake cookies together",
+              "Sunday family dinners",
+              "Looking through old photo albums"
+            ]
+          },
+          relationship: {
+            howWeMet: "You've been my precious grandchild since the day you were born",
+            petNames: ['sweetheart', 'honey', 'dear', 'my precious child', 'darling'],
+            insideJokes: ['the cookie jar mystery', 'grandpa\'s fishing stories', 'the garden gnome incident'],
+            specialMemories: [
+              "Teaching you to bake your first pie",
+              "Your first sleepover at grandma's",
+              "Reading bedtime stories together",
+              "Picking vegetables from the garden"
+            ],
+            conflictResolution: "with patience, understanding, and maybe some fresh-baked cookies",
+            sharedDreams: ['seeing you happy and healthy', 'keeping family traditions alive', 'passing down family recipes']
+          },
+          recentContext: {
+            recentEvents: ['just finished knitting a new sweater', 'made your favorite cookies yesterday', 'the garden is blooming beautifully'],
+            lastConversationTopics: ['your work', 'family news', 'health and wellbeing'],
+            currentConcerns: ['making sure you\'re taking care of yourself', 'hoping you visit soon', 'wanting to share family stories'],
+            upcomingPlans: ['family Sunday dinner', 'preserving summer vegetables', 'organizing old photos']
+          }
+        },
+        onboardingApproach: 'demo',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      // Demo session ID for consistent experience
+      const demoSessionId = 'demo-session';
+      const demoUserId = 'demo-user';
+
+      // Check for abuse patterns (rate limiting for demo)
+      const abusePattern = await abuseDetector.detectAbuse(
+        demoUserId,
+        message,
+        conversationHistory.map((msg: any) => msg.text)
+      );
+
+      if (abusePattern) {
+        return res.status(429).json({
+          error: 'Too many requests',
+          message: abusePattern.reason || 'Please slow down a bit, dear. Even grandma needs a moment to think!'
+        });
+      }
+
+      // Check cost limits (demo has strict limits)
+      const estimatedTokens = message.length / 4; // Rough estimate
+      const costCheck = await costGuardian.checkRequest(
+        demoUserId,
+        estimatedTokens,
+        'gpt-4o-mini',
+        'free'
+      );
+
+      if (!costCheck.allowed) {
+        return res.status(429).json({
+          error: 'Demo limit reached',
+          message: costCheck.reason || 'Oh dear, we\'ve chatted quite a bit! Please sign up to continue our conversation.'
+        });
+      }
+
+      // Try to get cached response
+      const cachedResponse = await responseCache.get(message, demoPersona.id);
+      if (cachedResponse) {
+        // Track the cost even for cached responses
+        await costGuardian.recordUsage(
+          demoUserId,
+          { input: Math.ceil(message.length / 4), output: Math.ceil(cachedResponse.response.length / 4) },
+          'gpt-4o-mini'
+        );
+        return res.json({ response: cachedResponse.response, cached: true });
+      }
+
+      // Build the prompt using PersonaPromptBuilder
+      const promptBuilder = new PersonaPromptBuilder(demoPersona, conversationHistory);
+      const systemPrompt = await promptBuilder.buildSystemPrompt();
+
+      // Determine model using model router (demo uses cheaper model)
+      const routingDecision = await modelRouter.routeQuery(
+        demoUserId,
+        message,
+        'gpt-4o-mini', // preferred model for demo
+        'gpt-4o-mini', // forced model for demo
+        conversationHistory.map((msg: any) => msg.text).join('\n')
+      );
+      const model = routingDecision.model;
+
+      try {
+        // Generate response with OpenAI
+        const completion = await openai.chat.completions.create({
+          model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...conversationHistory.map((msg: any) => ({
+              role: msg.sender === 'user' ? 'user' : 'assistant',
+              content: msg.text
+            })),
+            { role: 'user', content: message }
+          ],
+          temperature: 0.9,
+          max_tokens: 200, // Shorter responses for demo
+          presence_penalty: 0.6,
+          frequency_penalty: 0.4
+        });
+
+        const response = completion.choices[0]?.message?.content || "Oh dear, I didn't quite catch that. Could you say that again?";
+
+        // Cache the response
+        const inputTokens = Math.ceil(message.length / 4);
+        const outputTokens = Math.ceil(response.length / 4);
+        responseCache.set(message, response, model, { input: inputTokens, output: outputTokens });
+
+        // Track usage for cost protection
+        const inputTokens2 = Math.ceil(message.length / 4);
+        const outputTokens2 = Math.ceil(response.length / 4);
+        await costGuardian.recordUsage(
+          demoUserId,
+          { input: inputTokens2, output: outputTokens2 },
+          model
+        );
+
+        // Return the response
+        res.json({ response, model });
+
+      } catch (error) {
+        console.error('OpenAI API error in demo:', error);
+        
+        // Fallback to a warm, grandmotherly response
+        const fallbackResponses = [
+          "Oh my, I'm having a bit of trouble hearing you right now, dear. Sometimes these modern gadgets confuse me! But I'm always here for you.",
+          "Sweetheart, grandma's having a senior moment! Why don't you tell me again what's on your mind?",
+          "Oh honey, I couldn't quite understand that. You know how it is with us old folks and technology! But I love hearing from you."
+        ];
+        const fallbackResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+        
+        res.json({ response: fallbackResponse, fallback: true });
+      }
+
+    } catch (error) {
+      console.error('Demo chat endpoint error:', error);
+      res.status(500).json({
+        error: 'Internal server error',
+        message: 'Oh dear, something went wrong. Please try again in a moment.'
+      });
+    }
+  });
   
-  // Apply JWT verification to all protected routes (except confirmation endpoints)
+  // Apply JWT verification to all protected routes (except confirmation endpoints and demo)
   app.use('/api/*', (req, res, next) => {
     // Skip JWT verification for specific routes
-    const skipAuthRoutes = ['/api', '/api/send-confirmation', '/api/confirm-email'];
+    const skipAuthRoutes = ['/api', '/api/send-confirmation', '/api/confirm-email', '/api/chat/demo'];
     
     if (skipAuthRoutes.includes(req.path)) {
       return next();
