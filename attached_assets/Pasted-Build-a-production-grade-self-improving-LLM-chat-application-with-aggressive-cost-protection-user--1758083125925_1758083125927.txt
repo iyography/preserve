@@ -1,0 +1,495 @@
+Build a production-grade, self-improving LLM chat application with aggressive cost protection, user learning, intelligent onboarding, and Stripe monetization ready. This platform uses Next.js 14, Supabase, OpenAI, and implements enterprise-grade patterns for token management, abuse prevention, progressive degradation, and automatic optimization. The system learns from user behavior, prevents cost overruns, and improves routing efficiency over time. Architecture is designed for both internal use and eventual SaaS monetization.
+Core Architecture with Safety First
+Create a Next.js TypeScript application implementing stateless REST with SSE streaming, comprehensive cost protection via circuit breakers, intelligent model routing that learns from usage patterns, user preference learning from onboarding and behavior, automatic degradation as limits approach, and abuse detection with immediate blocking. Every architectural decision prioritizes cost safety while maintaining excellent UX.
+Complete File Structure
+/app
+  /api
+    /chat
+      route.ts (streaming with protection)
+    /conversations
+      route.ts (CRUD with limits)
+      [id]/route.ts
+    /onboarding
+      route.ts (user profiling)
+    /webhooks
+      /stripe
+        route.ts (payment events)
+    /analytics
+      route.ts (learning endpoint)
+    /admin
+      /usage
+        route.ts (monitoring)
+  /onboarding
+    page.tsx (initial setup)
+  /chat
+    /[id]
+      page.tsx (conversation view)
+    page.tsx (new chat)
+  /pricing
+    page.tsx (upgrade flow)
+  layout.tsx
+  globals.css
+
+/components
+  ChatInterface.tsx
+  MessageList.tsx
+  MessageInput.tsx
+  ConversationSidebar.tsx
+  ModelSelector.tsx
+  TokenCounter.tsx
+  CostDisplay.tsx
+  UsageWarning.tsx
+  OnboardingFlow.tsx
+  UpgradePrompt.tsx
+
+/lib
+  openai.ts
+  supabase.ts
+  context-manager.ts
+  token-optimizer.ts
+  prompt-cache.ts
+  rate-limiter.ts
+  safety-validator.ts
+  conversation-learner.ts
+  cost-guardian.ts
+  model-router.ts
+  stripe-manager.ts
+  abuse-detector.ts
+
+/types
+  index.ts
+
+/hooks
+  useChat.ts
+  useConversations.ts
+  useTokenTracking.ts
+  useUserProfile.ts
+  useCostTracking.ts
+
+/workers
+  optimization-job.ts
+  cache-warmer.ts
+  pattern-analyzer.ts
+Enhanced Database Schema with Protection
+sql-- Enable extensions
+create extension if not exists "uuid-ossp";
+create extension if not exists "pg_cron";
+
+-- User profiles with limits
+create table user_profiles (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references auth.users(id) on delete cascade,
+  tier text default 'free' check (tier in ('free', 'starter', 'pro', 'enterprise')),
+  monthly_budget decimal(10,2) default 5.00,
+  daily_token_limit integer default 10000,
+  gpt4_daily_limit integer default 0,
+  use_case text[] default array[]::text[],
+  preferred_style text,
+  technical_level text,
+  onboarding_completed boolean default false,
+  stripe_customer_id text unique,
+  stripe_subscription_id text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Usage tracking with hard limits
+create table usage_tracking (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references auth.users(id) on delete cascade,
+  date date not null,
+  tokens_used integer default 0,
+  gpt4_tokens integer default 0,
+  gpt3_tokens integer default 0,
+  mini_tokens integer default 0,
+  estimated_cost decimal(10,6) default 0,
+  requests_count integer default 0,
+  cache_hits integer default 0,
+  tokens_saved integer default 0,
+  limit_reached boolean default false,
+  created_at timestamptz default now(),
+  constraint unique_user_date unique(user_id, date)
+);
+
+-- Conversations with cost tracking
+create table conversations (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references auth.users(id) on delete cascade,
+  title text,
+  model text default 'gpt-4o-mini',
+  total_tokens integer default 0,
+  estimated_cost decimal(10,6) default 0,
+  context_summary text,
+  satisfaction_score decimal(3,2),
+  abandoned boolean default false,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Messages with abuse detection
+create table messages (
+  id uuid primary key default uuid_generate_v4(),
+  conversation_id uuid references conversations(id) on delete cascade,
+  role text not null check (role in ('user', 'assistant', 'system')),
+  content text not null,
+  model text,
+  prompt_tokens integer,
+  completion_tokens integer,
+  total_tokens integer,
+  cached boolean default false,
+  flagged_abuse boolean default false,
+  created_at timestamptz default now()
+);
+
+-- Learning system
+create table conversation_patterns (
+  id uuid primary key default uuid_generate_v4(),
+  pattern_hash text unique not null,
+  query_type text,
+  optimal_model text,
+  success_rate decimal(3,2),
+  avg_tokens integer,
+  avg_cost decimal(10,6),
+  sample_count integer default 1,
+  last_seen timestamptz default now(),
+  created_at timestamptz default now()
+);
+
+-- User model affinity learning
+create table user_model_affinity (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references auth.users(id) on delete cascade unique,
+  prefers_speed boolean default false,
+  needs_code_help boolean default false,
+  budget_sensitive boolean default true,
+  typical_query_length integer,
+  optimal_model text default 'gpt-4o-mini',
+  satisfaction_by_model jsonb default '{}',
+  updated_at timestamptz default now()
+);
+
+-- Abuse patterns
+create table abuse_patterns (
+  id uuid primary key default uuid_generate_v4(),
+  pattern text unique not null,
+  pattern_type text, -- 'repetition', 'token_stuffing', 'jailbreak'
+  severity text default 'medium',
+  action text default 'block', -- 'block', 'throttle', 'warn'
+  detected_count integer default 0,
+  created_at timestamptz default now()
+);
+
+-- Prompt cache with learning
+create table prompt_cache (
+  id uuid primary key default uuid_generate_v4(),
+  prompt_hash text unique not null,
+  response text not null,
+  model text not null,
+  tokens_saved integer default 0,
+  hits integer default 0,
+  satisfaction_avg decimal(3,2),
+  created_at timestamptz default now(),
+  expires_at timestamptz default now() + interval '7 days'
+);
+
+-- Indexes for performance
+create index idx_usage_tracking_user_date on usage_tracking(user_id, date desc);
+create index idx_patterns_hash on conversation_patterns(pattern_hash);
+create index idx_patterns_success on conversation_patterns(success_rate desc);
+create index idx_cache_satisfaction on prompt_cache(satisfaction_avg desc);
+create index idx_messages_flagged on messages(flagged_abuse) where flagged_abuse = true;
+
+-- RLS policies
+alter table user_profiles enable row level security;
+alter table usage_tracking enable row level security;
+alter table conversations enable row level security;
+alter table messages enable row level security;
+
+-- Scheduled jobs
+select cron.schedule(
+  'optimize-routing',
+  '0 2 * * 0', -- Weekly at 2 AM Sunday
+  $$
+    select optimize_model_routing();
+    select warm_cache_from_patterns();
+  $$
+);
+
+select cron.schedule(
+  'reset-daily-limits',
+  '0 0 * * *', -- Daily at midnight
+  $$
+    update usage_tracking 
+    set limit_reached = false 
+    where date < current_date;
+  $$
+);
+Critical Protection Systems
+/lib/cost-guardian.ts
+typescriptinterface CostLimits {
+  MAX_COST_PER_REQUEST: 0.10, // 10 cents absolute max
+  MAX_DAILY_COST_FREE: 0.50, // 50 cents for free tier
+  MAX_DAILY_COST_PAID: 5.00, // $5 for paid
+  MAX_MONTHLY_COST: 100.00, // $100 emergency stop
+  WARNING_THRESHOLD: 0.8, // Warn at 80%
+  THROTTLE_THRESHOLD: 0.9, // Throttle at 90%
+}
+
+// Progressive degradation stages
+const degradationStages = [
+  { threshold: 0.5, action: 'prefer_cache' },
+  { threshold: 0.7, action: 'force_mini_model' },
+  { threshold: 0.85, action: 'summary_only_mode' },
+  { threshold: 0.95, action: 'cache_only' },
+  { threshold: 1.0, action: 'block_with_upgrade_prompt' }
+];
+
+// Circuit breaker pattern
+class CostCircuitBreaker {
+  async checkBeforeRequest(userId: string, estimatedCost: number) {
+    const usage = await getCurrentUsage(userId);
+    
+    if (usage.total + estimatedCost > limits.MAX_DAILY_COST) {
+      throw new Error('DAILY_LIMIT_EXCEEDED');
+    }
+    
+    if (usage.monthly + estimatedCost > limits.MAX_MONTHLY_COST) {
+      await emergencyShutdown(userId);
+      throw new Error('EMERGENCY_STOP');
+    }
+    
+    return getApprovedModel(usage.percentUsed);
+  }
+}
+/lib/abuse-detector.ts
+typescriptconst detectAbuse = (message: string, history: Message[]) => {
+  // Pattern checks
+  if (message.length > 2000) return { action: 'truncate', reason: 'length' };
+  if (detectRepetition(message)) return { action: 'block', reason: 'repetition' };
+  if (detectTokenStuffing(message)) return { action: 'compress', reason: 'stuffing' };
+  if (detectJailbreak(message)) return { action: 'block', reason: 'jailbreak' };
+  if (isSimilarToPrevious(message, history)) return { action: 'cache', reason: 'duplicate' };
+  
+  // Rate checks
+  const recentMessages = getRecentMessages(history, '1m');
+  if (recentMessages.length > 10) return { action: 'throttle', reason: 'rate' };
+  
+  return { action: 'allow' };
+};
+
+// Specific abuse patterns
+const patterns = {
+  repetition: /(.{10,})\1{5,}/g, // Same text 5+ times
+  stuffing: /[\u0300-\u036f]{50,}/g, // Unicode combining chars
+  jailbreak: /ignore previous|disregard instructions|forget everything/i,
+  injection: /\{\{.*\}\}|<script>|system:/i
+};
+/lib/conversation-learner.ts
+typescriptclass ConversationLearner {
+  // Track what works
+  async trackOutcome(conversationId: string, signal: string) {
+    const signals = {
+      completed: 1.0, // Full conversation
+      thumbs_up: 0.9,
+      continued: 0.7, // User continued chat
+      abandoned: 0.3,
+      thumbs_down: 0.1
+    };
+    
+    const score = signals[signal] || 0.5;
+    await updatePatternSuccess(conversationId, score);
+  }
+  
+  // Learn optimal routing
+  async getOptimalModel(prompt: string, userId: string) {
+    const userAffinity = await getUserAffinity(userId);
+    const similarPattern = await findSimilarPattern(prompt);
+    
+    // User-specific preference
+    if (userAffinity.optimal_model && userAffinity.satisfaction > 0.8) {
+      return userAffinity.optimal_model;
+    }
+    
+    // Pattern-based routing
+    if (similarPattern && similarPattern.success_rate > 0.7) {
+      return similarPattern.optimal_model;
+    }
+    
+    // Default intelligent routing
+    return intelligentRoute(prompt);
+  }
+  
+  // Weekly optimization
+  async optimizeRouting() {
+    const patterns = await db.query(`
+      SELECT query_type, model, 
+             AVG(satisfaction_score) as avg_satisfaction,
+             AVG(estimated_cost) as avg_cost,
+             COUNT(*) as usage_count
+      FROM conversations
+      WHERE created_at > NOW() - INTERVAL '7 days'
+      GROUP BY query_type, model
+      HAVING COUNT(*) > 10
+    `);
+    
+    // Find best model per query type
+    const optimized = patterns.reduce((acc, p) => {
+      const efficiency = p.avg_satisfaction / (p.avg_cost + 0.01);
+      if (!acc[p.query_type] || acc[p.query_type].efficiency < efficiency) {
+        acc[p.query_type] = { model: p.model, efficiency };
+      }
+      return acc;
+    }, {});
+    
+    await updateRoutingRules(optimized);
+  }
+}
+/lib/onboarding-profiler.ts
+typescriptinterface OnboardingProfile {
+  use_case: 'coding' | 'writing' | 'analysis' | 'chat' | 'mixed',
+  budget_sensitivity: 'high' | 'medium' | 'low',
+  response_preference: 'fast' | 'quality' | 'balanced',
+  technical_level: 'beginner' | 'intermediate' | 'expert',
+  expected_usage: 'light' | 'moderate' | 'heavy'
+}
+
+const profileToSettings = (profile: OnboardingProfile) => {
+  const settings = {
+    daily_token_limit: 10000,
+    default_model: 'gpt-4o-mini',
+    cache_aggressiveness: 'normal',
+    system_prompt_style: 'standard'
+  };
+  
+  // Adjust based on profile
+  if (profile.use_case === 'coding') {
+    settings.default_model = 'gpt-4o';
+    settings.daily_token_limit = 50000;
+  }
+  
+  if (profile.budget_sensitivity === 'high') {
+    settings.default_model = 'gpt-3.5-turbo';
+    settings.cache_aggressiveness = 'aggressive';
+    settings.daily_token_limit = 5000;
+  }
+  
+  if (profile.response_preference === 'fast') {
+    settings.default_model = 'gpt-3.5-turbo';
+  }
+  
+  if (profile.expected_usage === 'heavy') {
+    settings.daily_token_limit = 100000;
+  }
+  
+  return settings;
+};
+/app/api/chat/route.ts (Main Endpoint with All Protections)
+typescriptexport async function POST(req: Request) {
+  const { messages, conversationId } = await req.json();
+  const userId = await getUserId(req);
+  
+  try {
+    // 1. Check abuse patterns
+    const abuseCheck = detectAbuse(messages[messages.length - 1].content, messages);
+    if (abuseCheck.action === 'block') {
+      return new Response('Request blocked: ' + abuseCheck.reason, { status: 429 });
+    }
+    
+    // 2. Check cost limits
+    const estimatedCost = estimateTokenCost(messages);
+    const costCheck = await costGuardian.checkBeforeRequest(userId, estimatedCost);
+    if (!costCheck.allowed) {
+      return new Response(JSON.stringify({
+        error: 'Daily limit reached',
+        upgrade_url: '/pricing'
+      }), { status: 429 });
+    }
+    
+    // 3. Apply progressive degradation
+    const degradation = getDegradationLevel(userId);
+    let model = costCheck.approvedModel;
+    let processedMessages = messages;
+    
+    if (degradation.level > 0.5) {
+      processedMessages = await compressMessages(messages);
+      model = 'gpt-3.5-turbo';
+    }
+    
+    if (degradation.level > 0.8) {
+      // Check cache first
+      const cached = await checkCache(processedMessages);
+      if (cached) {
+        await trackUsage(userId, 0, 0, true);
+        return new Response(cached.response);
+      }
+    }
+    
+    // 4. Get optimal model from learning system
+    const optimalModel = await learner.getOptimalModel(
+      processedMessages[processedMessages.length - 1].content,
+      userId
+    );
+    model = degradation.level < 0.5 ? optimalModel : model;
+    
+    // 5. Make API call with streaming
+    const stream = await openai.chat.completions.create({
+      model,
+      messages: processedMessages,
+      stream: true,
+      max_tokens: calculateMaxTokens(degradation.level),
+      temperature: 0.7
+    });
+    
+    // 6. Track everything
+    const encoder = new TextEncoder();
+    let totalTokens = 0;
+    
+    const readable = new ReadableStream({
+      async start(controller) {
+        for await (const chunk of stream) {
+          const text = chunk.choices[0]?.delta?.content || '';
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`));
+          totalTokens += estimateTokens(text);
+          
+          // Emergency stop if tokens explode
+          if (totalTokens > 4000) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+              text: '\n\n[Response truncated due to length]',
+              done: true 
+            })}\n\n`));
+            break;
+          }
+        }
+        
+        // Track usage and learn
+        await trackUsage(userId, totalTokens, estimatedCost);
+        await learner.trackOutcome(conversationId, 'completed');
+        
+        controller.close();
+      }
+    });
+    
+    return new Response(readable, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      }
+    });
+    
+  } catch (error) {
+    // Log for learning
+    await trackError(userId, error);
+    
+    // Fallback to cached or summary
+    const fallback = await getFallbackResponse(messages);
+    if (fallback) {
+      return new Response(JSON.stringify({ 
+        text: fallback, 
+        warning: 'Using cached response due to system limits' 
+      }));
+    }
+    
+    return new Response('Service temporarily limited', { status: 503 });
+  }
+}

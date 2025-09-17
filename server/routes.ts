@@ -730,7 +730,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Try OpenAI first if key is available
       if (openaiKey) {
         try {
-          console.log('🤖 Trying OpenAI API with model: gpt-4o-mini');
+          console.log('🤖 Trying OpenAI API with model: gpt-5');
           
           const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -739,7 +739,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'gpt-4o-mini',
+              model: 'gpt-5', // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
               messages: [
                 {
                   role: 'system',
