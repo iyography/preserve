@@ -372,8 +372,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Try to get cached response
-      const cachedResponse = await responseCache.get(message, demoPersona.id);
-      if (cachedResponse) {
+      const cachedResponse = await responseCache.get(message, 'gpt-4o-mini');
+      if (cachedResponse && cachedResponse.response && typeof cachedResponse.response === 'string') {
         // Track the cost even for cached responses
         await costGuardian.recordUsage(
           demoUserId,
