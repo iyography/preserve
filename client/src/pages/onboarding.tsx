@@ -23,7 +23,7 @@ interface OnboardingApproach {
 const approaches: OnboardingApproach[] = [
   {
     id: 'gradual-awakening',
-    name: 'Gradual Awakening',
+    name: 'Taking it slow',
     subtitle: 'Start simple, grow together',
     description: 'Begin with basic memories and watch your loved one\'s persona develop naturally over time through family contributions.',
     duration: '3 minutes to start',
@@ -39,7 +39,7 @@ const approaches: OnboardingApproach[] = [
   },
   {
     id: 'ai-guided-interview',
-    name: 'AI-Guided Memory Interview', 
+    name: 'Ready to share', 
     subtitle: 'Therapeutic conversation',
     description: 'An empathetic AI interviewer guides you through sharing memories in a natural, supportive conversation.',
     duration: '35-60 minutes',
@@ -55,7 +55,7 @@ const approaches: OnboardingApproach[] = [
   },
   {
     id: 'digital-seance',
-    name: 'Digital Séance',
+    name: 'Seeking profound connection',
     subtitle: 'Sacred connection ritual',
     description: 'A profound, ceremonial experience that honors the gravity of connecting with your loved one through structured ritual.',
     duration: '45 minutes',
@@ -71,7 +71,7 @@ const approaches: OnboardingApproach[] = [
   },
   {
     id: 'living-archive',
-    name: 'Living Archive Builder',
+    name: 'Bringing others in',
     subtitle: 'Community celebration',
     description: 'Create a comprehensive life documentation with contributions from extended family, friends, and community members.',
     duration: '15 minutes setup',
@@ -86,54 +86,30 @@ const approaches: OnboardingApproach[] = [
   }
 ];
 
-const comfortQuestions = [
-  {
-    id: 'emotional-readiness',
-    question: 'How would you describe your emotional readiness today?',
-    options: [
-      { value: 'gentle', label: 'Taking it slow', description: 'I want to start gently and build gradually' },
-      { value: 'moderate', label: 'Ready to share', description: 'I\'m ready for guided conversation about memories' },
-      { value: 'deep', label: 'Seeking profound connection', description: 'I want a deeply meaningful, ceremonial experience' },
-      { value: 'collaborative', label: 'Bringing others in', description: 'I want to involve family and community in this journey' }
-    ]
-  }
-];
 
 export default function Onboarding() {
-  const [step, setStep] = useState<'welcome' | 'comfort' | 'approach' | 'setup'>('welcome');
-  const [selectedComfort, setSelectedComfort] = useState<string>('');
+  const [step, setStep] = useState<'welcome' | 'approach'>('welcome');
   const [selectedApproach, setSelectedApproach] = useState<string>('');
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
-  const progress = step === 'welcome' ? 25 : step === 'comfort' ? 50 : step === 'approach' ? 75 : 100;
-
-  const filteredApproaches = selectedComfort 
-    ? approaches.filter(approach => approach.comfortLevel === selectedComfort)
-    : approaches;
+  const progress = step === 'welcome' ? 50 : 100;
 
   const handleNext = () => {
-    if (step === 'welcome') setStep('comfort');
-    else if (step === 'comfort') setStep('approach');
+    if (step === 'welcome') setStep('approach');
     else if (step === 'approach') {
-      // Instead of going to setup, redirect to the specific approach flow
+      // Redirect to the specific approach flow
       if (selectedApproach) {
         setLocation(`/onboarding/${selectedApproach}`);
-      } else {
-        setStep('setup');
       }
     }
-    else setLocation('/dashboard');
   };
 
   const handleBack = () => {
-    if (step === 'comfort') setStep('welcome');
-    else if (step === 'approach') setStep('comfort');
-    else if (step === 'setup') setStep('approach');
+    if (step === 'approach') setStep('welcome');
   };
 
   const canContinue = () => {
-    if (step === 'comfort') return selectedComfort;
     if (step === 'approach') return selectedApproach;
     return true;
   };
@@ -242,85 +218,19 @@ export default function Onboarding() {
           </div>
         )}
 
-        {/* Comfort Level Step */}
-        {step === 'comfort' && (
-          <div>
-            <div className="text-center mb-12">
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">How Are You Feeling Today?</h1>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Everyone processes grief differently. Help us understand your comfort level so we can offer the right approach for you.
-              </p>
-            </div>
-
-            <div className="space-y-4 max-w-2xl mx-auto">
-              {comfortQuestions[0].options.map((option) => (
-                <Card
-                  key={option.value}
-                  className={`cursor-pointer transition-all duration-200 border-2 ${
-                    selectedComfort === option.value
-                      ? 'border-purple-500 bg-purple-50/50 shadow-lg'
-                      : 'border-gray-200 bg-white/70 hover:border-purple-200 hover:shadow-md'
-                  } backdrop-blur-sm`}
-                  onClick={() => setSelectedComfort(option.value)}
-                  data-testid={`card-comfort-${option.value}`}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-start space-x-4">
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                        selectedComfort === option.value
-                          ? 'border-purple-500 bg-purple-500'
-                          : 'border-gray-300'
-                      }`}>
-                        {selectedComfort === option.value && (
-                          <div className="w-3 h-3 bg-white rounded-full"></div>
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-1">{option.label}</h3>
-                        <p className="text-gray-600">{option.description}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <div className="flex justify-between mt-12 max-w-2xl mx-auto">
-              <Button 
-                variant="outline" 
-                onClick={handleBack}
-                className="px-6"
-                data-testid="button-back-comfort"
-              >
-                <ChevronLeft className="w-4 h-4 mr-2" />
-                Back
-              </Button>
-              <Button 
-                onClick={handleNext}
-                disabled={!canContinue()}
-                className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-6"
-                data-testid="button-continue-comfort"
-              >
-                Continue
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </div>
-          </div>
-        )}
-
         {/* Approach Selection Step */}
         {step === 'approach' && (
           <div>
             <div className="text-center mb-12">
               <h1 className="text-3xl font-bold text-gray-900 mb-4">Choose Your Path</h1>
               <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Based on your comfort level, here are the approaches that might work best for you. 
-                Each one is designed to honor your loved one's memory in a meaningful way.
+                Each approach is designed to honor your loved one's memory in a meaningful way. 
+                Choose the one that feels right for you today.
               </p>
             </div>
 
             <div className="grid gap-6 max-w-4xl mx-auto">
-              {filteredApproaches.map((approach) => {
+              {approaches.map((approach) => {
                 const IconComponent = approach.icon;
                 return (
                   <Card
