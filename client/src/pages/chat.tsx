@@ -1,10 +1,20 @@
 import { useState, useEffect } from "react";
 import { useLocation, useRoute, Link } from "wouter";
-import { ArrowLeft, Send, Settings, Heart, User, Circle, AlertCircle } from "lucide-react";
+import { ArrowLeft, Send, Settings, Heart, User, Circle, AlertCircle, ThumbsUp, ThumbsDown, Star, MessageSquare, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import type { Persona } from "@shared/schema";
@@ -14,15 +24,35 @@ type ChatMessage = {
   sender: 'user' | 'persona';
   text: string;
   timestamp: Date;
+  messageId?: string; // API message ID for feedback tracking
+  feedback?: {
+    type: 'thumbs_up' | 'thumbs_down' | null;
+    rating?: number;
+    helpful?: boolean;
+    comment?: string;
+  };
+  isLearning?: boolean; // Shows if the AI is actively learning from this interaction
+};
+
+type FeedbackState = {
+  activeMessageId?: number;
+  showRating?: boolean;
+  showComment?: boolean;
+  rating?: number;
+  comment?: string;
 };
 
 export default function Chat() {
   const [, params] = useRoute("/chat/:personaId");
   const [, setLocation] = useLocation();
   const { user, session, loading } = useAuth();
+  const { toast } = useToast();
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [feedbackState, setFeedbackState] = useState<FeedbackState>({});
+  const [conversationQuality, setConversationQuality] = useState<number>(0);
+  const [showLearningIndicator, setShowLearningIndicator] = useState(false);
   
   // API Status tracking
   const [apiStatus, setApiStatus] = useState<'unknown' | 'working' | 'partial' | 'down'>('unknown');
@@ -32,6 +62,63 @@ export default function Chat() {
   const [usedResponses, setUsedResponses] = useState<{personaId: string, text: string, timestamp: number}[]>([]);
   const [dedupInitialized, setDedupInitialized] = useState(false);
   
+  // Feedback mutations
+  const submitFeedbackMutation = useMutation({
+    mutationFn: async (data: {
+      messageId?: string;
+      conversationId?: string;
+      personaId: string;
+      kind: string;
+      payload?: any;
+    }) => {
+      return apiRequest('/api/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Thank you!",
+        description: "Your feedback helps improve the conversation quality.",
+      });
+      setShowLearningIndicator(true);
+      setTimeout(() => setShowLearningIndicator(false), 3000);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Feedback error",
+        description: "Couldn't save your feedback. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updatePatternMetricsMutation = useMutation({
+    mutationFn: async (data: {
+      personaId: string;
+      metric: string;
+      value: any;
+      window: string;
+    }) => {
+      return apiRequest(`/api/personas/${data.personaId}/metrics`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({
+          metric: data.metric,
+          value: data.value,
+          window: data.window,
+        }),
+      });
+    },
+  });
+
   // Load persisted dedup state on mount
   useEffect(() => {
     if (!user?.id) {
@@ -440,7 +527,9 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
         if (convResponse.ok) {
           const convData = await convResponse.json();
           currentConversationId = convData.id;
-          localStorage.setItem(`conversation_${persona?.id}`, currentConversationId);
+          if (currentConversationId) {
+            localStorage.setItem(`conversation_${persona?.id}`, currentConversationId);
+          }
         }
       }
       
@@ -599,6 +688,84 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
     }
   };
 
+  // Feedback handlers
+  const handleThumbsFeedback = async (messageId: number, type: 'thumbs_up' | 'thumbs_down') => {
+    const message = chatMessages.find(m => m.id === messageId);
+    if (!message || !persona) return;
+
+    // Update local state immediately
+    setChatMessages(prev => prev.map(msg => 
+      msg.id === messageId 
+        ? { ...msg, feedback: { ...msg.feedback, type } }
+        : msg
+    ));
+
+    // Submit feedback to API
+    await submitFeedbackMutation.mutateAsync({
+      messageId: message.messageId,
+      conversationId: localStorage.getItem(`conversation_${persona.id}`) || undefined,
+      personaId: persona.id,
+      kind: type,
+      payload: { timestamp: new Date().toISOString() },
+    });
+
+    // Update pattern metrics for learning
+    if (type === 'thumbs_up') {
+      updatePatternMetricsMutation.mutate({
+        personaId: persona.id,
+        metric: 'conversation_quality',
+        value: { positive: true, timestamp: new Date().toISOString() },
+        window: '7d',
+      });
+    }
+  };
+
+  const handleRatingSubmit = async (messageId: number, rating: number) => {
+    const message = chatMessages.find(m => m.id === messageId);
+    if (!message || !persona) return;
+
+    setChatMessages(prev => prev.map(msg => 
+      msg.id === messageId 
+        ? { ...msg, feedback: { ...msg.feedback, rating } }
+        : msg
+    ));
+
+    await submitFeedbackMutation.mutateAsync({
+      messageId: message.messageId,
+      conversationId: localStorage.getItem(`conversation_${persona.id}`) || undefined,
+      personaId: persona.id,
+      kind: 'rating',
+      payload: { rating, timestamp: new Date().toISOString() },
+    });
+
+    // Calculate overall conversation quality
+    const avgRating = chatMessages
+      .filter(m => m.feedback?.rating)
+      .reduce((sum, m) => sum + (m.feedback?.rating || 0), rating) 
+      / (chatMessages.filter(m => m.feedback?.rating).length + 1);
+    
+    setConversationQuality(avgRating);
+  };
+
+  const handleDetailedFeedback = async (messageId: number, comment: string) => {
+    const message = chatMessages.find(m => m.id === messageId);
+    if (!message || !persona) return;
+
+    await submitFeedbackMutation.mutateAsync({
+      messageId: message.messageId,
+      conversationId: localStorage.getItem(`conversation_${persona.id}`) || undefined,
+      personaId: persona.id,
+      kind: 'comment',
+      payload: { comment, timestamp: new Date().toISOString() },
+    });
+
+    setFeedbackState({});
+    toast({
+      title: "Feedback received!",
+      description: "Your detailed feedback will help improve future conversations.",
+    });
+  };
+
   const handleSendMessage = async () => {
     if (newMessage.trim() && persona) {
       const userMessage: ChatMessage = {
@@ -729,6 +896,69 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
         </div>
       </header>
 
+      {/* Conversation Quality Indicator */}
+      {conversationQuality > 0 && (
+        <div className="max-w-4xl mx-auto px-6 mb-2">
+          <div className="flex items-center justify-between bg-white/60 backdrop-blur-sm rounded-lg px-4 py-2 border border-purple-100">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-purple-600" />
+              <span className="text-sm text-purple-700 font-medium">Conversation Quality</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    className={`w-4 h-4 ${
+                      conversationQuality >= star
+                        ? 'fill-yellow-400 text-yellow-400'
+                        : 'fill-gray-200 text-gray-200'
+                    }`}
+                  />
+                ))}
+              </div>
+              <span className="text-xs text-gray-600">
+                {conversationQuality.toFixed(1)} / 5.0
+              </span>
+              {conversationQuality >= 4 && (
+                <Badge variant="secondary" className="text-xs bg-green-50 text-green-700 border-green-200">
+                  Learning Well
+                </Badge>
+              )}
+              {conversationQuality > 2 && conversationQuality < 4 && (
+                <Badge variant="secondary" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
+                  Improving
+                </Badge>
+              )}
+              {conversationQuality <= 2 && conversationQuality > 0 && (
+                <Badge variant="secondary" className="text-xs bg-red-50 text-red-700 border-red-200">
+                  Needs Guidance
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Learning Progress Toast (shows when actively learning) */}
+      {showLearningIndicator && (
+        <div className="fixed top-20 right-6 z-50 animate-slide-in-right">
+          <div className="bg-purple-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 animate-pulse" />
+              <span className="text-sm font-medium">
+                {persona?.name} is learning from your feedback...
+              </span>
+            </div>
+            <div className="flex gap-1">
+              <div className="w-2 h-2 bg-white rounded-full animate-bounce" />
+              <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+              <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Chat Container */}
       <div className="max-w-4xl mx-auto p-6">
         <Card className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg h-[70vh] flex flex-col">
@@ -742,15 +972,160 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
                       <Heart className="w-4 h-4 text-purple-600" />
                     </div>
                   )}
-                  <div className={`rounded-2xl px-4 py-3 ${
-                    message.sender === 'user'
-                      ? 'bg-purple-600 text-white ml-auto'
-                      : 'bg-purple-50 text-gray-800 border border-purple-100'
-                  }`}>
-                    <p className="text-sm leading-relaxed">{message.text}</p>
-                    <p className="text-xs mt-1 opacity-70">
-                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
+                  <div className="flex flex-col gap-2">
+                    <div className={`rounded-2xl px-4 py-3 ${
+                      message.sender === 'user'
+                        ? 'bg-purple-600 text-white ml-auto'
+                        : 'bg-purple-50 text-gray-800 border border-purple-100'
+                    }`}>
+                      <p className="text-sm leading-relaxed">{message.text}</p>
+                      <p className="text-xs mt-1 opacity-70">
+                        {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    
+                    {/* Feedback UI for persona messages */}
+                    {message.sender === 'persona' && (
+                      <div className="flex items-center gap-2 px-2">
+                        <TooltipProvider>
+                          <div className="flex items-center gap-1">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleThumbsFeedback(message.id, 'thumbs_up')}
+                                  className={`h-7 px-2 ${message.feedback?.type === 'thumbs_up' ? 'text-green-600 bg-green-50' : 'text-gray-400 hover:text-green-600'}`}
+                                  data-testid={`button-thumbs-up-${message.id}`}
+                                >
+                                  <ThumbsUp className="w-3 h-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>This response was helpful</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleThumbsFeedback(message.id, 'thumbs_down')}
+                                  className={`h-7 px-2 ${message.feedback?.type === 'thumbs_down' ? 'text-red-600 bg-red-50' : 'text-gray-400 hover:text-red-600'}`}
+                                  data-testid={`button-thumbs-down-${message.id}`}
+                                >
+                                  <ThumbsDown className="w-3 h-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>This could be better</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                          
+                          {/* Star Rating */}
+                          {feedbackState.activeMessageId === message.id && feedbackState.showRating ? (
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Button
+                                  key={star}
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRatingSubmit(message.id, star)}
+                                  className="h-7 px-1"
+                                  data-testid={`button-star-${star}-${message.id}`}
+                                >
+                                  <Star
+                                    className={`w-3 h-3 ${
+                                      (message.feedback?.rating || 0) >= star
+                                        ? 'fill-yellow-400 text-yellow-400'
+                                        : 'text-gray-300'
+                                    }`}
+                                  />
+                                </Button>
+                              ))}
+                            </div>
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setFeedbackState({ activeMessageId: message.id, showRating: true })}
+                                  className="h-7 px-2 text-gray-400 hover:text-yellow-500"
+                                  data-testid={`button-rate-${message.id}`}
+                                >
+                                  <Star className="w-3 h-3 mr-1" />
+                                  <span className="text-xs">Rate</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Rate this response</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          
+                          {/* Detailed Feedback */}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setFeedbackState({ activeMessageId: message.id, showComment: true })}
+                                className="h-7 px-2 text-gray-400 hover:text-purple-600"
+                                data-testid={`button-comment-${message.id}`}
+                              >
+                                <MessageSquare className="w-3 h-3" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Add detailed feedback</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        
+                        {/* Learning Indicator */}
+                        {message.isLearning && (
+                          <div className="flex items-center gap-1 text-xs text-purple-600 animate-pulse">
+                            <TrendingUp className="w-3 h-3" />
+                            <span>Learning...</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Comment Input */}
+                    {feedbackState.activeMessageId === message.id && feedbackState.showComment && (
+                      <div className="px-2">
+                        <Textarea
+                          placeholder="Tell us more about how this response could be better..."
+                          value={feedbackState.comment || ''}
+                          onChange={(e) => setFeedbackState({ ...feedbackState, comment: e.target.value })}
+                          className="text-xs h-20 resize-none"
+                          data-testid={`textarea-feedback-${message.id}`}
+                        />
+                        <div className="flex justify-end gap-2 mt-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setFeedbackState({})}
+                            className="text-xs"
+                            data-testid={`button-cancel-feedback-${message.id}`}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleDetailedFeedback(message.id, feedbackState.comment || '')}
+                            className="text-xs bg-purple-600 hover:bg-purple-700"
+                            data-testid={`button-submit-feedback-${message.id}`}
+                          >
+                            Submit
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   {message.sender === 'user' && (
                     <div className="w-8 h-8 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center flex-shrink-0">

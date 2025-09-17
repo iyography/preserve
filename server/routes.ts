@@ -1245,6 +1245,208 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== FEEDBACK AND LEARNING ENDPOINTS ====================
+  
+  // Submit feedback for a message or conversation
+  app.post('/api/feedback', verifyJWT, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { personaId, conversationId, messageId, memoryId, kind, payload } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // Validate the feedback type
+      const validKinds = ['thumbs_up', 'thumbs_down', 'rating', 'comment', 'correct', 'edit', 'pin', 'forget'];
+      if (!validKinds.includes(kind)) {
+        return res.status(400).json({ error: 'Invalid feedback kind' });
+      }
+
+      // Create feedback entry
+      const feedback = await storage.createFeedback({
+        userId,
+        personaId,
+        conversationId: conversationId || null,
+        messageId: messageId || null,
+        memoryId: memoryId || null,
+        kind,
+        payload: payload || null,
+      });
+
+      // Update response cache satisfaction if applicable
+      if ((kind === 'thumbs_up' || kind === 'thumbs_down') && messageId) {
+        const satisfaction = kind === 'thumbs_up' ? 0.9 : 0.3;
+        // Note: We'll need to track the original query to update cache properly
+        if (payload?.query) {
+          await responseCache.updateSatisfaction(payload.query, satisfaction);
+        }
+      }
+
+      // Update pattern metrics for learning
+      if (kind === 'rating' && payload?.rating) {
+        await storage.upsertPatternMetric({
+          personaId,
+          metric: 'conversation_quality',
+          window: '7d',
+          value: {
+            rating: payload.rating,
+            timestamp: new Date().toISOString(),
+            conversationId,
+          },
+        }, userId);
+      }
+
+      res.json({ success: true, feedback });
+    } catch (error) {
+      console.error('Feedback creation error:', error);
+      res.status(500).json({ error: 'Failed to create feedback' });
+    }
+  });
+
+  // Get feedback for a conversation
+  app.get('/api/conversations/:conversationId/feedback', verifyJWT, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { conversationId } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const feedback = await storage.getFeedbackByConversation(conversationId, userId);
+      res.json({ feedback });
+    } catch (error) {
+      console.error('Feedback retrieval error:', error);
+      res.status(500).json({ error: 'Failed to retrieve feedback' });
+    }
+  });
+
+  // Update pattern metrics for a persona
+  app.post('/api/personas/:personaId/metrics', verifyJWT, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { personaId } = req.params;
+      const { metric, value, window = '7d' } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // Verify persona ownership
+      const persona = await storage.getPersona(personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const metrics = await storage.upsertPatternMetric({
+        personaId,
+        metric,
+        window,
+        value,
+      }, userId);
+
+      res.json({ success: true, metrics });
+    } catch (error) {
+      console.error('Metrics update error:', error);
+      res.status(500).json({ error: 'Failed to update metrics' });
+    }
+  });
+
+  // Get pattern metrics for a persona
+  app.get('/api/personas/:personaId/metrics', verifyJWT, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { personaId } = req.params;
+      const { metric, window } = req.query;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const metrics = await storage.getPatternMetrics(
+        personaId,
+        userId,
+        metric as string | undefined,
+        window as string | undefined
+      );
+
+      res.json({ metrics });
+    } catch (error) {
+      console.error('Metrics retrieval error:', error);
+      res.status(500).json({ error: 'Failed to retrieve metrics' });
+    }
+  });
+
+  // Update cache satisfaction score
+  app.post('/api/cache/satisfaction', verifyJWT, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { query, satisfaction, model } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      if (!query || satisfaction === undefined) {
+        return res.status(400).json({ error: 'Query and satisfaction score required' });
+      }
+
+      await responseCache.updateSatisfaction(query, satisfaction, model);
+      const stats = responseCache.getStats();
+
+      res.json({ success: true, stats });
+    } catch (error) {
+      console.error('Cache satisfaction update error:', error);
+      res.status(500).json({ error: 'Failed to update cache satisfaction' });
+    }
+  });
+
+  // Get learning statistics for a persona
+  app.get('/api/personas/:personaId/learning-stats', verifyJWT, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { personaId } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // Verify persona ownership
+      const persona = await storage.getPersona(personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      // Get various learning metrics
+      const feedbackStats = await storage.getFeedbackByPersona(personaId, userId);
+      const patternMetrics = await storage.getPatternMetrics(personaId, userId);
+      const memories = await storage.getMemoriesByPersona(personaId, userId, 10);
+
+      // Calculate learning statistics
+      const totalFeedback = feedbackStats.length;
+      const positiveFeedback = feedbackStats.filter(f => f.kind === 'thumbs_up' || (f.kind === 'rating' && f.payload?.rating >= 4)).length;
+      const negativeFeedback = feedbackStats.filter(f => f.kind === 'thumbs_down' || (f.kind === 'rating' && f.payload?.rating <= 2)).length;
+      const averageRating = feedbackStats
+        .filter(f => f.kind === 'rating' && f.payload?.rating)
+        .reduce((sum, f) => sum + (f.payload?.rating || 0), 0) / 
+        feedbackStats.filter(f => f.kind === 'rating').length || 0;
+
+      res.json({
+        totalFeedback,
+        positiveFeedback,
+        negativeFeedback,
+        averageRating,
+        sentimentTrend: positiveFeedback > negativeFeedback ? 'improving' : 'needs_attention',
+        memoriesLearned: memories.length,
+        patternMetrics,
+      });
+    } catch (error) {
+      console.error('Learning stats error:', error);
+      res.status(500).json({ error: 'Failed to retrieve learning statistics' });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
