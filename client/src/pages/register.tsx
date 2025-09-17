@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ParticleSystem from "@/components/ParticleSystem";
+import EmailConfirmationModal from "@/components/EmailConfirmationModal";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -89,6 +90,8 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -102,6 +105,57 @@ export default function Register() {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Function to send confirmation email via our custom endpoint
+  const sendConfirmationEmail = async (email: string) => {
+    try {
+      const response = await fetch('/api/send-confirmation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || result.message || 'Failed to send confirmation email');
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error sending confirmation email:', error);
+      throw error;
+    }
+  };
+
+  // Handle resending confirmation email
+  const handleResendEmail = async () => {
+    setIsResendingEmail(true);
+    try {
+      await sendConfirmationEmail(formData.email);
+      toast({
+        title: "Email Resent!",
+        description: "We've sent another confirmation email to your address."
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Failed to Resend Email",
+        description: error instanceof Error ? error.message : "An error occurred while resending the email."
+      });
+    } finally {
+      setIsResendingEmail(false);
+    }
+  };
+
+  // Handle closing the modal (when user confirms they'll check email)
+  const handleCloseModal = () => {
+    setShowEmailModal(false);
+    // Optionally redirect to sign-in page or stay on the same page
+    // For now, let's stay on the registration page
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -132,6 +186,7 @@ export default function Register() {
     console.log('Starting Supabase registration...');
 
     try {
+      // Step 1: Register with Supabase (no email confirmation)
       const result = await signUp(formData.email, formData.password, {
         first_name: formData.firstName,
         last_name: formData.lastName
@@ -139,21 +194,32 @@ export default function Register() {
       
       console.log('Supabase registration successful:', result);
 
-      toast({
-        title: "Welcome to Preserving Connections!",
-        description: "Your account has been created successfully. Let's start preserving memories."
-      });
-
-      // Use the same smart routing logic as sign-in
-      setTimeout(async () => {
-        try {
-          const route = await determineUserRoute();
-          window.location.href = route;
-        } catch (error) {
-          // Fallback to onboarding if routing fails
-          window.location.href = '/onboarding';
-        }
-      }, 1500);
+      // Step 2: Send our custom confirmation email
+      try {
+        await sendConfirmationEmail(formData.email);
+        console.log('Custom confirmation email sent successfully');
+        
+        // Step 3: Show success message and email confirmation modal
+        toast({
+          title: "Account Created Successfully!",
+          description: "Please check your email to verify your account."
+        });
+        
+        // Show the email confirmation modal
+        setShowEmailModal(true);
+        
+      } catch (emailError) {
+        console.error('Failed to send confirmation email:', emailError);
+        
+        // Account was created but email failed - still show success but with different message
+        toast({
+          title: "Account Created!",
+          description: "Your account was created, but we had trouble sending the confirmation email. You can try resending it."
+        });
+        
+        // Still show the modal so user can resend email
+        setShowEmailModal(true);
+      }
 
     } catch (error) {
       console.error('Registration error:', error);
@@ -364,6 +430,15 @@ export default function Register() {
           </div>
         </div>
       </div>
+
+      {/* Email Confirmation Modal */}
+      <EmailConfirmationModal
+        isOpen={showEmailModal}
+        onClose={handleCloseModal}
+        email={formData.email}
+        onResend={handleResendEmail}
+        isResending={isResendingEmail}
+      />
     </div>
   );
 }

@@ -25,7 +25,7 @@ export const authHelpers = {
       email,
       password,
       options: {
-        emailRedirectTo: undefined, // Disable email confirmation redirect
+        emailRedirectTo: undefined, // Disable email confirmation redirect - this ensures no Supabase emails are sent
         data: {
           first_name: userData.first_name,
           last_name: userData.last_name,

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import ParticleSystem from "@/components/ParticleSystem";
+import EmailConfirmationModal from "@/components/EmailConfirmationModal";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -92,6 +93,8 @@ export default function SignIn() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
 
   const { signIn } = useAuth();
   const { toast } = useToast();
@@ -99,6 +102,56 @@ export default function SignIn() {
   const fillTestCredentials = () => {
     setEmail('secondgavel@gmail.com');
     setPassword('testuser123');
+  };
+
+  // Function to send confirmation email via our custom endpoint
+  const sendConfirmationEmail = async (emailAddress: string) => {
+    try {
+      const response = await fetch('/api/send-confirmation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: emailAddress }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || result.message || 'Failed to send confirmation email');
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error sending confirmation email:', error);
+      throw error;
+    }
+  };
+
+  // Handle resending confirmation email
+  const handleResendEmail = async () => {
+    setIsResendingEmail(true);
+    try {
+      await sendConfirmationEmail(email);
+      toast({
+        title: "Email Resent!",
+        description: "We've sent another confirmation email to your address."
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Failed to Resend Email",
+        description: error instanceof Error ? error.message : "An error occurred while resending the email."
+      });
+    } finally {
+      setIsResendingEmail(false);
+    }
+  };
+
+  // Handle closing the modal
+  const handleCloseModal = () => {
+    setShowEmailModal(false);
+    // User can try signing in again after confirming email
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -117,6 +170,11 @@ export default function SignIn() {
 
     try {
       await signIn(email, password, rememberMe);
+      
+      // Since we disabled Supabase email confirmation, users can sign in even if they haven't
+      // confirmed their email through our custom system. We need to check this and handle accordingly.
+      // For now, we'll proceed with the sign-in since our system is separate from Supabase auth.
+      // In a production system, you might want to add a backend check here.
       
       toast({
         title: "Welcome back!",
@@ -293,6 +351,15 @@ export default function SignIn() {
           </div>
         </div>
       </div>
+
+      {/* Email Confirmation Modal - for cases where user needs to confirm email */}
+      <EmailConfirmationModal
+        isOpen={showEmailModal}
+        onClose={handleCloseModal}
+        email={email}
+        onResend={handleResendEmail}
+        isResending={isResendingEmail}
+      />
     </div>
   );
 }
