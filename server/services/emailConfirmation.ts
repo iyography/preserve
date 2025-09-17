@@ -23,7 +23,7 @@ class EmailConfirmationService {
   private rateLimits = new Map<string, RateLimitEntry>();
   
   // Security constants
-  private readonly MAX_ATTEMPTS_PER_HOUR = 3;
+  private readonly MAX_ATTEMPTS_PER_HOUR = 10; // Temporarily increased for testing
   private readonly RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
   private readonly TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -224,6 +224,15 @@ class EmailConfirmationService {
     });
 
     return { totalTokens, expiredTokens };
+  }
+  
+  /**
+   * Reset rate limits for testing (development only)
+   */
+  public resetRateLimits() {
+    console.log('Resetting all rate limits for testing...');
+    this.rateLimits.clear();
+    this.tokens.clear();
   }
 }
 

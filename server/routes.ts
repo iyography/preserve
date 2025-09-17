@@ -132,6 +132,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Email confirmation endpoints (no auth required)
+  // Development only - reset rate limits
+  app.post('/api/reset-rate-limits', async (req, res) => {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ error: 'Not available in production' });
+    }
+    
+    emailConfirmationService.resetRateLimits();
+    res.json({ success: true, message: 'Rate limits reset successfully' });
+  });
+
   app.post('/api/send-confirmation', async (req, res) => {
     try {
       const { email } = req.body;
