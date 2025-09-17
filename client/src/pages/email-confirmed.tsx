@@ -4,27 +4,60 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import { authHelpers } from "@/lib/supabase";
 
 export default function EmailConfirmed() {
   const [, setLocation] = useLocation();
-  const [countdown, setCountdown] = useState(3);
+  const [countdown, setCountdown] = useState(5);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const { user, loading } = useAuth();
 
   // Parse query parameters to determine success/error state
   const urlParams = new URLSearchParams(window.location.search);
   const isConfirmed = urlParams.get('confirmed') === 'true';
   const hasError = urlParams.get('error') === 'true';
+  const autoSignin = urlParams.get('auto_signin') === 'true';
   const errorMessage = urlParams.get('message') || 'An error occurred during email verification';
+
+  // Handle authentication callback from magic link
+  useEffect(() => {
+    const handleAuthCallback = async () => {
+      if (autoSignin && !loading && !user) {
+        setIsAuthenticating(true);
+        try {
+          // Try to handle auth callback from URL
+          await authHelpers.handleAuthCallback();
+          console.log('Auth callback handled successfully');
+        } catch (error) {
+          console.error('Auth callback failed:', error);
+        }
+        setIsAuthenticating(false);
+      }
+    };
+
+    handleAuthCallback();
+  }, [autoSignin, loading, user]);
 
   // Auto-redirect countdown (only for successful confirmations)
   useEffect(() => {
     if (!isConfirmed || hasError) return;
 
+    // If user is authenticated, redirect faster
+    const redirectDelay = user ? 2 : 5;
+    
+    if (countdown > redirectDelay) {
+      setCountdown(redirectDelay);
+    }
+
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           setIsRedirecting(true);
-          setLocation('/onboarding');
+          // Redirect to appropriate page based on auth state
+          const targetPage = user ? '/dashboard' : '/onboarding';
+          setLocation(targetPage);
           return 0;
         }
         return prev - 1;
@@ -32,11 +65,13 @@ export default function EmailConfirmed() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isConfirmed, hasError, setLocation]);
+  }, [isConfirmed, hasError, setLocation, user, countdown]);
 
   const handleContinue = () => {
     setIsRedirecting(true);
-    setLocation('/onboarding');
+    // Redirect based on authentication state
+    const targetPage = user ? '/dashboard' : '/onboarding';
+    setLocation(targetPage);
   };
 
   const handleReturnHome = () => {
@@ -131,7 +166,9 @@ export default function EmailConfirmed() {
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
                     <div className="flex items-center space-x-2">
                       <CheckCircle className="w-5 h-5 text-green-600" />
-                      <span className="text-green-800 font-medium" data-testid="text-next-step">Ready to begin your onboarding journey</span>
+                      <span className="text-green-800 font-medium" data-testid="text-next-step">
+                        {user ? 'Welcome back! Taking you to your dashboard...' : 'Ready to begin your onboarding journey'}
+                      </span>
                     </div>
                   </div>
 
@@ -143,9 +180,24 @@ export default function EmailConfirmed() {
                           className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-lg"
                           size="lg"
                           data-testid="button-continue-onboarding"
+                          disabled={loading || isAuthenticating}
                         >
-                          Continue to Onboarding
-                          <ArrowRight className="w-5 h-5 ml-2" />
+                          {loading || isAuthenticating ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Signing you in...
+                            </>
+                          ) : user ? (
+                            <>
+                              Go to Dashboard
+                              <ArrowRight className="w-5 h-5 ml-2" />
+                            </>
+                          ) : (
+                            <>
+                              Continue to Onboarding
+                              <ArrowRight className="w-5 h-5 ml-2" />
+                            </>
+                          )}
                         </Button>
                         
                         <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">

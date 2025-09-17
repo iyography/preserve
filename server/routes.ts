@@ -21,6 +21,7 @@ import { Storage } from "@google-cloud/storage";
 import { verifyJWT, type AuthenticatedRequest } from "./middleware/auth";
 import { EmailService } from "./services/email";
 import { emailConfirmationService } from "./services/emailConfirmation";
+import { createClient } from '@supabase/supabase-js';
 
 // Extend AuthenticatedRequest interface to include file property
 interface AuthenticatedMulterRequest extends AuthenticatedRequest {
@@ -60,6 +61,11 @@ const upload = multer({
 const gcs = new Storage();
 const bucketName = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
 const bucket = gcs.bucket(bucketName || '');
+
+// Initialize server-side Supabase client with service role key for admin operations
+const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint (no auth required)
@@ -148,11 +154,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Generate confirmation token
-      const token = emailConfirmationService.generateToken(email);
+      // Generate confirmation token with security checks
+      const tokenResult = emailConfirmationService.generateToken(email);
+      
+      if (!tokenResult.success) {
+        return res.status(429).json({ 
+          error: tokenResult.error,
+          message: 'Please try again later' 
+        });
+      }
 
       // Send confirmation email
-      const result = await EmailService.sendConfirmationEmail(email, token);
+      const result = await EmailService.sendConfirmationEmail(email, tokenResult.token!);
 
       if (result && result.success) {
         res.json({ 
@@ -195,9 +208,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.redirect(302, '/email-confirmed?error=true&message=' + encodeURIComponent(errorMessage));
       }
 
-      // Success! Email confirmed - redirect to success page
+      // Success! Now update Supabase user state and create a sign-in session
       console.log('Email confirmed successfully:', result.email);
-      res.redirect(302, '/email-confirmed?confirmed=true');
+      
+      try {
+        // Get user by email from Supabase
+        const { data: { users }, error: getUserError } = await supabaseAdmin.auth.admin.listUsers();
+        
+        if (getUserError || !users) {
+          console.error('Error finding users in Supabase:', getUserError);
+          return res.redirect(302, '/email-confirmed?error=true&message=' + encodeURIComponent('Error accessing user data. Please try again.'));
+        }
+
+        // Find user by email
+        const user = users.find(u => u.email === result.email);
+        if (!user) {
+          console.error('User not found with email:', result.email);
+          return res.redirect(302, '/email-confirmed?error=true&message=' + encodeURIComponent('User not found. Please try registering again.'));
+        }
+
+        // Update user metadata to mark email as confirmed
+        const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+          email_confirm: true,
+          user_metadata: {
+            ...user.user_metadata,
+            email_confirmed: true,
+            email_confirmed_at: new Date().toISOString()
+          }
+        });
+
+        if (updateError) {
+          console.error('Error updating user in Supabase:', updateError);
+          return res.redirect(302, '/email-confirmed?error=true&message=' + encodeURIComponent('Failed to confirm email. Please try again.'));
+        }
+
+        // Generate a magic link session for automatic sign-in
+        const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+          type: 'magiclink',
+          email: result.email!,
+          options: {
+            redirectTo: `${req.protocol}://${req.get('host')}/email-confirmed?confirmed=true&auto_signin=true`
+          }
+        });
+
+        if (linkError) {
+          console.error('Error generating magic link:', linkError);
+          // Fall back to regular success page without auto sign-in
+          return res.redirect(302, '/email-confirmed?confirmed=true');
+        }
+
+        console.log('User email confirmed and session prepared:', result.email);
+        
+        // Redirect to the magic link URL which will automatically sign the user in
+        return res.redirect(302, linkData.properties.action_link || '/email-confirmed?confirmed=true');
+        
+      } catch (supabaseError) {
+        console.error('Supabase operation error:', supabaseError);
+        // Fall back to basic success page
+        return res.redirect(302, '/email-confirmed?confirmed=true&message=' + encodeURIComponent('Email confirmed but automatic sign-in failed. Please sign in manually.'));
+      }
       
     } catch (error) {
       console.error('Confirm email endpoint error:', error);

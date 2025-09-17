@@ -11,7 +11,9 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false, // Disable since we're not using email confirmation
+    detectSessionInUrl: true, // Enable to handle magic link authentication
+    storageKey: 'preserving-connections-auth',
+    flowType: 'pkce'
   }
 })
 
@@ -97,5 +99,38 @@ export const authHelpers = {
   // Listen for auth changes
   onAuthStateChange(callback: (event: string, session: any) => void) {
     return supabase.auth.onAuthStateChange(callback)
+  },
+
+  // Handle session from URL (for magic links)
+  async handleAuthCallback() {
+    try {
+      const { data, error } = await supabase.auth.getSession()
+      
+      if (error) {
+        console.error('Error getting session:', error);
+        throw new Error(error.message)
+      }
+      
+      return data.session
+    } catch (error) {
+      console.error('Auth callback error:', error);
+      throw error
+    }
+  },
+
+  // Get session directly
+  async getSession() {
+    try {
+      const { data, error } = await supabase.auth.getSession()
+      
+      if (error) {
+        throw new Error(error.message)
+      }
+      
+      return data.session
+    } catch (error) {
+      console.error('Get session error:', error);
+      throw error
+    }
   }
 }
