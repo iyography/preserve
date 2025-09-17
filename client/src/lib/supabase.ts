@@ -11,13 +11,13 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: false, // Disable since we're not using email confirmation
   }
 })
 
 // Auth helper functions
 export const authHelpers = {
-  // Sign up new user
+  // Sign up new user (no email confirmation required)
   async signUp(email: string, password: string, userData: { first_name: string; last_name: string }) {
     console.log('Supabase signUp called with:', { email, userData });
     
@@ -25,6 +25,7 @@ export const authHelpers = {
       email,
       password,
       options: {
+        emailRedirectTo: undefined, // Disable email confirmation redirect
         data: {
           first_name: userData.first_name,
           last_name: userData.last_name,

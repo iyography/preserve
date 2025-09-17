@@ -8,6 +8,82 @@ import ParticleSystem from "@/components/ParticleSystem";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
+
+// Helper function to determine where to route user after sign-up (same as sign-in)
+async function determineUserRoute(): Promise<string> {
+  try {
+    // Get the current session to extract the access token (same as apiRequest)
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // Helper function to make authenticated requests using the same pattern as apiRequest
+    const makeAuthenticatedRequest = async (url: string) => {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add Authorization header if user is authenticated
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+        credentials: 'include',
+      });
+      return response;
+    };
+
+    // Check if user has any personas
+    const personasResponse = await makeAuthenticatedRequest('/api/personas');
+    
+    if (personasResponse.ok) {
+      const personas = await personasResponse.json();
+      
+      // If user has completed personas, go to dashboard
+      if (personas.length > 0 && personas.some((p: any) => p.status === 'completed')) {
+        return '/dashboard';
+      }
+      
+      // If user has personas but they're all in progress, go to dashboard too
+      if (personas.length > 0) {
+        return '/dashboard';
+      }
+    }
+    
+    // Check if user has any incomplete onboarding sessions
+    const sessionsResponse = await makeAuthenticatedRequest('/api/onboarding-sessions');
+    
+    if (sessionsResponse.ok) {
+      const sessions = await sessionsResponse.json();
+      
+      // Find the most recent incomplete session
+      const incompleteSessions = sessions.filter((s: any) => !s.isCompleted);
+      if (incompleteSessions.length > 0) {
+        // Sort by creation date if it exists, with fallback handling
+        const recentSession = incompleteSessions.sort((a: any, b: any) => {
+          const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return bDate - aDate;
+        })[0];
+        
+        // Route to the specific onboarding approach where they left off
+        if (recentSession.approach) {
+          return `/onboarding/${recentSession.approach}`;
+        }
+      }
+    }
+    
+    // Default: new user, send to onboarding flow
+    return '/onboarding';
+    
+  } catch (error) {
+    console.error('Error checking user state:', error);
+    // Fallback to onboarding on any error
+    return '/onboarding';
+  }
+}
 
 export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
@@ -64,14 +140,20 @@ export default function Register() {
       console.log('Supabase registration successful:', result);
 
       toast({
-        title: "Success!",
-        description: "Account created successfully. Please check your email to verify your account."
+        title: "Welcome to Preserving Connections!",
+        description: "Your account has been created successfully. Let's start preserving memories."
       });
 
-      // Redirect to onboarding after successful registration
-      setTimeout(() => {
-        window.location.href = '/onboarding';
-      }, 2000);
+      // Use the same smart routing logic as sign-in
+      setTimeout(async () => {
+        try {
+          const route = await determineUserRoute();
+          window.location.href = route;
+        } catch (error) {
+          // Fallback to onboarding if routing fails
+          window.location.href = '/onboarding';
+        }
+      }, 1500);
 
     } catch (error) {
       console.error('Registration error:', error);
