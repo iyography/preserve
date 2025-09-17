@@ -15,6 +15,7 @@ type ChatMessage = {
   id: number;
   sender: 'user' | 'grandma';
   text: string;
+  isLimitReached?: boolean;
 };
 
 export default function Home() {
@@ -69,9 +70,21 @@ export default function Home() {
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           
-          // Handle rate limiting with a friendly message
+          // Handle rate limiting with special handling for demo limit
           if (response.status === 429) {
-            throw new Error(errorData.message || "Oh dear, we've been chatting so much! Please give me a moment to catch my breath, sweetheart.");
+            if (errorData.actionRequired === 'signup') {
+              // Show special message for 5-response limit with sign up buttons
+              const signupMessage = { 
+                id: Date.now() + 1, 
+                sender: 'grandma' as const, 
+                text: errorData.message || "Oh sweetheart, we've had such a wonderful chat! To continue our conversations and create your own personalized memories, please sign up for Preserving Connections. I'd love to keep talking with you!",
+                isLimitReached: true
+              };
+              setChatMessages(prev => [...prev, signupMessage]);
+              return; // Don't throw error, just show the message
+            } else {
+              throw new Error(errorData.message || "Oh dear, we've been chatting so much! Please give me a moment to catch my breath, sweetheart.");
+            }
           }
           
           throw new Error(errorData.message || 'Failed to get response');
@@ -686,6 +699,38 @@ export default function Home() {
                           : 'bg-purple-50 text-gray-800 border border-purple-100'
                       }`}>
                         <p className="text-sm leading-relaxed">{message.text}</p>
+                        
+                        {/* Show sign-up buttons when limit is reached */}
+                        {message.isLimitReached && (
+                          <div className="mt-4 space-y-2" data-testid="signup-prompt">
+                            <div className="text-center">
+                              <p className="text-xs text-purple-600 mb-3">Continue your conversation with Grandma Rose</p>
+                              <div className="flex flex-col sm:flex-row gap-2">
+                                <Button 
+                                  onClick={() => {
+                                    setIsDemoOpen(false);
+                                    window.location.href = '/register';
+                                  }}
+                                  className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white text-xs px-4 py-2 h-8"
+                                  data-testid="button-signup-demo"
+                                >
+                                  Sign Up Free
+                                </Button>
+                                <Button 
+                                  variant="outline"
+                                  onClick={() => {
+                                    setIsDemoOpen(false);
+                                    window.location.href = '/sign-in';
+                                  }}
+                                  className="border-purple-200 hover:bg-purple-50 text-purple-700 text-xs px-4 py-2 h-8"
+                                  data-testid="button-login-demo"
+                                >
+                                  Already a Member? Sign In
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
