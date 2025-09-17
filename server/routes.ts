@@ -196,7 +196,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!token || typeof token !== 'string') {
         // Redirect to error page with message
-        return res.redirect(302, '/email-confirmed?error=true&message=' + encodeURIComponent('Invalid confirmation link. Please check your email for the correct link.'));
+        return res.redirect(302, '/onboarding?email_confirmation_error=true&message=' + encodeURIComponent('Invalid confirmation link. Please check your email for the correct link.'));
       }
 
       // Verify the token
@@ -205,7 +205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!result.valid) {
         // Redirect to error page with specific error message
         const errorMessage = result.error || 'Email confirmation failed';
-        return res.redirect(302, '/email-confirmed?error=true&message=' + encodeURIComponent(errorMessage));
+        return res.redirect(302, '/onboarding?email_confirmation_error=true&message=' + encodeURIComponent(errorMessage));
       }
 
       // Success! Now update Supabase user state and create a sign-in session
@@ -217,14 +217,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (getUserError || !users) {
           console.error('Error finding users in Supabase:', getUserError);
-          return res.redirect(302, '/email-confirmed?error=true&message=' + encodeURIComponent('Error accessing user data. Please try again.'));
+          return res.redirect(302, '/onboarding?email_confirmation_error=true&message=' + encodeURIComponent('Error accessing user data. Please try again.'));
         }
 
         // Find user by email
         const user = users.find(u => u.email === result.email);
         if (!user) {
           console.error('User not found with email:', result.email);
-          return res.redirect(302, '/email-confirmed?error=true&message=' + encodeURIComponent('User not found. Please try registering again.'));
+          return res.redirect(302, '/onboarding?email_confirmation_error=true&message=' + encodeURIComponent('User not found. Please try registering again.'));
         }
 
         // Update user metadata to mark email as confirmed
@@ -239,7 +239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (updateError) {
           console.error('Error updating user in Supabase:', updateError);
-          return res.redirect(302, '/email-confirmed?error=true&message=' + encodeURIComponent('Failed to confirm email. Please try again.'));
+          return res.redirect(302, '/onboarding?email_confirmation_error=true&message=' + encodeURIComponent('Failed to confirm email. Please try again.'));
         }
 
         // Generate a magic link session for automatic sign-in
@@ -253,26 +253,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (linkError) {
           console.error('Error generating magic link:', linkError);
-          // Fall back to regular success page without auto sign-in
-          return res.redirect(302, '/email-confirmed?confirmed=true');
+          // Fall back to onboarding without auto sign-in
+          return res.redirect(302, '/onboarding?email_confirmed=true');
         }
 
         console.log('User email confirmed and session prepared:', result.email);
         
-        // Redirect to the magic link URL which will automatically sign the user in
-        return res.redirect(302, linkData.properties.action_link || '/email-confirmed?confirmed=true');
+        // Redirect to onboarding with confirmation success parameter
+        // The magic link will auto-authenticate, then redirect to onboarding
+        return res.redirect(302, linkData.properties.action_link.replace('/email-confirmed?confirmed=true&auto_signin=true', '/onboarding?email_confirmed=true') || '/onboarding?email_confirmed=true');
         
       } catch (supabaseError) {
         console.error('Supabase operation error:', supabaseError);
-        // Fall back to basic success page
-        return res.redirect(302, '/email-confirmed?confirmed=true&message=' + encodeURIComponent('Email confirmed but automatic sign-in failed. Please sign in manually.'));
+        // Fall back to onboarding
+        return res.redirect(302, '/onboarding?email_confirmed=true&message=' + encodeURIComponent('Email confirmed but automatic sign-in failed. Please sign in manually.'));
       }
       
     } catch (error) {
       console.error('Confirm email endpoint error:', error);
-      // Redirect to error page with generic error message
+      // Redirect to onboarding with error message  
       const errorMessage = 'An error occurred while confirming your email. Please try again later.';
-      res.redirect(302, '/email-confirmed?error=true&message=' + encodeURIComponent(errorMessage));
+      res.redirect(302, '/onboarding?email_confirmation_error=true&message=' + encodeURIComponent(errorMessage));
     }
   });
   

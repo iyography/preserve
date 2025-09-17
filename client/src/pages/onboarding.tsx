@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Heart, MessageCircle, Clock, Users, Sparkles, ArrowRight, ChevronLeft, Star, Shield, Brain, TreePine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import EmailConfirmationModal from "@/components/EmailConfirmationModal";
 
 interface OnboardingApproach {
   id: string;
@@ -92,10 +93,64 @@ export default function Onboarding() {
   const [selectedApproach, setSelectedApproach] = useState<string>('');
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  
+  // Email confirmation handling
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
+  const [emailConfirmed, setEmailConfirmed] = useState(false);
+  
+  // Check URL parameters for email confirmation status
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const emailConfirmedParam = urlParams.get('email_confirmed');
+    const emailErrorParam = urlParams.get('email_confirmation_error');
+    const errorMessage = urlParams.get('message');
+    
+    if (emailConfirmedParam === 'true') {
+      setEmailConfirmed(true);
+      // Clear URL params
+      window.history.replaceState({}, '', '/onboarding');
+    } else if (emailErrorParam === 'true') {
+      console.error('Email confirmation error:', errorMessage);
+      setShowEmailConfirmation(true);
+    } else if (!user?.email_confirmed_at) {
+      // Show confirmation modal if email is not confirmed
+      setShowEmailConfirmation(true);
+    }
+  }, [user]);
+  
+  // Handle email confirmation resend
+  const [isResending, setIsResending] = useState(false);
+  
+  const handleResendEmail = async () => {
+    if (!user?.email || isResending) return;
+    
+    setIsResending(true);
+    try {
+      const response = await fetch('/api/send-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email })
+      });
+      
+      if (response.ok) {
+        console.log('Confirmation email resent successfully');
+      }
+    } catch (error) {
+      console.error('Failed to resend confirmation email:', error);
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   const progress = step === 'welcome' ? 50 : 100;
 
   const handleNext = () => {
+    // Block progression if email is not confirmed
+    if (!emailConfirmed && !user?.email_confirmed_at) {
+      setShowEmailConfirmation(true);
+      return;
+    }
+    
     if (step === 'welcome') setStep('approach');
     else if (step === 'approach') {
       // Redirect to the specific approach flow
@@ -328,6 +383,19 @@ export default function Onboarding() {
           </div>
         )}
       </div>
+      
+      {/* Email Confirmation Modal */}
+      <EmailConfirmationModal
+        isOpen={showEmailConfirmation}
+        onClose={() => {
+          if (emailConfirmed || user?.email_confirmed_at) {
+            setShowEmailConfirmation(false);
+          }
+        }}
+        email={user?.email || ''}
+        onResend={handleResendEmail}
+        isResending={isResending}
+      />
     </div>
   );
 }
