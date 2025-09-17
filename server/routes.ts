@@ -20,6 +20,7 @@ import fs from "fs/promises";
 import { Storage } from "@google-cloud/storage";
 import { verifyJWT, type AuthenticatedRequest } from "./middleware/auth";
 import { EmailService } from "./services/email";
+import { emailConfirmationService } from "./services/emailConfirmation";
 
 // Extend AuthenticatedRequest interface to include file property
 interface AuthenticatedMulterRequest extends AuthenticatedRequest {
@@ -121,6 +122,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: 'Internal server error',
         details: error instanceof Error ? error.message : 'Unknown error'
       });
+    }
+  });
+
+  // Email confirmation endpoints (no auth required)
+  app.post('/api/send-confirmation', async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ error: 'Email address is required' });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: 'Invalid email format' });
+      }
+
+      // Check if there's already a pending confirmation for this email
+      if (emailConfirmationService.hasPendingToken(email)) {
+        return res.status(429).json({ 
+          error: 'Confirmation email already sent', 
+          message: 'Please check your email or wait before requesting another confirmation link' 
+        });
+      }
+
+      // Generate confirmation token
+      const token = emailConfirmationService.generateToken(email);
+
+      // Send confirmation email
+      const result = await EmailService.sendConfirmationEmail(email, token);
+
+      if (result && result.success) {
+        res.json({ 
+          success: true, 
+          message: 'Confirmation email sent successfully',
+          emailId: result.data?.id
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          error: 'Failed to send confirmation email',
+          details: result?.error || 'Unknown error'
+        });
+      }
+    } catch (error) {
+      console.error('Send confirmation endpoint error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  app.get('/api/confirm-email', async (req, res) => {
+    try {
+      const { token } = req.query;
+
+      if (!token || typeof token !== 'string') {
+        return res.status(400).send(`
+          <html>
+            <head>
+              <title>Email Confirmation - Preserving Connections</title>
+              <style>
+                body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
+                .error { color: #dc3545; }
+                .logo { color: #7c3aed; font-size: 24px; margin-bottom: 20px; }
+              </style>
+            </head>
+            <body>
+              <div class="logo">Preserving Connections</div>
+              <h2 class="error">Invalid Confirmation Link</h2>
+              <p>The confirmation link is missing or invalid. Please check your email for the correct link.</p>
+            </body>
+          </html>
+        `);
+      }
+
+      // Verify the token
+      const result = emailConfirmationService.verifyToken(token);
+
+      if (!result.valid) {
+        return res.status(400).send(`
+          <html>
+            <head>
+              <title>Email Confirmation - Preserving Connections</title>
+              <style>
+                body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
+                .error { color: #dc3545; }
+                .logo { color: #7c3aed; font-size: 24px; margin-bottom: 20px; }
+              </style>
+            </head>
+            <body>
+              <div class="logo">Preserving Connections</div>
+              <h2 class="error">Confirmation Failed</h2>
+              <p>${result.error}</p>
+              <p>Please request a new confirmation email if needed.</p>
+            </body>
+          </html>
+        `);
+      }
+
+      // Success! Email confirmed
+      res.status(200).send(`
+        <html>
+          <head>
+            <title>Email Confirmed - Preserving Connections</title>
+            <style>
+              body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
+              .success { color: #28a745; }
+              .logo { color: #7c3aed; font-size: 24px; margin-bottom: 20px; }
+              .btn { background: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 20px; }
+            </style>
+          </head>
+          <body>
+            <div class="logo">Preserving Connections</div>
+            <h2 class="success">✅ Email Confirmed!</h2>
+            <p>Your email address <strong>${result.email}</strong> has been successfully confirmed.</p>
+            <p>You can now sign in to your account and start preserving precious memories.</p>
+            <a href="/sign-in" class="btn">Sign In to Your Account</a>
+          </body>
+        </html>
+      `);
+
+      console.log('Email confirmed successfully:', result.email);
+    } catch (error) {
+      console.error('Confirm email endpoint error:', error);
+      res.status(500).send(`
+        <html>
+          <head>
+            <title>Error - Preserving Connections</title>
+            <style>
+              body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
+              .error { color: #dc3545; }
+              .logo { color: #7c3aed; font-size: 24px; margin-bottom: 20px; }
+            </style>
+          </head>
+          <body>
+            <div class="logo">Preserving Connections</div>
+            <h2 class="error">Something Went Wrong</h2>
+            <p>An error occurred while confirming your email. Please try again later.</p>
+          </body>
+        </html>
+      `);
     }
   });
   
