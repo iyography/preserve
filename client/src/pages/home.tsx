@@ -161,48 +161,119 @@ export default function Home() {
       <nav className="fixed w-full z-50 bg-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
+            {/* Logo - Always visible */}
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center shadow-lg">
+              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center shadow-lg aspect-square">
                 <Infinity className="text-white w-4 h-4" />
               </div>
-              <span className="text-gray-900 font-semibold text-lg">Preserving Connections</span>
+              {/* Hide text on small screens */}
+              <span className="hidden sm:block text-gray-900 font-semibold text-lg">Preserving Connections</span>
             </div>
             
-            <div className="hidden md:block">
+            {/* Desktop Navigation */}
+            <div className="hidden lg:block">
               <div className="ml-10 flex items-baseline space-x-8">
-                <a href="#how-it-works" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
+                <a href="#how-it-works" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200" data-testid="link-how-it-works">
                   How it Works
                 </a>
-
-                <a href="#demo" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
+                <a href="#demo" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200" data-testid="link-demo">
                   Demo
                 </a>
-                <a href="/community" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
+                <a href="/community" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200" data-testid="link-community">
                   Community
                 </a>
-                <a href="#faq" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200">
+                <a href="#faq" className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors duration-200" data-testid="link-faq">
                   FAQ
                 </a>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" className="text-gray-600 hover:text-gray-900" onClick={() => window.location.href = '/sign-in'}>
+            {/* Desktop Auth Buttons */}
+            <div className="hidden lg:flex items-center space-x-4">
+              <Button variant="ghost" className="text-gray-600 hover:text-gray-900" onClick={() => window.location.href = '/sign-in'} data-testid="button-login">
                 Login
               </Button>
-              <Button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white shadow-lg" onClick={() => window.location.href = '/register'}>
+              <Button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white shadow-lg" onClick={() => window.location.href = '/register'} data-testid="button-register">
                 Register
               </Button>
-              <Button 
-                variant="ghost" 
-                className="md:hidden text-gray-900 hover:text-purple-600"
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-              >
-                <Menu className="w-5 h-5" />
-              </Button>
             </div>
+
+            {/* Mobile Hamburger Menu Button */}
+            <Button 
+              variant="ghost" 
+              className="lg:hidden text-gray-900 hover:text-purple-600 p-2"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              data-testid="button-mobile-menu"
+            >
+              {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </Button>
           </div>
         </div>
+
+        {/* Mobile Menu Overlay */}
+        {isMenuOpen && (
+          <div className="lg:hidden absolute top-full left-0 w-full bg-white shadow-lg border-t border-gray-200" data-testid="mobile-menu">
+            <div className="px-4 py-6 space-y-4">
+              <a 
+                href="#how-it-works" 
+                className="block text-gray-700 hover:text-purple-600 py-3 text-base font-medium transition-colors duration-200" 
+                onClick={() => setIsMenuOpen(false)}
+                data-testid="mobile-link-how-it-works"
+              >
+                How it Works
+              </a>
+              <a 
+                href="#demo" 
+                className="block text-gray-700 hover:text-purple-600 py-3 text-base font-medium transition-colors duration-200" 
+                onClick={() => setIsMenuOpen(false)}
+                data-testid="mobile-link-demo"
+              >
+                Demo
+              </a>
+              <a 
+                href="/community" 
+                className="block text-gray-700 hover:text-purple-600 py-3 text-base font-medium transition-colors duration-200" 
+                onClick={() => setIsMenuOpen(false)}
+                data-testid="mobile-link-community"
+              >
+                Community
+              </a>
+              <a 
+                href="#faq" 
+                className="block text-gray-700 hover:text-purple-600 py-3 text-base font-medium transition-colors duration-200" 
+                onClick={() => setIsMenuOpen(false)}
+                data-testid="mobile-link-faq"
+              >
+                FAQ
+              </a>
+              
+              {/* Mobile Auth Buttons */}
+              <div className="pt-4 border-t border-gray-200 space-y-3">
+                <Button 
+                  variant="ghost" 
+                  className="w-full text-gray-600 hover:text-gray-900 justify-start" 
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    window.location.href = '/sign-in';
+                  }}
+                  data-testid="mobile-button-login"
+                >
+                  Login
+                </Button>
+                <Button 
+                  className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white shadow-lg" 
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    window.location.href = '/register';
+                  }}
+                  data-testid="mobile-button-register"
+                >
+                  Register
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
