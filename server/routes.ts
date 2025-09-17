@@ -26,6 +26,7 @@ import { abuseDetector } from "./services/abuseDetector";
 import { costGuardian } from "./services/costGuardian";
 import { modelRouter } from "./services/modelRouter";
 import { responseCache } from "./services/responseCache";
+import { PersonaPromptBuilder } from "./services/personaPromptBuilder";
 import OpenAI from 'openai';
 
 // Extend AuthenticatedRequest interface to include file property
@@ -356,6 +357,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching conversations:', error);
       res.status(500).json({ error: 'Failed to fetch conversations' });
+    }
+  });
+  
+  app.post('/api/conversations', async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const { personaId, title } = req.body;
+      
+      if (!personaId) {
+        return res.status(400).json({ error: 'Persona ID is required' });
+      }
+      
+      // Verify persona belongs to user
+      const persona = await storage.getPersona(personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(404).json({ error: 'Persona not found' });
+      }
+      
+      const conversationData = insertConversationSchema.parse({
+        userId,
+        personaId,
+        title: title || `Chat with ${persona.name}`,
+        status: 'active'
+      });
+      
+      const conversation = await storage.createConversation(conversationData);
+      res.status(201).json(conversation);
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Invalid conversation data', details: error.errors });
+      }
+      res.status(500).json({ error: 'Failed to create conversation' });
     }
   });
 
@@ -714,18 +748,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // STEP 5: Prepare and Optimize Prompt
-      const systemPrompt = `You are having a conversation as ${persona.name}. Maintain consistency with their personality and previous conversations.`;
-      
-      // Build context from conversation history
-      let context = systemPrompt;
-      if (conversationHistory.length > 0) {
-        context += '\n\nRecent conversation:\n' + conversationHistory.slice(-5).join('\n');
-      }
+      // STEP 5: Prepare and Optimize Prompt with Full Persona Context
+      // Use PersonaPromptBuilder to create comprehensive, personalized prompt
+      const promptBuilder = new PersonaPromptBuilder(persona, conversationHistory);
+      const systemPrompt = promptBuilder.buildSystemPrompt();
       
       // Optimize prompt to stay under token limits
       const optimizedMessage = modelRouter.optimizePrompt(message, 4000);
-      const optimizedContext = modelRouter.optimizePrompt(context, 2000);
+      const optimizedContext = modelRouter.optimizePrompt(systemPrompt, 3000);
       
       // STEP 6: Make API Call
       if (!openai) {

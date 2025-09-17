@@ -419,9 +419,32 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
         `${msg.sender === 'user' ? 'Loved one' : persona?.name}: ${msg.text}`
       ).join('\n');
 
-      console.log('🚀 Making API request to /api/chat/generate...');
+      console.log('🚀 Making API request to /api/chat...');
       
-      const response = await fetch('/api/chat/generate', {
+      // Create or get conversation ID
+      let currentConversationId = localStorage.getItem(`conversation_${persona?.id}`);
+      if (!currentConversationId) {
+        // Create a new conversation
+        const convResponse = await fetch('/api/conversations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+          },
+          body: JSON.stringify({
+            personaId: persona?.id,
+            title: `Chat with ${persona?.name}`,
+          }),
+        });
+        
+        if (convResponse.ok) {
+          const convData = await convResponse.json();
+          currentConversationId = convData.id;
+          localStorage.setItem(`conversation_${persona?.id}`, currentConversationId);
+        }
+      }
+      
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -429,11 +452,9 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
         },
         body: JSON.stringify({
           message: userMessage,
-          personalityContext,
-          conversationHistory: conversationContext,
-          personaName: persona?.name,
           personaId: persona?.id,
-          userId: user?.id
+          conversationId: currentConversationId,
+          model: 'gpt-4o-mini' // Use optimized model by default
         }),
       });
 
