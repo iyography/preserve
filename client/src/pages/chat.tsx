@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useRoute, Link } from "wouter";
-import { ArrowLeft, Send, Settings, Heart, User, Circle, AlertCircle, ThumbsUp, ThumbsDown, Star, MessageSquare, TrendingUp } from "lucide-react";
+import { ArrowLeft, Send, Settings, Heart, User, Circle, AlertCircle, ThumbsUp, ThumbsDown, Star, MessageSquare, TrendingUp, Brain, Sparkles, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -71,14 +71,7 @@ export default function Chat() {
       kind: string;
       payload?: any;
     }) => {
-      return apiRequest('/api/feedback', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify(data),
-      });
+      return apiRequest('POST', '/api/feedback', data);
     },
     onSuccess: () => {
       toast({
@@ -104,17 +97,10 @@ export default function Chat() {
       value: any;
       window: string;
     }) => {
-      return apiRequest(`/api/personas/${data.personaId}/metrics`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify({
-          metric: data.metric,
-          value: data.value,
-          window: data.window,
-        }),
+      return apiRequest('POST', `/api/personas/${data.personaId}/metrics`, {
+        metric: data.metric,
+        value: data.value,
+        window: data.window,
       });
     },
   });
@@ -729,7 +715,7 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
 
     setChatMessages(prev => prev.map(msg => 
       msg.id === messageId 
-        ? { ...msg, feedback: { ...msg.feedback, rating } }
+        ? { ...msg, feedback: { ...msg.feedback, rating, type: msg.feedback?.type || null, helpful: msg.feedback?.helpful, comment: msg.feedback?.comment } }
         : msg
     ));
 

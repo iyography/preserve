@@ -1,4 +1,6 @@
 import type { Persona } from "@shared/schema";
+import { personalityEvolution } from "./personalityEvolution";
+import { storage } from "../storage";
 
 interface OnboardingData {
   voiceCommunication?: {
@@ -41,14 +43,33 @@ export class PersonaPromptBuilder {
   private persona: Persona;
   private onboardingData: OnboardingData;
   private conversationHistory?: string[];
+  private evolutionAdjustments: any | null = null;
   
-  constructor(persona: Persona, conversationHistory?: string[]) {
+  constructor(persona: Persona, conversationHistory?: string[], evolutionAdjustments?: any) {
     this.persona = persona;
     this.onboardingData = (persona.onboardingData as OnboardingData) || {};
     this.conversationHistory = conversationHistory;
+    this.evolutionAdjustments = evolutionAdjustments || null;
   }
   
-  buildSystemPrompt(): string {
+  async buildSystemPrompt(userId?: string): Promise<string> {
+    // Fetch evolution adjustments if userId provided and not already loaded
+    if (userId && !this.evolutionAdjustments) {
+      try {
+        this.evolutionAdjustments = await personalityEvolution.getPersonalityAdjustments(
+          this.persona,
+          userId,
+          false // Use cached if available
+        );
+      } catch (error) {
+        console.error('Failed to fetch evolution adjustments:', error);
+      }
+    }
+    
+    return this.generatePrompt();
+  }
+  
+  private generatePrompt(): string {
     const greeting = this.onboardingData.voiceCommunication?.usualGreeting || 'Hello';
     const communicationStyle = this.onboardingData.voiceCommunication?.communicationStyle || ['direct'];
     const catchphrase = this.onboardingData.voiceCommunication?.catchphrase;
@@ -188,9 +209,135 @@ Here are the last few messages for context:
 ${this.conversationHistory.join('\n')}
 ` : ''}
 
-Remember: You are ${this.persona.name}, and you're having a real conversation with someone you ${this.persona.relationship}. Be yourself - with all your quirks, interests, and unique way of communicating.`;
+Remember: You are ${this.persona.name}, and you're having a real conversation with someone you ${this.persona.relationship}. Be yourself - with all your quirks, interests, and unique way of communicating.${this.getEvolutionGuidance()}`;
 
     return prompt;
+  }
+  
+  private getAdjustedCommunicationStyle(baseStyle: string[]): string {
+    if (!this.evolutionAdjustments?.communicationStyle) {
+      return baseStyle.join(' and ');
+    }
+    
+    const adjustments = this.evolutionAdjustments.communicationStyle;
+    const styles: string[] = [...baseStyle];
+    
+    // Apply formality adjustments
+    if (adjustments.formality > 0.5) {
+      styles.push('formal');
+    } else if (adjustments.formality < -0.5) {
+      styles.push('casual');
+    }
+    
+    // Apply expressiveness adjustments
+    if (adjustments.expressiveness > 0.5) {
+      styles.push('expressive');
+    } else if (adjustments.expressiveness < -0.5) {
+      styles.push('reserved');
+    }
+    
+    // Apply directness adjustments
+    if (adjustments.directness > 0.5) {
+      styles.push('direct');
+    } else if (adjustments.directness < -0.5) {
+      styles.push('thoughtful');
+    }
+    
+    // Add humor if appropriate
+    if (adjustments.humor > 0.4) {
+      styles.push('with a touch of humor');
+    }
+    
+    return Array.from(new Set(styles)).join(' and ');
+  }
+  
+  private getAdjustedTopics(baseTopics: string[]): string[] {
+    if (!this.evolutionAdjustments?.topicPreferences) {
+      return baseTopics;
+    }
+    
+    const { preferred, avoided } = this.evolutionAdjustments.topicPreferences;
+    
+    // Combine base topics with learned preferences
+    const allTopics = Array.from(new Set([...baseTopics, ...(preferred || [])]));
+    
+    // Filter out avoided topics
+    return allTopics.filter(topic => !(avoided || []).includes(topic));
+  }
+  
+  private getAdjustedSupportStyle(baseStyle: string): string {
+    if (!this.evolutionAdjustments?.emotionalResponses) {
+      return baseStyle;
+    }
+    
+    const { supportStyle, empathyLevel, responseWarmth } = this.evolutionAdjustments.emotionalResponses;
+    
+    let adjustedStyle = supportStyle || baseStyle;
+    
+    // Add empathy modifiers
+    if (empathyLevel > 0.7) {
+      adjustedStyle = `${adjustedStyle} with deep empathy`;
+    } else if (empathyLevel > 0.5) {
+      adjustedStyle = `${adjustedStyle} with understanding`;
+    }
+    
+    // Add warmth modifiers
+    if (responseWarmth > 0.7) {
+      adjustedStyle = `${adjustedStyle} and warmth`;
+    }
+    
+    return adjustedStyle;
+  }
+  
+  private getEvolutionGuidance(): string {
+    if (!this.evolutionAdjustments) {
+      return '';
+    }
+    
+    const guidance: string[] = [];
+    
+    // Add conversation flow adjustments
+    if (this.evolutionAdjustments.conversationFlow) {
+      const flow = this.evolutionAdjustments.conversationFlow;
+      
+      if (flow.preferredMessageLength) {
+        if (flow.preferredMessageLength < 50) {
+          guidance.push('- Keep responses brief and to the point');
+        } else if (flow.preferredMessageLength > 150) {
+          guidance.push('- Take your time with thoughtful, detailed responses');
+        }
+      }
+      
+      if (flow.questionFrequency > 0.5) {
+        guidance.push('- Ask questions to show interest and keep conversation flowing');
+      } else if (flow.questionFrequency < 0.2) {
+        guidance.push('- Focus more on sharing and responding than asking questions');
+      }
+      
+      if (flow.initiativeLevel > 0.6) {
+        guidance.push('- Take initiative in bringing up new topics and ideas');
+      }
+    }
+    
+    // Add vocabulary adjustments
+    if (this.evolutionAdjustments.vocabularyStyle) {
+      const vocab = this.evolutionAdjustments.vocabularyStyle;
+      
+      if (vocab.specialPhrases && vocab.specialPhrases.length > 0) {
+        guidance.push(`- Use these phrases naturally: ${vocab.specialPhrases.slice(0, 3).join(', ')}`);
+      }
+      
+      if (vocab.avoidedPhrases && vocab.avoidedPhrases.length > 0) {
+        guidance.push(`- Avoid using: ${vocab.avoidedPhrases.slice(0, 3).join(', ')}`);
+      }
+    }
+    
+    // Add emotional mirroring guidance
+    if (this.evolutionAdjustments.emotionalResponses?.emotionalMirroring) {
+      guidance.push('- Mirror the emotional tone of the conversation appropriately');
+    }
+    
+    return guidance.length > 0 ? '\n\n# EVOLVED BEHAVIOR ADJUSTMENTS\n' + guidance.join('\n') : '';
   }
   
   buildContextualGreeting(timeOfDay: string, isFirstMessage: boolean): string {

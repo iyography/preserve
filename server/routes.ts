@@ -752,7 +752,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // STEP 5: Prepare and Optimize Prompt with Full Persona Context
       // Use PersonaPromptBuilder to create comprehensive, personalized prompt
       const promptBuilder = new PersonaPromptBuilder(persona, conversationHistory);
-      const systemPrompt = promptBuilder.buildSystemPrompt();
+      const systemPrompt = await promptBuilder.buildSystemPrompt();
       
       // Optimize prompt to stay under token limits
       const optimizedMessage = modelRouter.optimizePrompt(message, 4000);
@@ -1340,7 +1340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           metric: 'conversation_quality',
           window: '7d',
           value: {
-            rating: payload.rating as number,
+            rating: payload.rating,
             timestamp: new Date().toISOString(),
             conversationId,
           },
@@ -1475,12 +1475,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Calculate learning statistics
       const totalFeedback = feedbackStats.length;
-      const positiveFeedback = feedbackStats.filter(f => f.kind === 'thumbs_up' || (f.kind === 'rating' && typeof f.payload?.rating === 'number' && f.payload.rating >= 4)).length;
-      const negativeFeedback = feedbackStats.filter(f => f.kind === 'thumbs_down' || (f.kind === 'rating' && typeof f.payload?.rating === 'number' && f.payload.rating <= 2)).length;
-      const averageRating = feedbackStats
-        .filter(f => f.kind === 'rating' && typeof f.payload?.rating === 'number')
-        .reduce((sum, f) => sum + ((typeof f.payload?.rating === 'number' ? f.payload.rating : 0)), 0) / 
-        feedbackStats.filter(f => f.kind === 'rating').length || 0;
+      const positiveFeedback = feedbackStats.filter(f => {
+        if (f.kind === 'thumbs_up') return true;
+        if (f.kind === 'rating' && f.payload && typeof f.payload === 'object' && 'rating' in f.payload) {
+          const rating = (f.payload as any).rating;
+          return typeof rating === 'number' && rating >= 4;
+        }
+        return false;
+      }).length;
+      const negativeFeedback = feedbackStats.filter(f => {
+        if (f.kind === 'thumbs_down') return true;
+        if (f.kind === 'rating' && f.payload && typeof f.payload === 'object' && 'rating' in f.payload) {
+          const rating = (f.payload as any).rating;
+          return typeof rating === 'number' && rating <= 2;
+        }
+        return false;
+      }).length;
+      const ratingFeedback = feedbackStats.filter(f => 
+        f.kind === 'rating' && f.payload && typeof f.payload === 'object' && 'rating' in f.payload && 
+        typeof (f.payload as any).rating === 'number'
+      );
+      const averageRating = ratingFeedback.length > 0 ? 
+        ratingFeedback.reduce((sum, f) => sum + (f.payload as any).rating, 0) / ratingFeedback.length : 
+        0;
 
       res.json({
         totalFeedback,
@@ -1522,13 +1539,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!conversation) {
           return res.status(404).json({ error: 'Conversation not found' });
         }
-        messages = await storage.getMessagesByConversation(conversationId, userId, 50);
+        messages = await storage.getMessagesByConversation(conversationId, userId);
       } else {
         // Get recent messages across all conversations
-        const conversations = await storage.getConversationsByPersona(personaId, userId, 3);
+        const conversations = await storage.getConversationsByPersona(personaId, userId);
         messages = [];
         for (const conv of conversations) {
-          const convMessages = await storage.getMessagesByConversation(conv.id, userId, 20);
+          const convMessages = await storage.getMessagesByConversation(conv.id, userId);
           messages.push(...convMessages);
         }
       }
@@ -1588,10 +1605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }, userId);
       }
 
-      // Update persona's learning timestamp
-      await storage.updatePersona(personaId, userId, {
-        lastLearningUpdate: new Date(),
-      });
+      // Note: Persona learning timestamp is tracked in pattern metrics
 
       res.json({
         success: true,
@@ -1670,10 +1684,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get feedback statistics for confidence scoring
       const feedbackStats = await storage.getFeedbackByPersona(personaId, userId);
       const totalFeedback = feedbackStats.length;
-      const positiveFeedback = feedbackStats.filter(f => 
-        f.kind === 'thumbs_up' || 
-        (f.kind === 'rating' && typeof f.payload?.rating === 'number' && f.payload.rating >= 4)
-      ).length;
+      const positiveFeedback = feedbackStats.filter(f => {
+        if (f.kind === 'thumbs_up') return true;
+        if (f.kind === 'rating' && f.payload && typeof f.payload === 'object' && 'rating' in f.payload) {
+          const rating = (f.payload as any).rating;
+          return typeof rating === 'number' && rating >= 4;
+        }
+        return false;
+      }).length;
 
       const confidence = totalFeedback > 0 ? positiveFeedback / totalFeedback : 0;
 
@@ -1688,6 +1706,194 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Pattern retrieval error:', error);
       res.status(500).json({ error: 'Failed to retrieve learned patterns' });
+    }
+  });
+
+  // Get evolution status for a persona
+  app.get('/api/personas/:personaId/evolution-status', verifyJWT, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { personaId } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // Verify persona ownership
+      const persona = await storage.getPersona(personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      // Import personalityEvolution
+      const { personalityEvolution } = await import('./services/personalityEvolution');
+
+      // Get evolution state
+      const evolutionState = personalityEvolution.getEvolutionState(personaId);
+      
+      // Get current adjustments
+      const adjustments = await personalityEvolution.getPersonalityAdjustments(persona, userId, false);
+      
+      // Get pattern metrics for additional context
+      const patterns = await storage.getPatternMetrics(personaId, userId);
+      const evolutionMetrics = patterns.find(p => p.metric === 'evolution_state');
+      
+      // Get feedback stats
+      const feedback = await storage.getFeedbackByPersona(personaId, userId);
+      const positiveFeedback = feedback.filter(f => 
+        f.kind === 'thumbs_up' || 
+        (f.kind === 'rating' && (f.payload as any)?.rating >= 4)
+      ).length;
+      const totalFeedback = feedback.length;
+      
+      // Calculate learning progress
+      const learningProgress = {
+        totalInteractions: totalFeedback,
+        positiveRatio: totalFeedback > 0 ? positiveFeedback / totalFeedback : 0,
+        evolutionStage: evolutionState?.evolutionStage || 'initial',
+        adaptationScore: evolutionState?.adaptationScore || 0,
+        lastEvolution: evolutionState?.lastEvolution || null,
+        patternCount: patterns.length,
+      };
+      
+      // Get personality changes over time
+      const personalityChanges = evolutionState?.evolutionHistory?.slice(-5) || [];
+      
+      res.json({
+        success: true,
+        evolutionStatus: {
+          stage: evolutionState?.evolutionStage || 'initial',
+          adaptationScore: evolutionState?.adaptationScore || 0,
+          lastEvolution: evolutionState?.lastEvolution || null,
+          learningProgress,
+          personalityChanges,
+          currentAdjustments: adjustments,
+          metrics: {
+            totalPatterns: patterns.length,
+            confidenceLevel: (evolutionMetrics?.value && typeof evolutionMetrics.value === 'object' && 'adaptationScore' in evolutionMetrics.value) ? (evolutionMetrics.value as any).adaptationScore : 0,
+            feedbackScore: learningProgress.positiveRatio,
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Evolution status error:', error);
+      res.status(500).json({ error: 'Failed to retrieve evolution status' });
+    }
+  });
+
+  // Reset learning for a persona
+  app.post('/api/personas/:personaId/reset-learning', verifyJWT, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { personaId } = req.params;
+      const { confirmReset } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // Verify persona ownership
+      const persona = await storage.getPersona(personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      // Require explicit confirmation
+      if (confirmReset !== true) {
+        return res.status(400).json({ 
+          error: 'Confirmation required',
+          message: 'Please confirm you want to reset all learning for this persona' 
+        });
+      }
+
+      // Import personalityEvolution
+      const { personalityEvolution } = await import('./services/personalityEvolution');
+
+      // Reset evolution state
+      personalityEvolution.resetLearning(personaId);
+
+      // Delete all pattern metrics for this persona
+      const patterns = await storage.getPatternMetrics(personaId, userId);
+      for (const pattern of patterns) {
+        await storage.deletePatternMetric(pattern.id, userId);
+      }
+
+      // Delete all feedback for this persona (optional - you might want to keep feedback)
+      const feedback = await storage.getFeedbackByPersona(personaId, userId);
+      for (const fb of feedback) {
+        // Note: You'll need to add deleteFeedback method to storage if you want this
+        // await storage.deleteFeedback(fb.id, userId);
+      }
+
+      res.json({
+        success: true,
+        message: 'Learning has been reset for this persona',
+        details: {
+          patternsDeleted: patterns.length,
+          evolutionStateReset: true,
+          // feedbackDeleted: feedback.length,
+        },
+      });
+    } catch (error) {
+      console.error('Reset learning error:', error);
+      res.status(500).json({ error: 'Failed to reset learning' });
+    }
+  });
+
+  // Force evolution refresh for a persona
+  app.post('/api/personas/:personaId/evolve', verifyJWT, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { personaId } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // Verify persona ownership
+      const persona = await storage.getPersona(personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      // Import personalityEvolution
+      const { personalityEvolution } = await import('./services/personalityEvolution');
+
+      // Get latest patterns and feedback
+      const patterns = await storage.getPatternMetrics(personaId, userId);
+      const feedback = await storage.getFeedbackByPersona(personaId, userId);
+
+      if (patterns.length === 0) {
+        return res.json({
+          success: false,
+          message: 'No patterns available for evolution. Please have more conversations first.',
+        });
+      }
+
+      // Force evolution with fresh data
+      const adjustments = await personalityEvolution.evolvePersonality(
+        persona,
+        patterns,
+        feedback,
+        userId
+      );
+
+      // Get updated evolution state
+      const evolutionState = personalityEvolution.getEvolutionState(personaId);
+
+      res.json({
+        success: true,
+        message: 'Personality evolution completed',
+        evolutionState: {
+          stage: evolutionState?.evolutionStage || 'initial',
+          adaptationScore: evolutionState?.adaptationScore || 0,
+          lastEvolution: evolutionState?.lastEvolution || new Date(),
+        },
+        adjustments,
+      });
+    } catch (error) {
+      console.error('Evolution error:', error);
+      res.status(500).json({ error: 'Failed to evolve personality' });
     }
   });
 

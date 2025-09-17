@@ -174,7 +174,7 @@ export class ConversationAnalyzer {
       .map(([topic, data]) => ({
         topic,
         frequency: data.count,
-        sentiment: data.sentiment > 0 ? 'positive' : data.sentiment < 0 ? 'negative' : 'neutral',
+        sentiment: (data.sentiment > 0 ? 'positive' : data.sentiment < 0 ? 'negative' : 'neutral') as 'positive' | 'neutral' | 'negative',
       }))
       .sort((a, b) => b.frequency - a.frequency)
       .slice(0, 5); // Top 5 topics
