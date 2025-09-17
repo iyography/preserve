@@ -159,13 +159,14 @@ export default function Chat() {
   const checkApiStatus = async () => {
     try {
       // Check OpenAI via our chat endpoint
-      const testResponse = await fetch('/api/chat/status', {
+      const requestOptions: RequestInit = {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
         },
-      });
+      };
+      const testResponse = await fetch('/api/chat/status', requestOptions);
       
       if (testResponse.ok) {
         const data = await testResponse.json();
@@ -512,7 +513,7 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
       let currentConversationId = localStorage.getItem(`conversation_${persona?.id}`);
       if (!currentConversationId) {
         // Create a new conversation
-        const convResponse = await fetch('/api/conversations', {
+        const convRequestOptions: RequestInit = {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -522,7 +523,8 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
             personaId: persona?.id,
             title: `Chat with ${persona?.name}`,
           }),
-        });
+        };
+        const convResponse = await fetch('/api/conversations', convRequestOptions);
         
         if (convResponse.ok) {
           const convData = await convResponse.json();
@@ -533,7 +535,7 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
         }
       }
       
-      const response = await fetch('/api/chat', {
+      const chatRequestOptions: RequestInit = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -545,7 +547,8 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
           conversationId: currentConversationId,
           model: 'gpt-4o-mini' // Use optimized model by default
         }),
-      });
+      };
+      const response = await fetch('/api/chat', chatRequestOptions);
 
       console.log('📡 API response status:', response.status);
       

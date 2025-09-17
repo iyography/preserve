@@ -27,6 +27,7 @@ import { costGuardian } from "./services/costGuardian";
 import { modelRouter } from "./services/modelRouter";
 import { responseCache } from "./services/responseCache";
 import { PersonaPromptBuilder } from "./services/personaPromptBuilder";
+import { conversationAnalyzer } from "./services/conversationAnalyzer";
 import OpenAI from 'openai';
 
 // Extend AuthenticatedRequest interface to include file property
@@ -1226,6 +1227,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       console.log('💾 Stored persona response:', personaMessage.id);
+      
+      // Automatic Pattern Analysis (every 5 messages)
+      try {
+        const messages = await storage.getMessagesByConversation(activeConversation.id, authenticatedUserId);
+        
+        // Run analysis every 5 messages
+        if (messages.length % 5 === 0 && messages.length >= 5) {
+          console.log('🧠 Running automatic pattern analysis after', messages.length, 'messages');
+          
+          // Analyze conversation patterns
+          const patterns = conversationAnalyzer.analyze(persona, messages);
+          
+          // Store learned patterns as metrics (async, don't block response)
+          Promise.all([
+            storage.upsertPatternMetric({
+              personaId,
+              metric: 'sentiment_analysis',
+              value: patterns.sentiment,
+              window: '7d',
+            }, authenticatedUserId),
+            storage.upsertPatternMetric({
+              personaId,
+              metric: 'topic_preferences',
+              value: patterns.topics,
+              window: '30d',
+            }, authenticatedUserId),
+            storage.upsertPatternMetric({
+              personaId,
+              metric: 'communication_style',
+              value: patterns.communicationStyle,
+              window: '30d',
+            }, authenticatedUserId),
+            storage.upsertPatternMetric({
+              personaId,
+              metric: 'emotional_patterns',
+              value: patterns.emotionalState,
+              window: '1d',
+            }, authenticatedUserId),
+          ]).then(() => {
+            console.log('✅ Pattern analysis completed and stored');
+          }).catch(error => {
+            console.error('Failed to store pattern metrics:', error);
+          });
+        }
+      } catch (analysisError) {
+        console.error('Pattern analysis failed:', analysisError);
+        // Don't fail the request if analysis fails
+      }
+      
       console.log('✨ Chat generation completed successfully');
 
       res.json({ 
@@ -1284,13 +1334,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Update pattern metrics for learning
-      if (kind === 'rating' && payload?.rating) {
+      if (kind === 'rating' && payload?.rating && typeof payload.rating === 'number') {
         await storage.upsertPatternMetric({
           personaId,
           metric: 'conversation_quality',
           window: '7d',
           value: {
-            rating: payload.rating,
+            rating: payload.rating as number,
             timestamp: new Date().toISOString(),
             conversationId,
           },
@@ -1425,11 +1475,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Calculate learning statistics
       const totalFeedback = feedbackStats.length;
-      const positiveFeedback = feedbackStats.filter(f => f.kind === 'thumbs_up' || (f.kind === 'rating' && f.payload?.rating >= 4)).length;
-      const negativeFeedback = feedbackStats.filter(f => f.kind === 'thumbs_down' || (f.kind === 'rating' && f.payload?.rating <= 2)).length;
+      const positiveFeedback = feedbackStats.filter(f => f.kind === 'thumbs_up' || (f.kind === 'rating' && typeof f.payload?.rating === 'number' && f.payload.rating >= 4)).length;
+      const negativeFeedback = feedbackStats.filter(f => f.kind === 'thumbs_down' || (f.kind === 'rating' && typeof f.payload?.rating === 'number' && f.payload.rating <= 2)).length;
       const averageRating = feedbackStats
-        .filter(f => f.kind === 'rating' && f.payload?.rating)
-        .reduce((sum, f) => sum + (f.payload?.rating || 0), 0) / 
+        .filter(f => f.kind === 'rating' && typeof f.payload?.rating === 'number')
+        .reduce((sum, f) => sum + ((typeof f.payload?.rating === 'number' ? f.payload.rating : 0)), 0) / 
         feedbackStats.filter(f => f.kind === 'rating').length || 0;
 
       res.json({
@@ -1444,6 +1494,200 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Learning stats error:', error);
       res.status(500).json({ error: 'Failed to retrieve learning statistics' });
+    }
+  });
+
+  // Analyze conversation patterns for a persona
+  app.post('/api/personas/:personaId/analyze-conversation', verifyJWT, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { personaId } = req.params;
+      const { conversationId } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // Verify persona ownership
+      const persona = await storage.getPersona(personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      // Get recent messages for analysis
+      let messages;
+      if (conversationId) {
+        // Get messages from specific conversation
+        const conversation = await storage.getConversation(conversationId, userId);
+        if (!conversation) {
+          return res.status(404).json({ error: 'Conversation not found' });
+        }
+        messages = await storage.getMessagesByConversation(conversationId, userId, 50);
+      } else {
+        // Get recent messages across all conversations
+        const conversations = await storage.getConversationsByPersona(personaId, userId, 3);
+        messages = [];
+        for (const conv of conversations) {
+          const convMessages = await storage.getMessagesByConversation(conv.id, userId, 20);
+          messages.push(...convMessages);
+        }
+      }
+
+      if (messages.length === 0) {
+        return res.json({ 
+          success: false, 
+          message: 'No messages to analyze',
+          patterns: null 
+        });
+      }
+
+      // Analyze conversation patterns
+      const patterns = conversationAnalyzer.analyze(persona, messages);
+
+      // Store learned patterns as metrics
+      const metricsToStore = [
+        {
+          metric: 'sentiment_analysis',
+          value: patterns.sentiment,
+          window: '7d',
+        },
+        {
+          metric: 'topic_preferences',
+          value: patterns.topics,
+          window: '30d',
+        },
+        {
+          metric: 'communication_style',
+          value: patterns.communicationStyle,
+          window: '30d',
+        },
+        {
+          metric: 'conversation_flow',
+          value: patterns.conversationFlow,
+          window: '7d',
+        },
+        {
+          metric: 'emotional_patterns',
+          value: patterns.emotionalState,
+          window: '1d',
+        },
+        {
+          metric: 'verbosity_preferences',
+          value: patterns.verbosity,
+          window: '30d',
+        },
+      ];
+
+      // Store all metrics
+      for (const metric of metricsToStore) {
+        await storage.upsertPatternMetric({
+          personaId,
+          metric: metric.metric,
+          window: metric.window,
+          value: metric.value,
+        }, userId);
+      }
+
+      // Update persona's learning timestamp
+      await storage.updatePersona(personaId, userId, {
+        lastLearningUpdate: new Date(),
+      });
+
+      res.json({
+        success: true,
+        patterns,
+        message: `Analyzed ${messages.length} messages and updated persona patterns`,
+        learningMetrics: patterns.learningMetrics,
+      });
+    } catch (error) {
+      console.error('Pattern analysis error:', error);
+      res.status(500).json({ error: 'Failed to analyze conversation patterns' });
+    }
+  });
+
+  // Get learned patterns for a persona
+  app.get('/api/personas/:personaId/patterns', verifyJWT, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { personaId } = req.params;
+      const { includeHistory = 'false' } = req.query;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // Verify persona ownership
+      const persona = await storage.getPersona(personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      // Get all pattern metrics
+      const metrics = await storage.getPatternMetrics(personaId, userId);
+
+      // Organize patterns by type
+      const patterns: any = {
+        sentiment: null,
+        topics: [],
+        communicationStyle: null,
+        conversationFlow: null,
+        emotionalPatterns: null,
+        verbosity: null,
+        learningHistory: [],
+      };
+
+      for (const metric of metrics) {
+        switch (metric.metric) {
+          case 'sentiment_analysis':
+            patterns.sentiment = metric.value;
+            break;
+          case 'topic_preferences':
+            patterns.topics = metric.value;
+            break;
+          case 'communication_style':
+            patterns.communicationStyle = metric.value;
+            break;
+          case 'conversation_flow':
+            patterns.conversationFlow = metric.value;
+            break;
+          case 'emotional_patterns':
+            patterns.emotionalPatterns = metric.value;
+            break;
+          case 'verbosity_preferences':
+            patterns.verbosity = metric.value;
+            break;
+        }
+
+        if (includeHistory === 'true') {
+          patterns.learningHistory.push({
+            metric: metric.metric,
+            window: metric.window,
+            updatedAt: metric.updatedAt,
+          });
+        }
+      }
+
+      // Get feedback statistics for confidence scoring
+      const feedbackStats = await storage.getFeedbackByPersona(personaId, userId);
+      const totalFeedback = feedbackStats.length;
+      const positiveFeedback = feedbackStats.filter(f => 
+        f.kind === 'thumbs_up' || 
+        (f.kind === 'rating' && typeof f.payload?.rating === 'number' && f.payload.rating >= 4)
+      ).length;
+
+      const confidence = totalFeedback > 0 ? positiveFeedback / totalFeedback : 0;
+
+      res.json({
+        patterns,
+        learningMetrics: {
+          totalInteractions: totalFeedback,
+          confidenceScore: confidence,
+          lastUpdated: metrics[0]?.updatedAt || null,
+        },
+      });
+    } catch (error) {
+      console.error('Pattern retrieval error:', error);
+      res.status(500).json({ error: 'Failed to retrieve learned patterns' });
     }
   });
 
