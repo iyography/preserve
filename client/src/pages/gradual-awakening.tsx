@@ -59,6 +59,10 @@ export default function GradualAwakening() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Check for URL parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  const isCreateMode = urlParams.get('mode') === 'create';
 
   // Calculate progress
   const getStepProgress = () => {
@@ -317,7 +321,9 @@ export default function GradualAwakening() {
                   <div className="w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg">
                     <Heart className="w-10 h-10 text-green-600" />
                   </div>
-                  <h1 className="text-3xl font-bold text-gray-900 mb-4">The Essentials</h1>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-4" data-testid="header-title">
+                    {isCreateMode ? 'Create New Persona' : 'The Essentials'}
+                  </h1>
                   <p className="text-lg text-gray-600 max-w-2xl mx-auto">
                     Let's start with the basics. Every field is optional - share what feels right.
                   </p>
@@ -479,7 +485,9 @@ export default function GradualAwakening() {
                   <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg">
                     <MessageCircle className="w-10 h-10 text-blue-600" />
                   </div>
-                  <h1 className="text-3xl font-bold text-gray-900 mb-4">Communication Style</h1>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-4" data-testid="header-title">
+                    {isCreateMode ? 'Create New Persona' : 'Communication Style'}
+                  </h1>
                   <p className="text-lg text-gray-600 max-w-2xl mx-auto">
                     Help us understand how they communicated. All fields are optional.
                   </p>
@@ -644,7 +652,9 @@ export default function GradualAwakening() {
                   <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg">
                     <CheckCircle2 className="w-10 h-10 text-purple-600" />
                   </div>
-                  <h1 className="text-3xl font-bold text-gray-900 mb-4">Finalize Personality</h1>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-4" data-testid="header-title">
+                    {isCreateMode ? 'Create New Persona' : 'Finalize Personality'}
+                  </h1>
                   <p className="text-lg text-gray-600 max-w-2xl mx-auto">
                     Review what you've shared and add any final context.
                   </p>
@@ -747,7 +757,9 @@ export default function GradualAwakening() {
               <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg">
                 <Calendar className="w-10 h-10 text-blue-600" />
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">Daily Invitations</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-4" data-testid="header-title">
+                {isCreateMode ? 'Create New Persona' : 'Daily Invitations'}
+              </h1>
               <p className="text-lg text-gray-600 max-w-2xl mx-auto">
                 Set up gentle prompts to help build memories over time. These are completely optional and can be changed later.
               </p>
@@ -821,7 +833,9 @@ export default function GradualAwakening() {
               <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-violet-100 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg">
                 <Sparkles className="w-10 h-10 text-purple-600" />
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">Natural Growth</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-4" data-testid="header-title">
+                {isCreateMode ? 'Create New Persona' : 'Natural Growth'}
+              </h1>
               <p className="text-lg text-gray-600 max-w-2xl mx-auto">
                 Your digital memory will grow naturally over time as you share more stories and moments.
               </p>

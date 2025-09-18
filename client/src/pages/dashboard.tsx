@@ -947,8 +947,11 @@ export default function Dashboard() {
                   <h2 className="text-2xl font-bold text-gray-900">Your Personas</h2>
                   <p className="text-gray-600 mt-1">Manage and interact with your preserved connections</p>
                 </div>
-                <Link href="/gradual-awakening">
-                  <Button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white">
+                <Link href="/gradual-awakening?mode=create">
+                  <Button 
+                    className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white"
+                    data-testid="button-create-persona"
+                  >
                     <Plus className="w-4 h-4 mr-2" />
                     Create New Persona
                   </Button>
@@ -966,8 +969,11 @@ export default function Dashboard() {
                     <p className="text-gray-600 mb-6 max-w-md mx-auto">
                       Start preserving memories by creating your first AI persona of a loved one.
                     </p>
-                    <Link href="/gradual-awakening">
-                      <Button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white">
+                    <Link href="/gradual-awakening?mode=create">
+                      <Button 
+                        className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white"
+                        data-testid="button-create-first-persona"
+                      >
                         <Plus className="w-4 h-4 mr-2" />
                         Create Your First Persona
                       </Button>
@@ -1094,20 +1100,7 @@ export default function Dashboard() {
                           </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                          {adjectives.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {adjectives.map((adj: string, idx: number) => (
-                                <Badge 
-                                  key={idx} 
-                                  variant="secondary"
-                                  className="bg-purple-100 text-purple-700"
-                                  data-testid={`badge-adjective-${persona.id}-${idx}`}
-                                >
-                                  {adj}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
+                          {/* Adjectives hidden per UI requirements */}
                           
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
@@ -1142,7 +1135,8 @@ export default function Dashboard() {
                               className="flex-1"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                // Add memory functionality
+                                setSelectedMemoryPersona(persona.id);
+                                setIsAddMemoryOpen(true);
                               }}
                               data-testid={`button-add-memory-${persona.id}`}
                             >
