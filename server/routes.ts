@@ -84,9 +84,17 @@ interface IPTracker {
   lastRequest: Date;
 }
 
+// Title generation tracking to prevent race conditions
+interface TitleGenerationTracker {
+  isGenerating: boolean;
+  lastAttempt: Date;
+}
+
 const demoIPTracker = new Map<string, IPTracker>();
+const titleGenerationTracker = new Map<string, TitleGenerationTracker>();
 const DEMO_RESPONSE_LIMIT = 5;
 const TRACKING_RESET_HOURS = 24;
+const TITLE_GENERATION_DEBOUNCE_MS = 5000; // 5 seconds debounce
 
 // Helper function to get client IP address
 function getClientIP(req: express.Request): string {
@@ -1058,6 +1066,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastMessageAt: new Date() 
         });
         
+        // Check if we should generate a smart title (after 2-3 messages and if title is still default)
+        const allMessages = await storage.getMessagesByConversation(conversationId, userId);
+        const userMessages = allMessages.filter(m => m.role === 'user');
+        
+        if (userMessages.length >= 2 && conversation.title.startsWith('Chat with ')) {
+          // Trigger title generation with debouncing and idempotency guard
+          const trackingKey = `${conversationId}-${userId}`;
+          const tracker = titleGenerationTracker.get(trackingKey);
+          const now = new Date();
+          
+          // Check if title generation is already in progress or was recently attempted
+          if (!tracker || (!tracker.isGenerating && now.getTime() - tracker.lastAttempt.getTime() > TITLE_GENERATION_DEBOUNCE_MS)) {
+            // Mark as generating to prevent concurrent attempts
+            titleGenerationTracker.set(trackingKey, {
+              isGenerating: true,
+              lastAttempt: now
+            });
+            
+            // Use dynamic delay based on response size to ensure message is committed
+            const dynamicDelay = Math.max(500, Math.min(2000, aiResponse.length * 2));
+            
+            setTimeout(async () => {
+              try {
+                // Re-check if conversation still has default title (idempotency guard)
+                const currentConversation = await storage.getConversation(conversationId, userId);
+                if (!currentConversation || !currentConversation.title.startsWith('Chat with ')) {
+                  console.log(`Skipping title generation for conversation ${conversationId}: title already updated`);
+                  return;
+                }
+                
+                if (!openai) {
+                  console.log('OpenAI not available, skipping title generation');
+                  return;
+                }
+                
+                // Check cost guardian before making title generation request
+                const titlePromptTokens = 50; // Estimated tokens for title generation prompt
+                const costCheck = await costGuardian.checkRequest(userId, titlePromptTokens, 'gpt-4o-mini', 'free');
+                if (!costCheck.allowed) {
+                  console.log(`Title generation skipped for user ${userId}: cost limit reached`);
+                  return;
+                }
+                
+                // Get routing decision from model router
+                const routingDecision = await modelRouter.routeQuery(userId, 'title_generation', 'gpt-4o-mini');
+                const selectedModel = routingDecision.model;
+                
+                const currentMessages = await storage.getMessagesByConversation(conversationId, userId);
+                const conversationText = currentMessages
+                  .filter(m => m.role === 'user' || m.role === 'persona')
+                  .slice(0, 6) // Use first 6 messages for title generation
+                  .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content}`)
+                  .join('\n');
+                
+                const titleResponse = await openai.chat.completions.create({
+                  model: selectedModel,
+                  messages: [
+                    {
+                      role: 'system',
+                      content: 'You are a helpful assistant that generates short, meaningful titles for conversations. Create a title that captures the main topic or theme of the conversation. Keep it under 50 characters and make it engaging but natural. Do not use quotes around the title.'
+                    },
+                    {
+                      role: 'user',
+                      content: `Generate a short title for this conversation:\n\n${conversationText}`
+                    }
+                  ],
+                  max_tokens: 20,
+                  temperature: 0.7
+                });
+                
+                // Record actual usage with cost guardian
+                const actualTokens = {
+                  input: titleResponse.usage?.prompt_tokens || titlePromptTokens,
+                  output: titleResponse.usage?.completion_tokens || 10
+                };
+                await costGuardian.recordUsage(userId, actualTokens, selectedModel);
+                
+                let generatedTitle = titleResponse.choices[0]?.message?.content?.trim() || 'Conversation';
+                
+                // Strip surrounding quotes if present
+                generatedTitle = generatedTitle.replace(/^["']|["']$/g, '');
+                const limitedTitle = generatedTitle.substring(0, 50);
+                
+                // Final idempotency check before updating
+                const finalCheck = await storage.getConversation(conversationId, userId);
+                if (finalCheck && finalCheck.title.startsWith('Chat with ')) {
+                  try {
+                    await storage.updateConversation(conversationId, userId, { 
+                      title: limitedTitle 
+                    });
+                    console.log(`Auto-generated title for conversation ${conversationId}: "${limitedTitle}"`);
+                  } catch (updateError) {
+                    console.error('Error updating conversation with generated title:', updateError);
+                  }
+                } else {
+                  console.log(`Title already updated for conversation ${conversationId}, skipping`);
+                }
+                
+              } catch (titleError) {
+                console.error('Error auto-generating title:', titleError);
+                
+                // Fallback to simple title generation with proper error handling
+                try {
+                  const currentMessages = await storage.getMessagesByConversation(conversationId, userId);
+                  const firstUserMessage = currentMessages.find(m => m.role === 'user')?.content || '';
+                  const words = firstUserMessage.split(' ').slice(0, 6).join(' ');
+                  const simpleTitle = words.length > 3 ? words + '...' : 'Conversation';
+                  const limitedTitle = simpleTitle.substring(0, 50);
+                  
+                  // Check if title is still default before fallback update
+                  const fallbackCheck = await storage.getConversation(conversationId, userId);
+                  if (fallbackCheck && fallbackCheck.title.startsWith('Chat with ')) {
+                    await storage.updateConversation(conversationId, userId, { 
+                      title: limitedTitle 
+                    });
+                    console.log(`Auto-generated fallback title for conversation ${conversationId}: "${limitedTitle}"`);
+                  }
+                } catch (fallbackError) {
+                  console.error('Error in fallback title generation:', fallbackError);
+                }
+              } finally {
+                // Mark as no longer generating
+                titleGenerationTracker.set(trackingKey, {
+                  isGenerating: false,
+                  lastAttempt: new Date()
+                });
+              }
+            }, dynamicDelay);
+          } else {
+            console.log(`Title generation already in progress or recently attempted for conversation ${conversationId}`);
+          }
+        }
+        
         res.status(201).json({ userMessage, aiMessage });
         
       } catch (aiError) {
@@ -1104,6 +1245,210 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting message:', error);
       res.status(500).json({ error: 'Failed to delete message' });
+    }
+  });
+
+  // Generate smart title for conversation based on content (with rate limiting and cost governance)
+  app.post('/api/conversations/:id/generate-title', verifyJWT, async (req: AuthenticatedRequest, res) => {
+    try {
+      const conversationId = req.params.id;
+      const userId = req.user!.id;
+      
+      // Input validation
+      if (!conversationId || typeof conversationId !== 'string') {
+        return res.status(400).json({ error: 'Invalid conversation ID' });
+      }
+      
+      // Basic rate limiting (5 title generations per user per minute)
+      const rateLimitKey = `title_gen_${userId}`;
+      const now = Date.now();
+      const windowMs = 60 * 1000; // 1 minute
+      const maxRequests = 5;
+      
+      // Simple in-memory rate limiting (in production, use Redis)
+      if (!app.locals.titleRateLimits) {
+        app.locals.titleRateLimits = new Map();
+      }
+      
+      const userRequests = app.locals.titleRateLimits.get(rateLimitKey) || [];
+      const recentRequests = userRequests.filter((timestamp: number) => now - timestamp < windowMs);
+      
+      if (recentRequests.length >= maxRequests) {
+        return res.status(429).json({ 
+          error: 'Too many title generation requests', 
+          message: 'Please wait before generating another title',
+          retryAfter: Math.ceil((recentRequests[0] + windowMs - now) / 1000)
+        });
+      }
+      
+      // Record this request
+      recentRequests.push(now);
+      app.locals.titleRateLimits.set(rateLimitKey, recentRequests);
+      
+      // Verify conversation belongs to user
+      const conversation = await storage.getConversation(conversationId, userId);
+      if (!conversation) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+      
+      // Get conversation messages
+      const messages = await storage.getMessagesByConversation(conversationId, userId);
+      if (messages.length < 2) {
+        return res.status(400).json({ error: 'Need at least 2 messages to generate title' });
+      }
+      
+      // Check if title generation is already in progress for this conversation
+      const trackingKey = `${conversationId}-${userId}`;
+      const tracker = titleGenerationTracker.get(trackingKey);
+      if (tracker && tracker.isGenerating) {
+        return res.status(409).json({ 
+          error: 'Title generation already in progress', 
+          message: 'Please wait for the current title generation to complete' 
+        });
+      }
+      
+      // Mark as generating
+      titleGenerationTracker.set(trackingKey, {
+        isGenerating: true,
+        lastAttempt: new Date()
+      });
+      
+      try {
+        // Use OpenAI to generate a smart title with cost governance
+        if (!openai) {
+          // Fallback to simple title generation if OpenAI is not available
+          const firstUserMessage = messages.find(m => m.role === 'user')?.content || '';
+          const words = firstUserMessage.split(' ').slice(0, 6).join(' ');
+          const simpleTitle = words.length > 3 ? words + '...' : 'Conversation';
+          const limitedTitle = simpleTitle.substring(0, 50);
+          
+          try {
+            const updatedConversation = await storage.updateConversation(conversationId, userId, { 
+              title: limitedTitle 
+            });
+            return res.json({ title: limitedTitle, conversation: updatedConversation });
+          } catch (updateError) {
+            console.error('Error updating conversation with fallback title:', updateError);
+            return res.status(500).json({ error: 'Failed to update conversation title' });
+          } finally {
+            titleGenerationTracker.set(trackingKey, {
+              isGenerating: false,
+              lastAttempt: new Date()
+            });
+          }
+        }
+        
+        // Check cost guardian before making AI request
+        const conversationText = messages
+          .filter(m => m.role === 'user' || m.role === 'persona')
+          .slice(0, 6)
+          .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content}`)
+          .join('\n');
+        
+        const estimatedTokens = conversationText.length / 4 + 50; // Rough estimate plus system prompt
+        const costCheck = await costGuardian.checkRequest(userId, estimatedTokens, 'gpt-4o-mini', 'free');
+        if (!costCheck.allowed) {
+          titleGenerationTracker.set(trackingKey, {
+            isGenerating: false,
+            lastAttempt: new Date()
+          });
+          return res.status(429).json({ 
+            error: 'Daily usage limit reached', 
+            message: 'You have reached your daily limit for AI requests. Please try again tomorrow.',
+            limitInfo: costCheck
+          });
+        }
+        
+        // Get routing decision from model router
+        const routingDecision = await modelRouter.routeQuery(userId, 'manual_title_generation', 'gpt-4o-mini');
+        const selectedModel = routingDecision.model;
+        
+        const titleResponse = await openai.chat.completions.create({
+          model: selectedModel,
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a helpful assistant that generates short, meaningful titles for conversations. Create a title that captures the main topic or theme of the conversation. Keep it under 50 characters and make it engaging but natural. Do not use quotes around the title.'
+            },
+            {
+              role: 'user',
+              content: `Generate a short title for this conversation:\n\n${conversationText}`
+            }
+          ],
+          max_tokens: 20,
+          temperature: 0.7
+        });
+        
+        // Record actual usage with cost guardian
+        const actualTokens = {
+          input: titleResponse.usage?.prompt_tokens || Math.ceil(estimatedTokens),
+          output: titleResponse.usage?.completion_tokens || 10
+        };
+        await costGuardian.recordUsage(userId, actualTokens, selectedModel);
+        
+        let generatedTitle = titleResponse.choices[0]?.message?.content?.trim() || 'Conversation';
+        
+        // Strip surrounding quotes if present
+        generatedTitle = generatedTitle.replace(/^["']|["']$/g, '');
+        const limitedTitle = generatedTitle.substring(0, 50);
+        
+        // Update conversation with new title
+        try {
+          const updatedConversation = await storage.updateConversation(conversationId, userId, { 
+            title: limitedTitle 
+          });
+          res.json({ title: limitedTitle, conversation: updatedConversation });
+        } catch (updateError) {
+          console.error('Error updating conversation with generated title:', updateError);
+          res.status(500).json({ error: 'Failed to update conversation title' });
+        }
+        
+      } catch (aiError) {
+        console.error('Error generating title with AI:', aiError);
+        
+        // Fallback to simple title generation with proper error handling
+        try {
+          const firstUserMessage = messages.find(m => m.role === 'user')?.content || '';
+          const words = firstUserMessage.split(' ').slice(0, 6).join(' ');
+          const simpleTitle = words.length > 3 ? words + '...' : 'Conversation';
+          const limitedTitle = simpleTitle.substring(0, 50);
+          
+          const updatedConversation = await storage.updateConversation(conversationId, userId, { 
+            title: limitedTitle 
+          });
+          res.json({ 
+            title: limitedTitle, 
+            conversation: updatedConversation, 
+            fallback: true,
+            message: 'Generated using fallback method due to AI service error'
+          });
+        } catch (fallbackError) {
+          console.error('Error in fallback title generation:', fallbackError);
+          res.status(500).json({ error: 'Failed to generate title using both AI and fallback methods' });
+        }
+      } finally {
+        // Always mark as no longer generating
+        titleGenerationTracker.set(trackingKey, {
+          isGenerating: false,
+          lastAttempt: new Date()
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error in title generation endpoint:', error);
+      
+      // Clean up tracking state on error
+      const conversationId = req.params.id;
+      const userId = req.user?.id;
+      if (conversationId && userId) {
+        const trackingKey = `${conversationId}-${userId}`;
+        titleGenerationTracker.set(trackingKey, {
+          isGenerating: false,
+          lastAttempt: new Date()
+        });
+      }
+      
+      res.status(500).json({ error: 'Failed to generate conversation title' });
     }
   });
 

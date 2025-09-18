@@ -368,11 +368,27 @@ export default function Dashboard() {
       const response = await apiRequest('POST', '/api/messages', { conversationId, content });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'messages'] });
       queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
       setNewMessageContent('');
       setIsTyping(false);
+      
+      // Use dynamic approach for title generation refresh based on message length and response time
+      const messageLength = newMessageContent.length;
+      const estimatedBackendTime = Math.max(1000, Math.min(5000, messageLength * 3 + 500)); // Dynamic delay: 1-5 seconds
+      
+      // Only invalidate if we have a valid selected conversation
+      if (selectedConversation) {
+        setTimeout(() => {
+          // Double-check selectedConversation is still valid before invalidating
+          const currentSelectedConversation = selectedConversation;
+          if (currentSelectedConversation) {
+            queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/conversations', currentSelectedConversation] });
+          }
+        }, estimatedBackendTime);
+      }
     },
     onError: (error) => {
       console.error('Send message error:', error);
@@ -382,6 +398,56 @@ export default function Dashboard() {
         variant: "destructive",
       });
       setIsTyping(false);
+    },
+  });
+
+  // Generate title mutation for manual title generation
+  const generateTitleMutation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      if (!conversationId) {
+        throw new Error('Conversation ID is required');
+      }
+      const response = await apiRequest('POST', `/api/conversations/${conversationId}/generate-title`);
+      return response.json();
+    },
+    onSuccess: (data, conversationId) => {
+      // Only invalidate queries for the specific conversation that was updated
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      if (conversationId === selectedConversation) {
+        queryClient.invalidateQueries({ queryKey: ['/api/conversations', conversationId] });
+      }
+      
+      // Show appropriate success message based on response
+      const message = data?.fallback 
+        ? "Title generated using fallback method" 
+        : "Conversation title updated";
+      
+      toast({
+        title: "Success",
+        description: message,
+      });
+    },
+    onError: (error: any) => {
+      console.error('Generate title error:', error);
+      
+      // Enhanced error handling with specific error messages
+      let errorMessage = "Failed to generate title";
+      
+      if (error?.message?.includes('429') || error?.message?.includes('Too many')) {
+        errorMessage = "Too many title generation requests. Please wait a moment and try again.";
+      } else if (error?.message?.includes('already in progress')) {
+        errorMessage = "Title generation is already in progress for this conversation.";
+      } else if (error?.message?.includes('Daily usage limit')) {
+        errorMessage = "Daily AI usage limit reached. Please try again tomorrow.";
+      } else if (error?.message?.includes('Need at least 2 messages')) {
+        errorMessage = "Need at least 2 messages in the conversation to generate a title.";
+      }
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     },
   });
 
