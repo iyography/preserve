@@ -86,6 +86,16 @@ declare global {
 }
 
 export default function Dashboard() {
+  // Theme management state
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+      const systemPreference = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      return savedTheme || systemPreference;
+    }
+    return 'light';
+  });
+
   const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState('personas');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -437,6 +447,21 @@ export default function Dashboard() {
     return grouped;
   };
 
+  // Theme management
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
   // Auto scroll to bottom when new messages arrive
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
@@ -686,7 +711,7 @@ export default function Dashboard() {
 
   // Sidebar component
   const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-white dark:bg-gray-900">
       {/* Logo and Brand */}
       <div className="p-4 border-b">
         <Link href="/" className="flex items-center space-x-3">
@@ -804,7 +829,33 @@ export default function Dashboard() {
       </ScrollArea>
 
       {/* Bottom Actions */}
-      <div className="p-4 border-t">
+      <div className="p-4 border-t space-y-3">
+        {/* Theme Toggle */}
+        <div className="flex items-center justify-between">
+          {!isSidebarCollapsed && (
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {theme === 'light' ? 'Light Mode' : 'Dark Mode'}
+            </span>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleTheme}
+            className={cn(
+              "p-2 transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-800",
+              isSidebarCollapsed && "mx-auto"
+            )}
+            data-testid="theme-toggle"
+          >
+            {theme === 'light' ? (
+              <Moon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+            ) : (
+              <Sun className="w-4 h-4 text-yellow-500" />
+            )}
+          </Button>
+        </div>
+        
+        {/* Sign Out Button */}
         <Button
           variant="outline"
           size="sm"
@@ -821,7 +872,7 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50/50 via-white to-indigo-50/30 flex">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50/50 via-white to-indigo-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex">
       {/* Desktop Sidebar */}
       <div className={cn(
         "hidden md:flex flex-col border-r transition-all duration-300",
@@ -840,7 +891,7 @@ export default function Dashboard() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <header className="bg-white/80 backdrop-blur-sm border-b border-purple-100 sticky top-0 z-40">
+        <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-purple-100 dark:border-gray-700 sticky top-0 z-40">
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
