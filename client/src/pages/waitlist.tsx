@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building, Heart, Shield, CheckCircle, Clock, Users } from 'lucide-react';
+import { Building, Heart, Shield, CheckCircle, Clock, Users, Archive, TreePine, Calendar, Brain, MessageCircle, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -33,10 +33,7 @@ interface UserFormData {
   relationshipToDeceased: string;
   timeSinceLoss: string;
   technologyComfort: string;
-  feedbackCommitment: boolean;
-  monthlyCheckIns: boolean;
   professionalSupport: string;
-  caseStudyConsent: boolean;
   additionalInfo: string;
 }
 
@@ -125,7 +122,7 @@ export default function Waitlist() {
                     Funeral directors, estate planners, hospice coordinators
                   </p>
                   <ul className="text-left text-purple-200 space-y-2 text-sm mb-6">
-                    <li className="flex items-center"><Clock className="w-4 h-4 mr-3 flex-shrink-0" />6-month exclusive access</li>
+                    <li className="flex items-center"><Clock className="w-4 h-4 mr-3 flex-shrink-0" />Priority early access</li>
                     <li className="flex items-center"><Shield className="w-4 h-4 mr-3 flex-shrink-0" />Revenue sharing opportunity</li>
                     <li className="flex items-center"><Users className="w-4 h-4 mr-3 flex-shrink-0" />Co-development partnership</li>
                   </ul>
@@ -143,14 +140,14 @@ export default function Waitlist() {
               <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 hover:bg-white/15 transition-all duration-300 group cursor-pointer flex flex-col h-full">
                 <div className="flex-grow">
                   <Heart className="w-12 h-12 text-pink-300 mx-auto mb-4 group-hover:scale-110 transition-transform duration-300" />
-                  <h3 className="text-2xl font-bold text-white mb-4">Family Feedback</h3>
+                  <h3 className="text-2xl font-bold text-white mb-4">Join the Waitlist</h3>
                   <p className="text-purple-100 text-lg mb-6">
-                    Families who have experienced loss and want to help us build something meaningful
+                    Families ready to experience the future of preserving connections and memories
                   </p>
                   <ul className="text-left text-purple-200 space-y-2 text-sm mb-6">
-                    <li className="flex items-center"><Heart className="w-4 h-4 mr-3 flex-shrink-0" />Free platform access</li>
+                    <li className="flex items-center"><Heart className="w-4 h-4 mr-3 flex-shrink-0" />Early platform access</li>
                     <li className="flex items-center"><Shield className="w-4 h-4 mr-3 flex-shrink-0" />Professional support available</li>
-                    <li className="flex items-center"><Users className="w-4 h-4 mr-3 flex-shrink-0" />Shape the future of grief tech</li>
+                    <li className="flex items-center"><Users className="w-4 h-4 mr-3 flex-shrink-0" />Help us perfect the experience</li>
                   </ul>
                 </div>
                 <Button 
@@ -158,27 +155,42 @@ export default function Waitlist() {
                   className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 text-lg rounded-xl mt-auto"
                   data-testid="button-apply-family"
                 >
-                  Join as Family
+                  Join Waitlist
                 </Button>
               </div>
             </div>
 
-            {/* Trust Indicators */}
+            {/* Platform Benefits */}
             <div className="grid md:grid-cols-3 gap-6 text-center items-start">
               <div className="text-purple-200 flex flex-col items-center h-full">
-                <Shield className="w-8 h-8 mx-auto mb-3" />
-                <h4 className="font-semibold text-white mb-2">Emotional Safety First</h4>
-                <p className="text-sm">Professional counselors review all applications</p>
+                <Archive className="w-8 h-8 mx-auto mb-3" />
+                <h4 className="font-semibold text-white mb-2">Legacy That Lives On</h4>
+                <p className="text-sm">Families aren't just storing files, they're building a living archive of advice, stories, and values.</p>
               </div>
               <div className="text-purple-200 flex flex-col items-center h-full">
-                <Users className="w-8 h-8 mx-auto mb-3" />
-                <h4 className="font-semibold text-white mb-2">Quality Over Quantity</h4>
-                <p className="text-sm">Carefully selected participants for meaningful feedback</p>
+                <TreePine className="w-8 h-8 mx-auto mb-3" />
+                <h4 className="font-semibold text-white mb-2">Family Continuity Across Generations</h4>
+                <p className="text-sm">PC isn't about grief alone — it's about helping kids, grandkids, and even future great-grandkids know who their family was.</p>
               </div>
               <div className="text-purple-200 flex flex-col items-center h-full">
-                <Heart className="w-8 h-8 mx-auto mb-3" />
-                <h4 className="font-semibold text-white mb-2">Medical-Grade Process</h4>
-                <p className="text-sm">Clinical trial-level consent and safety protocols</p>
+                <Calendar className="w-8 h-8 mx-auto mb-3" />
+                <h4 className="font-semibold text-white mb-2">Ritualized Presence</h4>
+                <p className="text-sm">PC surfaces memories on birthdays, anniversaries, and milestones → making loved ones "present" when it matters most.</p>
+              </div>
+              <div className="text-purple-200 flex flex-col items-center h-full">
+                <Brain className="w-8 h-8 mx-auto mb-3" />
+                <h4 className="font-semibold text-white mb-2">AI-Organized Wisdom</h4>
+                <p className="text-sm">Instead of random videos or voice notes, PC structures memories into themes and guidance (work advice, recipes, faith lessons, etc.).</p>
+              </div>
+              <div className="text-purple-200 flex flex-col items-center h-full">
+                <MessageCircle className="w-8 h-8 mx-auto mb-3" />
+                <h4 className="font-semibold text-white mb-2">Optional AI Conversations</h4>
+                <p className="text-sm">For those who want it, PC offers the chance to "ask" a loved one how they might have responded, based on their words and stories.</p>
+              </div>
+              <div className="text-purple-200 flex flex-col items-center h-full">
+                <Lock className="w-8 h-8 mx-auto mb-3" />
+                <h4 className="font-semibold text-white mb-2">Security & Ownership (Trust Factor)</h4>
+                <p className="text-sm">Families own their vault. Encrypted, private, and never sold.</p>
               </div>
             </div>
           </div>
@@ -206,12 +218,12 @@ export default function Waitlist() {
         {/* Form Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            {selectedTrack === 'partner' ? 'Professional Partner Application' : 'Family Feedback Application'}
+            {selectedTrack === 'partner' ? 'Professional Partner Application' : 'Join the Waitlist'}
           </h1>
           <p className="text-lg text-gray-600">
             {selectedTrack === 'partner' 
               ? 'Apply to become an exclusive launch partner with revenue sharing opportunities'
-              : 'Join our selective feedback group to help shape the future of grief technology'
+              : 'Join our waitlist to be among the first to experience Preserving Connections'
             }
           </p>
         </div>
@@ -385,10 +397,10 @@ export default function Waitlist() {
         {selectedTrack === 'family' && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl">Family Feedback Application</CardTitle>
+              <CardTitle className="text-2xl">Join the Waitlist</CardTitle>
               <CardDescription>
-                This application is for families who have experienced loss and are interested in 
-                helping us develop a platform that truly serves those who are grieving.
+                Join our waitlist to be among the first families to experience Preserving Connections 
+                when we launch our platform.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -496,40 +508,6 @@ export default function Waitlist() {
                   </Select>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="feedbackCommitment"
-                      {...userForm.register('feedbackCommitment', { required: true })}
-                      data-testid="checkbox-feedback-commitment"
-                    />
-                    <Label htmlFor="feedbackCommitment" className="text-sm">
-                      I am willing to provide weekly feedback via email for 8 weeks *
-                    </Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="monthlyCheckIns"
-                      {...userForm.register('monthlyCheckIns', { required: true })}
-                      data-testid="checkbox-monthly-checkins"
-                    />
-                    <Label htmlFor="monthlyCheckIns" className="text-sm">
-                      I am available for 30-minute monthly video check-ins *
-                    </Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="caseStudyConsent"
-                      {...userForm.register('caseStudyConsent')}
-                      data-testid="checkbox-case-study"
-                    />
-                    <Label htmlFor="caseStudyConsent" className="text-sm">
-                      I consent to anonymized case study usage (optional)
-                    </Label>
-                  </div>
-                </div>
 
                 <div>
                   <Label htmlFor="userAdditionalInfo">Additional Information</Label>
@@ -542,10 +520,10 @@ export default function Waitlist() {
                 </div>
 
                 <div className="bg-indigo-50 p-4 rounded-lg">
-                  <h4 className="font-semibold text-indigo-800 mb-2">Professional Support Available</h4>
+                  <h4 className="font-semibold text-indigo-800 mb-2">What to Expect</h4>
                   <p className="text-sm text-indigo-700">
-                    Throughout the feedback program, you'll have access to licensed grief counselors. 
-                    Your emotional well-being is our highest priority.
+                    After joining our waitlist, we'll keep you informed about our launch timeline and 
+                    be in touch when early access becomes available.
                   </p>
                 </div>
 
@@ -555,7 +533,7 @@ export default function Waitlist() {
                   className="w-full bg-indigo-600 hover:bg-indigo-700"
                   data-testid="button-submit-user"
                 >
-                  Submit Family Application
+                  Join Waitlist
                 </Button>
               </form>
             </CardContent>
