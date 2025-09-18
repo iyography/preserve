@@ -1072,6 +1072,144 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Memory API - Now properly authenticated and authorized
+  app.get('/api/memories', async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const { personaId, limit, tags } = req.query;
+      
+      if (!personaId) {
+        return res.status(400).json({ error: 'Persona ID is required' });
+      }
+      
+      // Verify persona belongs to user
+      const persona = await storage.getPersona(personaId as string);
+      if (!persona || persona.userId !== userId) {
+        return res.status(404).json({ error: 'Persona not found' });
+      }
+      
+      let memories;
+      if (tags && typeof tags === 'string') {
+        const tagArray = tags.split(',').map(tag => tag.trim());
+        memories = await storage.searchMemoriesByTag(personaId as string, userId, tagArray);
+      } else {
+        const limitNum = limit ? parseInt(limit as string) : undefined;
+        memories = await storage.getMemoriesByPersona(personaId as string, userId, limitNum);
+      }
+      
+      res.json(memories);
+    } catch (error) {
+      console.error('Error fetching memories:', error);
+      res.status(500).json({ error: 'Failed to fetch memories' });
+    }
+  });
+
+  app.get('/api/memories/:id', async (req: AuthenticatedRequest, res) => {
+    try {
+      const memoryId = req.params.id;
+      const userId = req.user!.id;
+      
+      const memory = await storage.getMemoryById(memoryId, userId);
+      if (!memory) {
+        return res.status(404).json({ error: 'Memory not found' });
+      }
+      
+      // Verify the memory's persona belongs to the user
+      const persona = await storage.getPersona(memory.personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(404).json({ error: 'Memory not found' });
+      }
+      
+      res.json(memory);
+    } catch (error) {
+      console.error('Error fetching memory:', error);
+      res.status(500).json({ error: 'Failed to fetch memory' });
+    }
+  });
+
+  app.post('/api/memories', async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      
+      // Validate request body using schema
+      const memoryData = insertMemorySchema.parse(req.body);
+      
+      // Verify persona belongs to user
+      const persona = await storage.getPersona(memoryData.personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(404).json({ error: 'Persona not found' });
+      }
+      
+      const memory = await storage.createMemory(memoryData);
+      res.status(201).json(memory);
+    } catch (error) {
+      console.error('Error creating memory:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Invalid memory data', details: error.errors });
+      }
+      res.status(500).json({ error: 'Failed to create memory' });
+    }
+  });
+
+  app.put('/api/memories/:id', async (req: AuthenticatedRequest, res) => {
+    try {
+      const memoryId = req.params.id;
+      const userId = req.user!.id;
+      const updates = req.body;
+      
+      // First verify the memory exists and belongs to the user
+      const existingMemory = await storage.getMemoryById(memoryId, userId);
+      if (!existingMemory) {
+        return res.status(404).json({ error: 'Memory not found' });
+      }
+      
+      // Verify the memory's persona belongs to the user
+      const persona = await storage.getPersona(existingMemory.personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(404).json({ error: 'Memory not found' });
+      }
+      
+      const memory = await storage.updateMemory(memoryId, userId, updates);
+      if (!memory) {
+        return res.status(404).json({ error: 'Memory not found' });
+      }
+      
+      res.json(memory);
+    } catch (error) {
+      console.error('Error updating memory:', error);
+      res.status(500).json({ error: 'Failed to update memory' });
+    }
+  });
+
+  app.delete('/api/memories/:id', async (req: AuthenticatedRequest, res) => {
+    try {
+      const memoryId = req.params.id;
+      const userId = req.user!.id;
+      
+      // First verify the memory exists and belongs to the user
+      const existingMemory = await storage.getMemoryById(memoryId, userId);
+      if (!existingMemory) {
+        return res.status(404).json({ error: 'Memory not found' });
+      }
+      
+      // Verify the memory's persona belongs to the user
+      const persona = await storage.getPersona(existingMemory.personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(404).json({ error: 'Memory not found' });
+      }
+      
+      const success = await storage.deleteMemory(memoryId, userId);
+      if (!success) {
+        return res.status(404).json({ error: 'Memory not found' });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting memory:', error);
+      res.status(500).json({ error: 'Failed to delete memory' });
+    }
+  });
+
   // Comprehensive Protected Chat Endpoint with All Safety Systems
   app.post('/api/chat', async (req: AuthenticatedRequest, res) => {
     try {
