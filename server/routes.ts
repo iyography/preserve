@@ -153,8 +153,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).end();
   });
 
-  // Middleware to parse JSON
-  app.use('/api', express.json());
+  // Middleware to parse JSON with increased limit for base64 images
+  app.use('/api', express.json({ limit: '10mb' }));
 
   // Test email endpoint (no auth required) - placed after JSON parsing
   app.post('/api/test-email', async (req, res) => {
@@ -690,8 +690,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user!.id; // Now safely extracted from verified JWT
       
-      const personaData = insertPersonaSchema.parse({ ...req.body, userId });
-      const persona = await storage.createPersona(personaData);
+      // Extract all the onboarding data including photoBase64
+      const { name, relationship, onboardingApproach, onboardingData, photoBase64, status = 'completed' } = req.body;
+      
+      // Validate required fields
+      if (!name || !relationship || !onboardingApproach || !onboardingData) {
+        return res.status(400).json({ 
+          error: 'Missing required fields', 
+          details: 'Name, relationship, onboardingApproach, and onboardingData are required' 
+        });
+      }
+      
+      // Prepare persona data with all onboarding information
+      const personaData = {
+        userId,
+        name,
+        relationship,
+        onboardingApproach,
+        onboardingData: {
+          ...onboardingData,
+          photoBase64 // Include photo in onboarding data if provided
+        },
+        status
+      };
+      
+      // Parse and create persona with all data
+      const validatedData = insertPersonaSchema.parse(personaData);
+      const persona = await storage.createPersona(validatedData);
+      
+      console.log('Persona created successfully:', persona.id, 'with onboarding data');
       res.status(201).json(persona);
     } catch (error) {
       console.error('Error creating persona:', error);
