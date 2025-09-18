@@ -400,7 +400,7 @@ export default function Dashboard() {
               {/* Quick Actions */}
               <div className="flex justify-between items-center">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Your Digital Memories</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">Your Personas</h2>
                   <p className="text-gray-600 mt-1">Manage and interact with your preserved connections</p>
                 </div>
                 <Link href="/gradual-awakening">
