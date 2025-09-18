@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Heart, Clock, ArrowRight, ChevronLeft, TreePine, Calendar, Sparkles, Upload, MessageCircle, User, CheckCircle2 } from "lucide-react";
+import { useState, useRef } from "react";
+import { Heart, Clock, ArrowRight, ChevronLeft, TreePine, Calendar, Sparkles, Upload, MessageCircle, User, CheckCircle2, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,9 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { InsertPersona } from "@shared/schema";
 
 // Simplified types
 type GradualStep = 'minimal-start' | 'daily-invitations' | 'natural-growth';
@@ -31,6 +34,8 @@ export default function GradualAwakening() {
   const [relationship, setRelationship] = useState('');
   const [adjectives, setAdjectives] = useState(['', '', '']);
   const [favoriteMemory, setFavoriteMemory] = useState('');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   
   // Communication Style - Communication sub-step
   const [usualGreeting, setUsualGreeting] = useState('');
@@ -47,9 +52,13 @@ export default function GradualAwakening() {
   // Daily setup
   const [cadence, setCadence] = useState<MemoryCadence>('every-few-days');
   
+  // Loading states
+  const [isCreatingPersona, setIsCreatingPersona] = useState(false);
+  
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Calculate progress
   const getStepProgress = () => {
@@ -83,6 +92,60 @@ export default function GradualAwakening() {
     );
   };
 
+  // Handle file upload
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      setPhotoFile(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else if (file) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select an image file (JPEG, PNG, GIF, or WebP).",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const removePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Create persona mutation
+  const createPersonaMutation = useMutation({
+    mutationFn: async (personaData: InsertPersona) => {
+      const response = await apiRequest('POST', '/api/personas', personaData);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/personas'] });
+      toast({
+        title: "Success!",
+        description: "Your digital memory has been created. Welcome to your dashboard!",
+      });
+      setLocation('/dashboard');
+    },
+    onError: (error) => {
+      console.error('Create persona error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create persona. Please try again.",
+        variant: "destructive"
+      });
+      setIsCreatingPersona(false);
+    },
+  });
+
   const handleNext = async () => {
     if (step === 'minimal-start') {
       if (minimalSubStep === 'essentials') {
@@ -92,65 +155,74 @@ export default function GradualAwakening() {
       } else if (minimalSubStep === 'finalize-personality') {
         // Move to Daily Invitations step
         setStep('daily-invitations');
-        // Store all collected data in proper structure for PersonaPromptBuilder
-        const onboardingData = {
-          voiceCommunication: {
-            usualGreeting: usualGreeting || "Hello",
-            communicationStyle: textingStyles.length > 0 ? textingStyles : ['casual'],
-            catchphrase: catchphrase
-          },
-          contextBuilders: {
-            favoriteTopics: [],
-            hobbies: [],
-            supportStyle: listenerTalker === 'listener' ? 'listening' : listenerTalker === 'talker' ? 'advising' : 'balanced conversation',
-            importantValues: [],
-            dailyRoutines: [],
-            uniqueQuirks: [whatMadeThemLaugh, whatTheyWorried].filter(Boolean)
-          },
-          adjectives: adjectives.filter(Boolean),
-          relationship: {
-            howWeMet: "",
-            petNames: [],
-            insideJokes: [],
-            specialMemories: favoriteMemory ? [favoriteMemory] : [],
-            conflictResolution: conflictStyles.map(style => {
-              const styleMap: Record<ConflictStyle, string> = {
-                'avoided-it': 'avoided conflict',
-                'tackled-head-on': 'addressed directly',
-                'made-jokes': 'used humor',
-                'got-quiet': 'withdrew quietly',
-                'needed-time': 'needed time to process'
-              };
-              return styleMap[style];
-            }).join(', ') || 'balanced approach',
-            sharedDreams: []
-          },
-          storyTelling: {
-            specialPhrases: catchphrase ? [catchphrase] : [],
-            celebrationStyle: "",
-            memorableStories: favoriteMemory ? [favoriteMemory] : [],
-            sharedExperiences: []
-          },
-          recentContext: {
-            recentEvents: [],
-            lastConversationTopics: [],
-            currentConcerns: whatTheyWorried ? [whatTheyWorried] : [],
-            upcomingPlans: [],
-            additionalNotes: finalNotes
-          }
-        };
-        // This data would be saved to the database
-        console.log('Onboarding data prepared:', onboardingData);
       }
     } else if (step === 'daily-invitations') {
       setStep('natural-growth');
     } else if (step === 'natural-growth') {
-      // Complete onboarding and redirect to dashboard
-      toast({
-        title: "Welcome to Your Digital Memory Journey!",
-        description: "Your persona is being prepared. You can start creating memories anytime."
-      });
-      setLocation('/dashboard');
+      // Complete onboarding and create persona
+      setIsCreatingPersona(true);
+      
+      // Prepare onboarding data
+      const onboardingData = {
+        voiceCommunication: {
+          usualGreeting: usualGreeting || "Hello",
+          communicationStyle: textingStyles.length > 0 ? textingStyles : ['casual'],
+          catchphrase: catchphrase
+        },
+        contextBuilders: {
+          favoriteTopics: [],
+          hobbies: [],
+          supportStyle: listenerTalker === 'listener' ? 'listening' : listenerTalker === 'talker' ? 'advising' : 'balanced conversation',
+          importantValues: [],
+          dailyRoutines: [],
+          uniqueQuirks: [whatMadeThemLaugh, whatTheyWorried].filter(Boolean)
+        },
+        adjectives: adjectives.filter(Boolean),
+        relationship: {
+          howWeMet: "",
+          petNames: [],
+          insideJokes: [],
+          specialMemories: favoriteMemory ? [favoriteMemory] : [],
+          conflictResolution: conflictStyles.map(style => {
+            const styleMap: Record<ConflictStyle, string> = {
+              'avoided-it': 'avoided conflict',
+              'tackled-head-on': 'addressed directly',
+              'made-jokes': 'used humor',
+              'got-quiet': 'withdrew quietly',
+              'needed-time': 'needed time to process'
+            };
+            return styleMap[style];
+          }).join(', ') || 'balanced approach',
+          sharedDreams: []
+        },
+        storyTelling: {
+          specialPhrases: catchphrase ? [catchphrase] : [],
+          celebrationStyle: "",
+          memorableStories: favoriteMemory ? [favoriteMemory] : [],
+          sharedExperiences: []
+        },
+        recentContext: {
+          recentEvents: [],
+          lastConversationTopics: [],
+          currentConcerns: whatTheyWorried ? [whatTheyWorried] : [],
+          upcomingPlans: [],
+          additionalNotes: finalNotes
+        },
+        memoryCadence: cadence,
+        photoBase64: photoPreview // Include photo if uploaded
+      };
+      
+      // Create persona in database
+      const personaData: InsertPersona = {
+        userId: user!.id,
+        name: personaName || 'My Loved One',
+        relationship: relationship || 'Loved One',
+        onboardingApproach: 'gradual-awakening',
+        status: 'completed',
+        onboardingData: onboardingData
+      };
+      
+      await createPersonaMutation.mutate(personaData);
     }
   };
 
@@ -333,14 +405,54 @@ export default function GradualAwakening() {
                       <Label className="text-sm font-medium text-gray-700">
                         Upload a photo (optional)
                       </Label>
-                      <Button 
-                        variant="outline" 
-                        className="w-full justify-center border-green-200 hover:bg-green-50"
-                        data-testid="button-upload-photo"
-                      >
-                        <Upload className="w-4 h-4 mr-2" />
-                        Choose a photo
-                      </Button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/gif,image/webp"
+                        onChange={handlePhotoUpload}
+                        className="hidden"
+                        data-testid="input-file-upload"
+                      />
+                      {photoPreview ? (
+                        <div className="space-y-2">
+                          <div className="relative w-full h-48 bg-gray-100 rounded-lg overflow-hidden">
+                            <img 
+                              src={photoPreview} 
+                              alt="Preview"
+                              className="w-full h-full object-cover"
+                              data-testid="image-preview"
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="absolute top-2 right-2 bg-white/80 hover:bg-white"
+                              onClick={removePhoto}
+                              data-testid="button-remove-photo"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            className="w-full justify-center border-green-200 hover:bg-green-50"
+                            onClick={() => fileInputRef.current?.click()}
+                            data-testid="button-change-photo"
+                          >
+                            <Upload className="w-4 h-4 mr-2" />
+                            Choose different photo
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button 
+                          variant="outline" 
+                          className="w-full justify-center border-green-200 hover:bg-green-50"
+                          onClick={() => fileInputRef.current?.click()}
+                          data-testid="button-upload-photo"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          Choose a photo
+                        </Button>
+                      )}
                       <p className="text-xs text-gray-500">You can always add more photos later</p>
                     </div>
                   </CardContent>
@@ -574,6 +686,17 @@ export default function GradualAwakening() {
                         <span className="font-medium">{textingStyles.join(', ').replace(/-/g, ' ')}</span>
                       </div>
                     )}
+                    {photoPreview && (
+                      <div className="py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Photo:</span>
+                        <img 
+                          src={photoPreview} 
+                          alt="Uploaded" 
+                          className="mt-2 w-20 h-20 object-cover rounded-lg"
+                          data-testid="image-summary-preview"
+                        />
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -758,11 +881,21 @@ export default function GradualAwakening() {
               </Button>
               <Button 
                 onClick={handleNext}
-                className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-8"
+                disabled={isCreatingPersona}
+                className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-8 disabled:opacity-70 disabled:cursor-not-allowed"
                 data-testid="button-complete-onboarding"
               >
-                Enter Dashboard
-                <ArrowRight className="w-4 h-4 ml-2" />
+                {isCreatingPersona ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Creating your persona...
+                  </>
+                ) : (
+                  <>
+                    Enter Dashboard
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
               </Button>
             </div>
           </div>
