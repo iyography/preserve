@@ -11,7 +11,8 @@ import {
   insertMessageSchema,
   insertMemorySchema,
   insertFeedbackSchema,
-  insertPatternMetricsSchema
+  insertPatternMetricsSchema,
+  insertUserSettingsSchema
 } from "@shared/schema";
 import multer from "multer";
 import { randomUUID } from "crypto";
@@ -2706,6 +2707,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Evolution error:', error);
       res.status(500).json({ error: 'Failed to evolve personality' });
+    }
+  });
+
+  // User Settings routes
+  app.get('/api/user/settings', async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      
+      let userSettings = await storage.getUserSettings(userId);
+      
+      // If no settings exist, create default settings
+      if (!userSettings) {
+        const defaultSettings = {
+          userId,
+          // Default values are defined in the schema, but we can explicitly set some here
+          displayName: null,
+          preferredLanguage: "en",
+          timezone: "UTC",
+          emailNotifications: true,
+          pushNotifications: true,
+          conversationNotifications: true,
+          weeklyDigest: true,
+          dataSharing: false,
+          analyticsOptIn: true,
+          allowPersonaSharing: false,
+          publicProfile: false,
+          preferredModel: "gpt-3.5-turbo",
+          responseLength: "medium",
+          conversationStyle: "balanced",
+          creativityLevel: 0.7,
+          defaultPersonaVisibility: "private",
+          defaultMemoryRetention: "forever",
+          autoGenerateInsights: true,
+          theme: "system",
+          compactMode: false,
+          sidebarCollapsed: false,
+          advancedSettings: {}
+        };
+        
+        const validatedSettings = insertUserSettingsSchema.parse(defaultSettings);
+        userSettings = await storage.createUserSettings(validatedSettings);
+      }
+      
+      res.json(userSettings);
+    } catch (error) {
+      console.error('Error fetching user settings:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Invalid settings data', details: error.errors });
+      }
+      res.status(500).json({ error: 'Failed to fetch user settings' });
+    }
+  });
+
+  app.put('/api/user/settings', async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const updates = req.body;
+      
+      // Remove fields that shouldn't be updated directly
+      const { id, userId: _, createdAt, updatedAt, ...allowedUpdates } = updates;
+      
+      // Validate the updates using the schema
+      const validatedUpdates = insertUserSettingsSchema.partial().parse(allowedUpdates);
+      
+      // Check if user settings exist, create if not
+      let existingSettings = await storage.getUserSettings(userId);
+      if (!existingSettings) {
+        // Create with the updates plus defaults
+        const defaultSettings = {
+          userId,
+          displayName: null,
+          preferredLanguage: "en",
+          timezone: "UTC",
+          emailNotifications: true,
+          pushNotifications: true,
+          conversationNotifications: true,
+          weeklyDigest: true,
+          dataSharing: false,
+          analyticsOptIn: true,
+          allowPersonaSharing: false,
+          publicProfile: false,
+          preferredModel: "gpt-3.5-turbo",
+          responseLength: "medium",
+          conversationStyle: "balanced",
+          creativityLevel: 0.7,
+          defaultPersonaVisibility: "private",
+          defaultMemoryRetention: "forever",
+          autoGenerateInsights: true,
+          theme: "system",
+          compactMode: false,
+          sidebarCollapsed: false,
+          advancedSettings: {},
+          ...validatedUpdates
+        };
+        
+        const validatedSettings = insertUserSettingsSchema.parse(defaultSettings);
+        const newSettings = await storage.createUserSettings(validatedSettings);
+        res.json(newSettings);
+      } else {
+        // Update existing settings
+        const updatedSettings = await storage.updateUserSettings(userId, validatedUpdates);
+        if (!updatedSettings) {
+          return res.status(404).json({ error: 'User settings not found' });
+        }
+        res.json(updatedSettings);
+      }
+    } catch (error) {
+      console.error('Error updating user settings:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Invalid settings data', details: error.errors });
+      }
+      res.status(500).json({ error: 'Failed to update user settings' });
     }
   });
 

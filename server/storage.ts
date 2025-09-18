@@ -15,6 +15,8 @@ import {
   type InsertFeedback,
   type PatternMetrics,
   type InsertPatternMetrics,
+  type UserSettings,
+  type InsertUserSettings,
   personas,
   personaMedia,
   onboardingSessions,
@@ -22,7 +24,8 @@ import {
   messages,
   memories,
   feedback,
-  patternMetrics
+  patternMetrics,
+  userSettings
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, sql } from "drizzle-orm";
@@ -86,6 +89,11 @@ export interface IStorage {
   getPatternMetrics(personaId: string, userId: string, metric?: string, window?: string): Promise<PatternMetrics[]>;
   upsertPatternMetric(metric: InsertPatternMetrics, userId: string): Promise<PatternMetrics>;
   deletePatternMetric(id: string, userId: string): Promise<boolean>;
+
+  // User settings methods
+  getUserSettings(userId: string): Promise<UserSettings | undefined>;
+  createUserSettings(settings: InsertUserSettings): Promise<UserSettings>;
+  updateUserSettings(userId: string, updates: Partial<UserSettings>): Promise<UserSettings | undefined>;
 }
 
 // Database storage implementation
@@ -621,6 +629,38 @@ export class DatabaseStorage implements IStorage {
 
     const result = await db.delete(patternMetrics).where(eq(patternMetrics.id, id)).returning();
     return result.length > 0;
+  }
+
+  // User Settings methods
+  async getUserSettings(userId: string): Promise<UserSettings | undefined> {
+    const result = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId))
+      .limit(1);
+    
+    return result[0];
+  }
+
+  async createUserSettings(settings: InsertUserSettings): Promise<UserSettings> {
+    const [created] = await db
+      .insert(userSettings)
+      .values(settings)
+      .returning();
+    return created;
+  }
+
+  async updateUserSettings(userId: string, updates: Partial<UserSettings>): Promise<UserSettings | undefined> {
+    const [updated] = await db
+      .update(userSettings)
+      .set({ 
+        ...updates, 
+        updatedAt: new Date() 
+      })
+      .where(eq(userSettings.userId, userId))
+      .returning();
+    
+    return updated;
   }
 }
 

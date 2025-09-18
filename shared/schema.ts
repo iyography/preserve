@@ -131,6 +131,46 @@ export const patternMetrics = pgTable("pattern_metrics", {
   personaIdx: index("pattern_metrics_persona_idx").on(table.personaId),
 }));
 
+// User settings table for storing user preferences and configuration
+export const userSettings = pgTable("user_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().unique(), // Supabase auth user UUID - one setting per user
+  // Account Settings
+  displayName: text("display_name"), // User's display name
+  preferredLanguage: text("preferred_language").default("en"),
+  timezone: text("timezone").default("UTC"),
+  // Notification Preferences
+  emailNotifications: boolean("email_notifications").default(true),
+  pushNotifications: boolean("push_notifications").default(true),
+  conversationNotifications: boolean("conversation_notifications").default(true),
+  weeklyDigest: boolean("weekly_digest").default(true),
+  // Privacy Controls
+  dataSharing: boolean("data_sharing").default(false),
+  analyticsOptIn: boolean("analytics_opt_in").default(true),
+  allowPersonaSharing: boolean("allow_persona_sharing").default(false),
+  publicProfile: boolean("public_profile").default(false),
+  // AI Model Preferences
+  preferredModel: text("preferred_model").default("gpt-3.5-turbo"), // 'gpt-3.5-turbo', 'gpt-4', 'claude-3-sonnet', etc.
+  responseLength: text("response_length").default("medium"), // 'short', 'medium', 'long'
+  conversationStyle: text("conversation_style").default("balanced"), // 'formal', 'casual', 'balanced'
+  creativityLevel: real("creativity_level").default(0.7), // 0.0-1.0 for temperature setting
+  // Persona Defaults
+  defaultPersonaVisibility: text("default_persona_visibility").default("private"), // 'private', 'family', 'public'
+  defaultMemoryRetention: text("default_memory_retention").default("forever"), // '30d', '1y', 'forever'
+  autoGenerateInsights: boolean("auto_generate_insights").default(true),
+  // Theme and UI
+  theme: text("theme").default("system"), // 'light', 'dark', 'system'
+  compactMode: boolean("compact_mode").default(false),
+  sidebarCollapsed: boolean("sidebar_collapsed").default(false),
+  // Advanced Settings (stored as JSON for flexibility)
+  advancedSettings: jsonb("advanced_settings").default({}),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  // Index for efficient user lookups
+  userIdx: index("user_settings_user_idx").on(table.userId),
+}));
+
 // Relations (removed user relations since Supabase handles users)
 export const personasRelations = relations(personas, ({ many }) => ({
   media: many(personaMedia),
@@ -257,6 +297,12 @@ export const insertPatternMetricsSchema = createInsertSchema(patternMetrics).omi
   updatedAt: true,
 });
 
+export const insertUserSettingsSchema = createInsertSchema(userSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type InsertPersona = z.infer<typeof insertPersonaSchema>;
 export type Persona = typeof personas.$inferSelect;
@@ -275,3 +321,5 @@ export type InsertFeedback = z.infer<typeof insertFeedbackSchema>;
 export type Feedback = typeof feedback.$inferSelect;
 export type InsertPatternMetrics = z.infer<typeof insertPatternMetricsSchema>;
 export type PatternMetrics = typeof patternMetrics.$inferSelect;
+export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;
+export type UserSettings = typeof userSettings.$inferSelect;

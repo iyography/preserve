@@ -27,8 +27,8 @@ import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import type { Persona, Memory, Conversation, Message } from "@shared/schema";
-import { insertMemorySchema } from "@shared/schema";
+import type { Persona, Memory, Conversation, Message, UserSettings } from "@shared/schema";
+import { insertMemorySchema, insertUserSettingsSchema } from "@shared/schema";
 
 // Type declarations for Web Speech API
 interface SpeechRecognition extends EventTarget {
@@ -1917,18 +1917,7 @@ export default function Dashboard() {
           )}
 
           {activeSection === 'settings' && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
-              <Card className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg">
-                <CardContent className="py-16 text-center">
-                  <Settings className="w-12 h-12 text-purple-600 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Settings</h3>
-                  <p className="text-gray-600">
-                    Configure your preferences and account settings.
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+            <SettingsSection />
           )}
 
           {activeSection === 'billing' && (
@@ -1962,6 +1951,823 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Comprehensive Settings Component
+function SettingsSection() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  // User settings form schema
+  const settingsFormSchema = insertUserSettingsSchema.partial().extend({
+    displayName: z.string().optional(),
+    preferredLanguage: z.string().optional(),
+    timezone: z.string().optional(),
+    emailNotifications: z.boolean().optional(),
+    pushNotifications: z.boolean().optional(),
+    conversationNotifications: z.boolean().optional(),
+    weeklyDigest: z.boolean().optional(),
+    dataSharing: z.boolean().optional(),
+    analyticsOptIn: z.boolean().optional(),
+    allowPersonaSharing: z.boolean().optional(),
+    publicProfile: z.boolean().optional(),
+    preferredModel: z.string().optional(),
+    responseLength: z.string().optional(),
+    conversationStyle: z.string().optional(),
+    creativityLevel: z.number().min(0).max(1).optional(),
+    defaultPersonaVisibility: z.string().optional(),
+    defaultMemoryRetention: z.string().optional(),
+    autoGenerateInsights: z.boolean().optional(),
+    theme: z.string().optional(),
+    compactMode: z.boolean().optional(),
+    sidebarCollapsed: z.boolean().optional()
+  });
+
+  type SettingsFormValues = z.infer<typeof settingsFormSchema>;
+
+  // Fetch user settings
+  const { data: userSettings, isLoading: settingsLoading, refetch } = useQuery<UserSettings>({
+    queryKey: ['/api/user/settings'],
+    enabled: !!user,
+  });
+
+  // Settings form
+  const settingsForm = useForm<SettingsFormValues>({
+    resolver: zodResolver(settingsFormSchema),
+    defaultValues: {
+      displayName: "",
+      preferredLanguage: "en",
+      timezone: "UTC",
+      emailNotifications: true,
+      pushNotifications: true,
+      conversationNotifications: true,
+      weeklyDigest: true,
+      dataSharing: false,
+      analyticsOptIn: true,
+      allowPersonaSharing: false,
+      publicProfile: false,
+      preferredModel: "gpt-3.5-turbo",
+      responseLength: "medium",
+      conversationStyle: "balanced",
+      creativityLevel: 0.7,
+      defaultPersonaVisibility: "private",
+      defaultMemoryRetention: "forever",
+      autoGenerateInsights: true,
+      theme: "system",
+      compactMode: false,
+      sidebarCollapsed: false
+    },
+  });
+
+  // Update form values when settings are loaded
+  useEffect(() => {
+    if (userSettings) {
+      settingsForm.reset({
+        displayName: userSettings.displayName || "",
+        preferredLanguage: userSettings.preferredLanguage || "en",
+        timezone: userSettings.timezone || "UTC",
+        emailNotifications: userSettings.emailNotifications ?? true,
+        pushNotifications: userSettings.pushNotifications ?? true,
+        conversationNotifications: userSettings.conversationNotifications ?? true,
+        weeklyDigest: userSettings.weeklyDigest ?? true,
+        dataSharing: userSettings.dataSharing ?? false,
+        analyticsOptIn: userSettings.analyticsOptIn ?? true,
+        allowPersonaSharing: userSettings.allowPersonaSharing ?? false,
+        publicProfile: userSettings.publicProfile ?? false,
+        preferredModel: userSettings.preferredModel || "gpt-3.5-turbo",
+        responseLength: userSettings.responseLength || "medium",
+        conversationStyle: userSettings.conversationStyle || "balanced",
+        creativityLevel: userSettings.creativityLevel ?? 0.7,
+        defaultPersonaVisibility: userSettings.defaultPersonaVisibility || "private",
+        defaultMemoryRetention: userSettings.defaultMemoryRetention || "forever",
+        autoGenerateInsights: userSettings.autoGenerateInsights ?? true,
+        theme: userSettings.theme || "system",
+        compactMode: userSettings.compactMode ?? false,
+        sidebarCollapsed: userSettings.sidebarCollapsed ?? false
+      });
+    }
+  }, [userSettings, settingsForm]);
+
+  // Update settings mutation
+  const updateSettingsMutation = useMutation({
+    mutationFn: async (data: SettingsFormValues) => {
+      const response = await apiRequest('PUT', '/api/user/settings', data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/user/settings'] });
+      toast({
+        title: "Settings updated",
+        description: "Your preferences have been saved successfully.",
+      });
+    },
+    onError: (error) => {
+      console.error('Settings update error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update settings. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle settings form submission
+  const onSettingsSubmit = async (data: SettingsFormValues) => {
+    updateSettingsMutation.mutate(data);
+  };
+
+  if (settingsLoading) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h2>
+        <Card className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border-purple-100 dark:border-purple-800 shadow-lg">
+          <CardContent className="py-16 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">Loading your settings...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h2>
+      
+      <Tabs defaultValue="account" className="w-full">
+        <TabsList className="grid w-full grid-cols-6" data-testid="settings-tabs">
+          <TabsTrigger value="account" data-testid="tab-account">Account</TabsTrigger>
+          <TabsTrigger value="notifications" data-testid="tab-notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="privacy" data-testid="tab-privacy">Privacy</TabsTrigger>
+          <TabsTrigger value="ai" data-testid="tab-ai">AI Preferences</TabsTrigger>
+          <TabsTrigger value="persona" data-testid="tab-persona">Persona Defaults</TabsTrigger>
+          <TabsTrigger value="export" data-testid="tab-export">Export/Import</TabsTrigger>
+        </TabsList>
+
+        <Form {...settingsForm}>
+          <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
+            
+            {/* Account Settings Tab */}
+            <TabsContent value="account" className="space-y-6">
+              <Card className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border-purple-100 dark:border-purple-800 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+                    <User2 className="w-5 h-5" />
+                    Account Settings
+                  </CardTitle>
+                  <CardDescription className="dark:text-gray-400">
+                    Manage your account information and preferences
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <FormField
+                    control={settingsForm.control}
+                    name="displayName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="dark:text-gray-200">Display Name</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder="Enter your display name" 
+                            className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            data-testid="input-display-name"
+                          />
+                        </FormControl>
+                        <FormDescription className="dark:text-gray-400">
+                          This is how your name will appear throughout the app
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={settingsForm.control}
+                    name="preferredLanguage"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="dark:text-gray-200">Language</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600" data-testid="select-language">
+                              <SelectValue placeholder="Select your preferred language" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="dark:bg-gray-700 dark:border-gray-600">
+                            <SelectItem value="en">English</SelectItem>
+                            <SelectItem value="es">Spanish</SelectItem>
+                            <SelectItem value="fr">French</SelectItem>
+                            <SelectItem value="de">German</SelectItem>
+                            <SelectItem value="it">Italian</SelectItem>
+                            <SelectItem value="pt">Portuguese</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={settingsForm.control}
+                    name="timezone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="dark:text-gray-200">Timezone</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600" data-testid="select-timezone">
+                              <SelectValue placeholder="Select your timezone" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="dark:bg-gray-700 dark:border-gray-600">
+                            <SelectItem value="UTC">UTC</SelectItem>
+                            <SelectItem value="America/New_York">Eastern Time</SelectItem>
+                            <SelectItem value="America/Chicago">Central Time</SelectItem>
+                            <SelectItem value="America/Denver">Mountain Time</SelectItem>
+                            <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
+                            <SelectItem value="Europe/London">London</SelectItem>
+                            <SelectItem value="Europe/Paris">Paris</SelectItem>
+                            <SelectItem value="Asia/Tokyo">Tokyo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={settingsForm.control}
+                    name="theme"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="dark:text-gray-200">Theme</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600" data-testid="select-theme">
+                              <SelectValue placeholder="Select theme" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="dark:bg-gray-700 dark:border-gray-600">
+                            <SelectItem value="light">Light</SelectItem>
+                            <SelectItem value="dark">Dark</SelectItem>
+                            <SelectItem value="system">System</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription className="dark:text-gray-400">
+                          Choose your preferred color theme
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Notifications Tab */}
+            <TabsContent value="notifications" className="space-y-6">
+              <Card className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border-purple-100 dark:border-purple-800 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+                    <Bell className="w-5 h-5" />
+                    Notification Preferences
+                  </CardTitle>
+                  <CardDescription className="dark:text-gray-400">
+                    Control how and when you receive notifications
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <FormField
+                    control={settingsForm.control}
+                    name="emailNotifications"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base dark:text-gray-200">Email Notifications</FormLabel>
+                          <FormDescription className="dark:text-gray-400">
+                            Receive important updates via email
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-email-notifications"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={settingsForm.control}
+                    name="pushNotifications"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base dark:text-gray-200">Push Notifications</FormLabel>
+                          <FormDescription className="dark:text-gray-400">
+                            Receive push notifications in your browser
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-push-notifications"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={settingsForm.control}
+                    name="conversationNotifications"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base dark:text-gray-200">Conversation Notifications</FormLabel>
+                          <FormDescription className="dark:text-gray-400">
+                            Get notified about new messages and responses
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-conversation-notifications"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={settingsForm.control}
+                    name="weeklyDigest"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base dark:text-gray-200">Weekly Digest</FormLabel>
+                          <FormDescription className="dark:text-gray-400">
+                            Receive a weekly summary of your interactions
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-weekly-digest"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Privacy Tab */}
+            <TabsContent value="privacy" className="space-y-6">
+              <Card className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border-purple-100 dark:border-purple-800 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+                    <Shield className="w-5 h-5" />
+                    Privacy Controls
+                  </CardTitle>
+                  <CardDescription className="dark:text-gray-400">
+                    Manage your privacy and data sharing preferences
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <FormField
+                    control={settingsForm.control}
+                    name="dataSharing"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base dark:text-gray-200">Data Sharing</FormLabel>
+                          <FormDescription className="dark:text-gray-400">
+                            Allow anonymized data to be used for improving the service
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-data-sharing"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={settingsForm.control}
+                    name="analyticsOptIn"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base dark:text-gray-200">Analytics</FormLabel>
+                          <FormDescription className="dark:text-gray-400">
+                            Help us improve by sharing usage analytics
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-analytics-opt-in"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={settingsForm.control}
+                    name="allowPersonaSharing"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base dark:text-gray-200">Persona Sharing</FormLabel>
+                          <FormDescription className="dark:text-gray-400">
+                            Allow family members to access your personas (when implemented)
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-persona-sharing"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={settingsForm.control}
+                    name="publicProfile"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base dark:text-gray-200">Public Profile</FormLabel>
+                          <FormDescription className="dark:text-gray-400">
+                            Make your profile visible to other users (when implemented)
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-public-profile"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* AI Preferences Tab */}
+            <TabsContent value="ai" className="space-y-6">
+              <Card className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border-purple-100 dark:border-purple-800 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+                    <Brain className="w-5 h-5" />
+                    AI Model Preferences
+                  </CardTitle>
+                  <CardDescription className="dark:text-gray-400">
+                    Customize how AI responds to you
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <FormField
+                    control={settingsForm.control}
+                    name="preferredModel"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="dark:text-gray-200">Preferred AI Model</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600" data-testid="select-preferred-model">
+                              <SelectValue placeholder="Select AI model" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="dark:bg-gray-700 dark:border-gray-600">
+                            <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo (Fast)</SelectItem>
+                            <SelectItem value="gpt-4">GPT-4 (High Quality)</SelectItem>
+                            <SelectItem value="claude-3-sonnet">Claude 3 Sonnet</SelectItem>
+                            <SelectItem value="claude-3-haiku">Claude 3 Haiku (Fast)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription className="dark:text-gray-400">
+                          Choose your preferred AI model for conversations
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={settingsForm.control}
+                    name="responseLength"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="dark:text-gray-200">Response Length</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600" data-testid="select-response-length">
+                              <SelectValue placeholder="Select response length" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="dark:bg-gray-700 dark:border-gray-600">
+                            <SelectItem value="short">Short & Concise</SelectItem>
+                            <SelectItem value="medium">Medium Length</SelectItem>
+                            <SelectItem value="long">Detailed & Comprehensive</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription className="dark:text-gray-400">
+                          How long should AI responses typically be?
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={settingsForm.control}
+                    name="conversationStyle"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="dark:text-gray-200">Conversation Style</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600" data-testid="select-conversation-style">
+                              <SelectValue placeholder="Select conversation style" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="dark:bg-gray-700 dark:border-gray-600">
+                            <SelectItem value="formal">Formal & Professional</SelectItem>
+                            <SelectItem value="casual">Casual & Friendly</SelectItem>
+                            <SelectItem value="balanced">Balanced</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription className="dark:text-gray-400">
+                          Preferred tone for AI conversations
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={settingsForm.control}
+                    name="creativityLevel"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="dark:text-gray-200">
+                          Creativity Level: {field.value ? Math.round(field.value * 100) : 70}%
+                        </FormLabel>
+                        <FormControl>
+                          <Slider
+                            min={0}
+                            max={1}
+                            step={0.1}
+                            value={[field.value || 0.7]}
+                            onValueChange={(vals) => field.onChange(vals[0])}
+                            className="w-full"
+                            data-testid="slider-creativity-level"
+                          />
+                        </FormControl>
+                        <FormDescription className="dark:text-gray-400">
+                          Higher values make responses more creative and varied
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Persona Defaults Tab */}
+            <TabsContent value="persona" className="space-y-6">
+              <Card className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border-purple-100 dark:border-purple-800 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+                    <Users className="w-5 h-5" />
+                    Persona Defaults
+                  </CardTitle>
+                  <CardDescription className="dark:text-gray-400">
+                    Set default settings for new personas
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <FormField
+                    control={settingsForm.control}
+                    name="defaultPersonaVisibility"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="dark:text-gray-200">Default Persona Visibility</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600" data-testid="select-default-persona-visibility">
+                              <SelectValue placeholder="Select default visibility" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="dark:bg-gray-700 dark:border-gray-600">
+                            <SelectItem value="private">Private (Only You)</SelectItem>
+                            <SelectItem value="family">Family Members</SelectItem>
+                            <SelectItem value="public">Public</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription className="dark:text-gray-400">
+                          Who can access new personas by default
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={settingsForm.control}
+                    name="defaultMemoryRetention"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="dark:text-gray-200">Memory Retention</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600" data-testid="select-default-memory-retention">
+                              <SelectValue placeholder="Select memory retention" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="dark:bg-gray-700 dark:border-gray-600">
+                            <SelectItem value="30d">30 Days</SelectItem>
+                            <SelectItem value="1y">1 Year</SelectItem>
+                            <SelectItem value="forever">Forever</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription className="dark:text-gray-400">
+                          How long to retain conversation memories
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={settingsForm.control}
+                    name="autoGenerateInsights"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base dark:text-gray-200">Auto-Generate Insights</FormLabel>
+                          <FormDescription className="dark:text-gray-400">
+                            Automatically generate conversation insights and patterns
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-auto-generate-insights"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Export/Import Tab */}
+            <TabsContent value="export" className="space-y-6">
+              <Card className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border-purple-100 dark:border-purple-800 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+                    <Download className="w-5 h-5" />
+                    Data Export & Import
+                  </CardTitle>
+                  <CardDescription className="dark:text-gray-400">
+                    Export your data or import from backups
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">Export Your Data</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Download all your personas, conversations, and memories in JSON format.
+                    </p>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      className="w-full" 
+                      onClick={() => {
+                        toast({
+                          title: "Export feature",
+                          description: "Data export functionality will be available soon.",
+                        });
+                      }}
+                      data-testid="button-export-data"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Export All Data
+                    </Button>
+                  </div>
+
+                  <Separator className="dark:bg-gray-700" />
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">Import Data</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Import your data from a previous backup or export file.
+                    </p>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      className="w-full" 
+                      onClick={() => {
+                        toast({
+                          title: "Import feature",
+                          description: "Data import functionality will be available soon.",
+                        });
+                      }}
+                      data-testid="button-import-data"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      Import Data
+                    </Button>
+                  </div>
+
+                  <Separator className="dark:bg-gray-700" />
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">Account Actions</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Permanently delete your account and all associated data.
+                    </p>
+                    <Button 
+                      type="button" 
+                      variant="destructive" 
+                      className="w-full" 
+                      onClick={() => {
+                        toast({
+                          title: "Account deletion",
+                          description: "This feature will be available soon. Please contact support for account deletion.",
+                        });
+                      }}
+                      data-testid="button-delete-account"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Account
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Save Button - Always Visible */}
+            <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  settingsForm.reset();
+                  refetch();
+                }}
+                disabled={updateSettingsMutation.isPending}
+                data-testid="button-cancel-settings"
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={updateSettingsMutation.isPending}
+                data-testid="button-save-settings"
+              >
+                {updateSettingsMutation.isPending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Settings
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </Tabs>
     </div>
   );
 }
