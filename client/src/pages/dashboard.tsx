@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Heart, Plus, Upload, MessageCircle, Clock, Shield, Calendar, Settings, Play, Bookmark, Share, Download, Mic, FileText, Video, Camera, Sparkles, Users, BarChart3, CheckCircle, Moon, Sun, Edit, Trash2, X, Menu, User2, LogOut, Bell, Home, ChevronRight, Brain, Archive, HelpCircle, CreditCard, Search, Tag, MicOff, Save, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import type { Persona, Memory } from "@shared/schema";
+import type { Persona, Memory, Conversation, Message } from "@shared/schema";
 import { insertMemorySchema } from "@shared/schema";
 
 // Type declarations for Web Speech API
@@ -99,6 +99,14 @@ export default function Dashboard() {
   const [isRecording, setIsRecording] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMemoryPersona, setSelectedMemoryPersona] = useState<string | null>(null);
+  
+  // Conversation-related state
+  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [newMessageContent, setNewMessageContent] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [editingConversationId, setEditingConversationId] = useState<string | null>(null);
+  const [editingConversationTitle, setEditingConversationTitle] = useState('');
   
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
@@ -251,6 +259,190 @@ export default function Dashboard() {
       });
     },
   });
+
+  // Conversation queries and mutations
+  const { data: conversations = [], isLoading: conversationsLoading } = useQuery<Conversation[]>({
+    queryKey: ['/api/conversations'],
+    enabled: !!user && !loading,
+  });
+
+  const { data: selectedConversationData } = useQuery<Conversation>({
+    queryKey: ['/api/conversations', selectedConversation],
+    enabled: !!selectedConversation,
+  });
+
+  const { data: conversationMessages = [], isLoading: messagesLoading } = useQuery<Message[]>({
+    queryKey: ['/api/conversations', selectedConversation, 'messages'],
+    queryFn: async () => {
+      if (!selectedConversation) return [];
+      const response = await fetch(`/api/conversations/${selectedConversation}/messages`);
+      if (!response.ok) throw new Error('Failed to fetch messages');
+      return response.json();
+    },
+    enabled: !!selectedConversation,
+  });
+
+  const createConversationMutation = useMutation({
+    mutationFn: async ({ personaId, title }: { personaId: string; title?: string }) => {
+      const response = await apiRequest('POST', '/api/conversations', { personaId, title });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      setSelectedConversation(data.id);
+      toast({
+        title: "Success",
+        description: "New conversation started",
+      });
+    },
+    onError: (error) => {
+      console.error('Create conversation error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create conversation",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateConversationMutation = useMutation({
+    mutationFn: async ({ conversationId, updates }: { conversationId: string; updates: any }) => {
+      const response = await apiRequest('PUT', `/api/conversations/${conversationId}`, updates);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation] });
+      setEditingConversationId(null);
+      setEditingConversationTitle('');
+      toast({
+        title: "Success",
+        description: "Conversation updated successfully",
+      });
+    },
+    onError: (error) => {
+      console.error('Update conversation error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update conversation",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteConversationMutation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      const response = await apiRequest('DELETE', `/api/conversations/${conversationId}`);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      setSelectedConversation(null);
+      toast({
+        title: "Success",
+        description: "Conversation deleted successfully",
+      });
+    },
+    onError: (error) => {
+      console.error('Delete conversation error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete conversation",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sendMessageMutation = useMutation({
+    mutationFn: async ({ conversationId, content }: { conversationId: string; content: string }) => {
+      const response = await apiRequest('POST', '/api/messages', { conversationId, content });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'messages'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      setNewMessageContent('');
+      setIsTyping(false);
+    },
+    onError: (error) => {
+      console.error('Send message error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message",
+        variant: "destructive",
+      });
+      setIsTyping(false);
+    },
+  });
+
+  // Helper functions for conversations
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    
+    if (!selectedConversation || !newMessageContent.trim() || isSendingMessage) return;
+    
+    setIsSendingMessage(true);
+    setIsTyping(true);
+    
+    try {
+      await sendMessageMutation.mutateAsync({
+        conversationId: selectedConversation,
+        content: newMessageContent.trim(),
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const formatMessageTime = (timestamp: string | Date) => {
+    const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    
+    if (diffInHours < 24) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (diffInHours < 168) { // 7 days
+      return date.toLocaleDateString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+    } else {
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+  };
+
+  const getLastMessagePreview = (messages: Message[]) => {
+    if (!messages || messages.length === 0) return 'No messages yet';
+    const lastMessage = messages[messages.length - 1];
+    const content = lastMessage.content || '';
+    return content.length > 50 ? content.substring(0, 50) + '...' : content;
+  };
+
+  const groupConversationsByPersona = () => {
+    const grouped: { [personaId: string]: Conversation[] } = {};
+    conversations.forEach(conv => {
+      if (!grouped[conv.personaId]) {
+        grouped[conv.personaId] = [];
+      }
+      grouped[conv.personaId].push(conv);
+    });
+    return grouped;
+  };
+
+  // Auto scroll to bottom when new messages arrive
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [conversationMessages]);
 
   // Memory form
   const form = useForm<MemoryFormValues>({
@@ -1284,17 +1476,377 @@ export default function Dashboard() {
           )}
 
           {activeSection === 'conversations' && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-gray-900">Conversations</h2>
-              <Card className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg">
-                <CardContent className="py-16 text-center">
-                  <MessageCircle className="w-12 h-12 text-purple-600 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">No Conversations Yet</h3>
-                  <p className="text-gray-600">
-                    Start chatting with your personas to see conversations here.
-                  </p>
-                </CardContent>
-              </Card>
+            <div className="flex flex-col lg:flex-row h-full gap-6">
+              {/* Left Panel - Conversation List */}
+              <div className="w-full lg:w-1/3 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-gray-900">Conversations</h2>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedConversation(null)}
+                    data-testid="button-new-conversation"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    New Chat
+                  </Button>
+                </div>
+
+                <ScrollArea className="h-[600px]">
+                  {conversationsLoading ? (
+                    <div className="space-y-3">
+                      {[1, 2, 3].map((i) => (
+                        <Card key={i} className="bg-white/70 backdrop-blur-sm border-purple-100">
+                          <CardContent className="p-4">
+                            <div className="animate-pulse space-y-2">
+                              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : Object.keys(groupConversationsByPersona()).length === 0 ? (
+                    <Card className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg">
+                      <CardContent className="py-8 text-center">
+                        <MessageCircle className="w-8 h-8 text-purple-600 mx-auto mb-3" />
+                        <p className="text-gray-600 text-sm">
+                          No conversations yet. Start chatting with your personas!
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="space-y-4">
+                      {Object.entries(groupConversationsByPersona()).map(([personaId, convs]) => {
+                        const persona = personas.find(p => p.id === personaId);
+                        if (!persona) return null;
+
+                        return (
+                          <div key={personaId} className="space-y-2">
+                            {/* Persona Header */}
+                            <div className="flex items-center justify-between px-2 py-1">
+                              <div className="flex items-center space-x-2">
+                                <Avatar className="w-6 h-6">
+                                  <AvatarFallback className="text-xs bg-purple-100 text-purple-700">
+                                    {persona.name.slice(0, 2).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium text-sm text-gray-700">{persona.name}</span>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => createConversationMutation.mutate({ personaId })}
+                                disabled={createConversationMutation.isPending}
+                                data-testid={`button-new-conversation-${personaId}`}
+                              >
+                                <Plus className="w-4 h-4" />
+                              </Button>
+                            </div>
+
+                            {/* Conversations for this persona */}
+                            <div className="space-y-1 ml-4">
+                              {convs.map((conversation) => (
+                                <Card
+                                  key={conversation.id}
+                                  className={cn(
+                                    "cursor-pointer transition-all duration-200 border-purple-100",
+                                    selectedConversation === conversation.id
+                                      ? "bg-purple-50 border-purple-300 shadow-md"
+                                      : "bg-white/70 backdrop-blur-sm hover:bg-purple-25 hover:border-purple-200"
+                                  )}
+                                  onClick={() => setSelectedConversation(conversation.id)}
+                                  data-testid={`conversation-${conversation.id}`}
+                                >
+                                  <CardContent className="p-3">
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex-1 min-w-0">
+                                        {editingConversationId === conversation.id ? (
+                                          <div className="flex items-center space-x-2">
+                                            <Input
+                                              value={editingConversationTitle}
+                                              onChange={(e) => setEditingConversationTitle(e.target.value)}
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                  updateConversationMutation.mutate({
+                                                    conversationId: conversation.id,
+                                                    updates: { title: editingConversationTitle }
+                                                  });
+                                                } else if (e.key === 'Escape') {
+                                                  setEditingConversationId(null);
+                                                  setEditingConversationTitle('');
+                                                }
+                                              }}
+                                              className="h-6 text-sm"
+                                              autoFocus
+                                              data-testid={`input-edit-conversation-title-${conversation.id}`}
+                                            />
+                                          </div>
+                                        ) : (
+                                          <h4 className="font-medium text-sm text-gray-900 truncate">
+                                            {conversation.title}
+                                          </h4>
+                                        )}
+                                        
+                                        <p className="text-xs text-gray-500 mt-1 truncate">
+                                          {getLastMessagePreview([])}
+                                        </p>
+                                        <p className="text-xs text-gray-400 mt-1">
+                                          {formatMessageTime(conversation.lastMessageAt)}
+                                        </p>
+                                      </div>
+                                      
+                                      <div className="flex items-center space-x-1 ml-2">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingConversationId(conversation.id);
+                                            setEditingConversationTitle(conversation.title);
+                                          }}
+                                          className="h-6 w-6 p-0 hover:bg-purple-100"
+                                          data-testid={`button-edit-conversation-${conversation.id}`}
+                                        >
+                                          <Edit className="w-3 h-3" />
+                                        </Button>
+                                        
+                                        <AlertDialog>
+                                          <AlertDialogTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={(e) => e.stopPropagation()}
+                                              className="h-6 w-6 p-0 hover:bg-red-100"
+                                              data-testid={`button-delete-conversation-${conversation.id}`}
+                                            >
+                                              <Trash2 className="w-3 h-3 text-red-600" />
+                                            </Button>
+                                          </AlertDialogTrigger>
+                                          <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                              <AlertDialogTitle>Delete Conversation</AlertDialogTitle>
+                                              <AlertDialogDescription>
+                                                Are you sure you want to delete "{conversation.title}"? This action cannot be undone.
+                                              </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                              <AlertDialogAction
+                                                onClick={() => deleteConversationMutation.mutate(conversation.id)}
+                                                className="bg-red-600 hover:bg-red-700"
+                                                data-testid={`button-confirm-delete-conversation-${conversation.id}`}
+                                              >
+                                                Delete
+                                              </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                          </AlertDialogContent>
+                                        </AlertDialog>
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </ScrollArea>
+              </div>
+
+              {/* Right Panel - Chat Interface */}
+              <div className="flex-1 flex flex-col">
+                {selectedConversation ? (
+                  <Card className="flex-1 bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg flex flex-col">
+                    {/* Chat Header */}
+                    <CardHeader className="border-b border-purple-100 pb-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          {selectedConversationData && (
+                            <>
+                              {(() => {
+                                const persona = personas.find(p => p.id === selectedConversationData.personaId);
+                                return persona ? (
+                                  <>
+                                    <Avatar className="w-8 h-8">
+                                      <AvatarFallback className="bg-purple-100 text-purple-700">
+                                        {persona.name.slice(0, 2).toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <h3 className="font-semibold text-gray-900">{selectedConversationData.title}</h3>
+                                      <p className="text-sm text-gray-500">Chatting with {persona.name}</p>
+                                    </div>
+                                  </>
+                                ) : null;
+                              })()}
+                            </>
+                          )}
+                        </div>
+                        
+                        {isTyping && (
+                          <div className="flex items-center space-x-2">
+                            <div className="flex space-x-1">
+                              <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
+                              <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                              <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                            </div>
+                            <span className="text-sm text-gray-500">AI is thinking...</span>
+                          </div>
+                        )}
+                      </div>
+                    </CardHeader>
+
+                    {/* Messages Area */}
+                    <CardContent className="flex-1 p-4 overflow-hidden">
+                      <ScrollArea className="h-full">
+                        {messagesLoading ? (
+                          <div className="space-y-4">
+                            {[1, 2, 3].map((i) => (
+                              <div key={i} className="flex items-start space-x-3">
+                                <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+                                <div className="flex-1 space-y-2">
+                                  <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                                  <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2"></div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : conversationMessages.length === 0 ? (
+                          <div className="flex items-center justify-center h-full">
+                            <div className="text-center">
+                              <MessageCircle className="w-12 h-12 text-purple-300 mx-auto mb-4" />
+                              <p className="text-gray-500">Start a conversation!</p>
+                              <p className="text-sm text-gray-400 mt-1">Send a message to begin chatting.</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-4 pb-4">
+                            {conversationMessages.map((message, index) => (
+                              <div
+                                key={message.id}
+                                className={cn(
+                                  "flex items-start space-x-3",
+                                  message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''
+                                )}
+                                data-testid={`message-${message.id}`}
+                              >
+                                <Avatar className="w-8 h-8 flex-shrink-0">
+                                  <AvatarFallback
+                                    className={cn(
+                                      "text-sm",
+                                      message.role === 'user'
+                                        ? "bg-blue-100 text-blue-700"
+                                        : message.role === 'persona'
+                                        ? "bg-purple-100 text-purple-700"
+                                        : "bg-gray-100 text-gray-700"
+                                    )}
+                                  >
+                                    {message.role === 'user' ? 'You' : 
+                                     message.role === 'persona' ? 
+                                     (selectedConversationData && personas.find(p => p.id === selectedConversationData.personaId)?.name.slice(0, 2).toUpperCase()) || 'AI' : 
+                                     'SYS'}
+                                  </AvatarFallback>
+                                </Avatar>
+                                
+                                <div className={cn(
+                                  "flex-1 max-w-[80%]",
+                                  message.role === 'user' ? 'text-right' : 'text-left'
+                                )}>
+                                  <div
+                                    className={cn(
+                                      "rounded-lg p-3 shadow-sm",
+                                      message.role === 'user'
+                                        ? "bg-blue-500 text-white ml-auto"
+                                        : message.role === 'persona'
+                                        ? "bg-white border border-gray-200"
+                                        : "bg-gray-100 text-gray-600"
+                                    )}
+                                  >
+                                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                                  </div>
+                                  <p className={cn(
+                                    "text-xs text-gray-400 mt-1",
+                                    message.role === 'user' ? 'text-right' : 'text-left'
+                                  )}>
+                                    {formatMessageTime(message.createdAt)}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                            <div ref={messagesEndRef} />
+                          </div>
+                        )}
+                      </ScrollArea>
+                    </CardContent>
+
+                    {/* Message Input */}
+                    <div className="border-t border-purple-100 p-4">
+                      <form onSubmit={handleSendMessage} className="flex items-end space-x-3">
+                        <div className="flex-1">
+                          <Textarea
+                            value={newMessageContent}
+                            onChange={(e) => setNewMessageContent(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Type a message..."
+                            className="min-h-[44px] max-h-32 resize-none border-gray-200 focus:border-purple-300 focus:ring-purple-300"
+                            disabled={isSendingMessage}
+                            data-testid="input-message"
+                          />
+                        </div>
+                        <Button
+                          type="submit"
+                          disabled={!newMessageContent.trim() || isSendingMessage}
+                          className="bg-purple-600 hover:bg-purple-700 px-4 py-2"
+                          data-testid="button-send-message"
+                        >
+                          {isSendingMessage ? (
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <MessageCircle className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </form>
+                      <p className="text-xs text-gray-400 mt-2">
+                        Press Enter to send, Shift+Enter for new line
+                      </p>
+                    </div>
+                  </Card>
+                ) : (
+                  <Card className="flex-1 bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg">
+                    <CardContent className="flex items-center justify-center h-full">
+                      <div className="text-center">
+                        <MessageCircle className="w-16 h-16 text-purple-300 mx-auto mb-4" />
+                        <h3 className="text-xl font-semibold text-gray-900 mb-2">Select a conversation</h3>
+                        <p className="text-gray-600 mb-4">
+                          Choose a conversation from the list or start a new chat with any of your personas.
+                        </p>
+                        {personas.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-sm text-gray-500">Quick start:</p>
+                            <div className="flex flex-wrap gap-2 justify-center">
+                              {personas.slice(0, 3).map((persona) => (
+                                <Button
+                                  key={persona.id}
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => createConversationMutation.mutate({ personaId: persona.id })}
+                                  disabled={createConversationMutation.isPending}
+                                  data-testid={`button-quick-start-${persona.id}`}
+                                >
+                                  Chat with {persona.name}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             </div>
           )}
 

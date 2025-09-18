@@ -876,6 +876,236 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get specific conversation
+  app.get('/api/conversations/:id', async (req: AuthenticatedRequest, res) => {
+    try {
+      const conversationId = req.params.id;
+      const userId = req.user!.id;
+      
+      const conversation = await storage.getConversation(conversationId, userId);
+      if (!conversation) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+      
+      res.json(conversation);
+    } catch (error) {
+      console.error('Error fetching conversation:', error);
+      res.status(500).json({ error: 'Failed to fetch conversation' });
+    }
+  });
+
+  // Update conversation (e.g., title)
+  app.put('/api/conversations/:id', async (req: AuthenticatedRequest, res) => {
+    try {
+      const conversationId = req.params.id;
+      const userId = req.user!.id;
+      const updates = req.body;
+      
+      // Verify conversation belongs to user
+      const conversation = await storage.getConversation(conversationId, userId);
+      if (!conversation) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+      
+      const updatedConversation = await storage.updateConversation(conversationId, userId, updates);
+      res.json(updatedConversation);
+    } catch (error) {
+      console.error('Error updating conversation:', error);
+      res.status(500).json({ error: 'Failed to update conversation' });
+    }
+  });
+
+  // Delete conversation
+  app.delete('/api/conversations/:id', async (req: AuthenticatedRequest, res) => {
+    try {
+      const conversationId = req.params.id;
+      const userId = req.user!.id;
+      
+      const success = await storage.deleteConversation(conversationId, userId);
+      if (!success) {
+        return res.status(404).json({ error: 'Conversation not found or access denied' });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      res.status(500).json({ error: 'Failed to delete conversation' });
+    }
+  });
+
+  // Create new message with AI response
+  app.post('/api/messages', async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const { conversationId, content } = req.body;
+      
+      if (!conversationId || !content) {
+        return res.status(400).json({ error: 'Conversation ID and content are required' });
+      }
+      
+      // Verify conversation belongs to user
+      const conversation = await storage.getConversation(conversationId, userId);
+      if (!conversation) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+      
+      // Get the persona for this conversation
+      const persona = await storage.getPersona(conversation.personaId);
+      if (!persona) {
+        return res.status(404).json({ error: 'Persona not found' });
+      }
+      
+      // Create user message
+      const userMessageData = insertMessageSchema.parse({
+        conversationId,
+        role: 'user',
+        content,
+        tokens: content.length // Rough token estimate
+      });
+      
+      const userMessage = await storage.createMessage(userMessageData);
+      
+      // Generate AI response using PersonaPromptBuilder
+      try {
+        // Check cost guardian before making AI request
+        const estimatedTokens = content.length * 4; // Rough estimate: 4 chars per token
+        const costCheck = await costGuardian.checkRequest(userId, estimatedTokens, 'gpt-4o-mini', 'free');
+        if (!costCheck.allowed) {
+          // Create a system message explaining the limit
+          const limitMessageData = insertMessageSchema.parse({
+            conversationId,
+            role: 'system',
+            content: 'Daily message limit reached. Please try again tomorrow.',
+            tokens: 10
+          });
+          const limitMessage = await storage.createMessage(limitMessageData);
+          
+          // Update conversation timestamp
+          await storage.updateConversation(conversationId, userId, { 
+            lastMessageAt: new Date() 
+          });
+          
+          return res.status(200).json({ 
+            userMessage, 
+            aiMessage: limitMessage,
+            limitReached: true 
+          });
+        }
+
+        // Get conversation history for context
+        const messages = await storage.getMessagesByConversation(conversationId, userId);
+        
+        // Build persona prompt with context
+        const conversationContext = messages.slice(-5).map(msg => msg.content);
+        const promptBuilder = new PersonaPromptBuilder(persona, conversationContext);
+        const systemPrompt = await promptBuilder.buildSystemPrompt(userId);
+        
+        // Prepare conversation context for AI with proper typing
+        const conversationHistory: Array<{role: 'user' | 'assistant' | 'system', content: string}> = messages.slice(-10).map(msg => ({
+          role: (msg.role === 'persona' ? 'assistant' : msg.role) as 'user' | 'assistant' | 'system',
+          content: msg.content
+        }));
+        
+        // Add the new user message to context
+        conversationHistory.push({ role: 'user', content });
+        
+        // Get AI response using model router
+        if (!openai) {
+          throw new Error('OpenAI client not initialized');
+        }
+        
+        const routingDecision = await modelRouter.routeQuery(userId, content, 'gpt-4o-mini');
+        const selectedModel = routingDecision.model;
+        
+        const chatCompletion = await openai.chat.completions.create({
+          model: selectedModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...conversationHistory
+          ],
+          max_tokens: 500,
+          temperature: 0.8,
+        });
+        
+        const aiResponse = chatCompletion.choices[0]?.message?.content || 'I apologize, but I cannot respond right now.';
+        const aiTokens = chatCompletion.usage?.total_tokens || 0;
+        
+        // Record actual usage
+        const actualTokens = {
+          input: chatCompletion.usage?.prompt_tokens || 0,
+          output: chatCompletion.usage?.completion_tokens || 0
+        };
+        await costGuardian.recordUsage(userId, actualTokens, selectedModel);
+        
+        // Create AI message
+        const aiMessageData = insertMessageSchema.parse({
+          conversationId,
+          role: 'persona',
+          content: aiResponse,
+          tokens: aiTokens,
+          meta: {
+            model: selectedModel,
+            completion_tokens: chatCompletion.usage?.completion_tokens || 0,
+            prompt_tokens: chatCompletion.usage?.prompt_tokens || 0
+          }
+        });
+        
+        const aiMessage = await storage.createMessage(aiMessageData);
+        
+        // Update conversation timestamp
+        await storage.updateConversation(conversationId, userId, { 
+          lastMessageAt: new Date() 
+        });
+        
+        res.status(201).json({ userMessage, aiMessage });
+        
+      } catch (aiError) {
+        console.error('Error generating AI response:', aiError);
+        
+        // Create error message
+        const errorMessageData = insertMessageSchema.parse({
+          conversationId,
+          role: 'system',
+          content: 'Sorry, I encountered an error while generating a response. Please try again.',
+          tokens: 20
+        });
+        
+        const errorMessage = await storage.createMessage(errorMessageData);
+        
+        res.status(201).json({ 
+          userMessage, 
+          aiMessage: errorMessage,
+          error: 'AI response failed' 
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error creating message:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Invalid message data', details: error.errors });
+      }
+      res.status(500).json({ error: 'Failed to create message' });
+    }
+  });
+
+  // Delete message
+  app.delete('/api/messages/:id', async (req: AuthenticatedRequest, res) => {
+    try {
+      const messageId = req.params.id;
+      const userId = req.user!.id;
+      
+      const success = await storage.deleteMessage(messageId, userId);
+      if (!success) {
+        return res.status(404).json({ error: 'Message not found or access denied' });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      res.status(500).json({ error: 'Failed to delete message' });
+    }
+  });
+
   // Onboarding Sessions API - All routes now properly authenticated and authorized
   app.get('/api/onboarding-sessions', async (req: AuthenticatedRequest, res) => {
     try {
