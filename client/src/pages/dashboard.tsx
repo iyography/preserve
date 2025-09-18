@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Heart, Plus, Upload, MessageCircle, Clock, Shield, Calendar, Settings, Play, Bookmark, Share, Download, Mic, FileText, Video, Camera, Sparkles, Users, BarChart3, CheckCircle, Moon, Sun, Edit, Trash2, X, Menu, User2, LogOut, Bell, Home, ChevronRight, Brain, Archive, HelpCircle } from "lucide-react";
+import { Heart, Plus, Upload, MessageCircle, Clock, Shield, Calendar, Settings, Play, Bookmark, Share, Download, Mic, FileText, Video, Camera, Sparkles, Users, BarChart3, CheckCircle, Moon, Sun, Edit, Trash2, X, Menu, User2, LogOut, Bell, Home, ChevronRight, Brain, Archive, HelpCircle, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -166,10 +166,10 @@ export default function Dashboard() {
       active: activeSection === 'settings'
     },
     {
-      id: 'privacy',
-      label: 'Privacy',
-      icon: Shield,
-      active: activeSection === 'privacy'
+      id: 'billing',
+      label: 'Billing',
+      icon: CreditCard,
+      active: activeSection === 'billing'
     },
     {
       id: 'help',
@@ -377,7 +377,7 @@ export default function Dashboard() {
                   {activeSection === 'conversations' && 'Conversations'}
                   {activeSection === 'analytics' && 'Analytics'}
                   {activeSection === 'settings' && 'Settings'}
-                  {activeSection === 'privacy' && 'Privacy'}
+                  {activeSection === 'billing' && 'Billing'}
                   {activeSection === 'help' && 'Help & Support'}
                 </h1>
               </div>
@@ -676,15 +676,15 @@ export default function Dashboard() {
             </div>
           )}
 
-          {activeSection === 'privacy' && (
+          {activeSection === 'billing' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-gray-900">Privacy</h2>
+              <h2 className="text-2xl font-bold text-gray-900">Billing</h2>
               <Card className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg">
                 <CardContent className="py-16 text-center">
-                  <Shield className="w-12 h-12 text-purple-600 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Privacy Settings</h3>
+                  <CreditCard className="w-12 h-12 text-purple-600 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Billing & Subscription</h3>
                   <p className="text-gray-600">
-                    Control your data and privacy preferences.
+                    Manage your subscription and billing preferences.
                   </p>
                 </CardContent>
               </Card>
