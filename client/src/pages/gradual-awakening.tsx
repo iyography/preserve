@@ -37,6 +37,17 @@ export default function GradualAwakening() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   
+  // Photo cropping state
+  const [isCropping, setIsCropping] = useState(false);
+  const [cropPreview, setCropPreview] = useState<string | null>(null);
+  const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 200, height: 200 });
+  const [imageNaturalSize, setImageNaturalSize] = useState({ width: 0, height: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeHandle, setResizeHandle] = useState<string | null>(null);
+  
   // Communication Style - Communication sub-step
   const [usualGreeting, setUsualGreeting] = useState('');
   const [catchphrase, setCatchphrase] = useState('');
@@ -59,6 +70,8 @@ export default function GradualAwakening() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const cropImageRef = useRef<HTMLImageElement>(null);
   
   // Check for URL parameters
   const urlParams = new URLSearchParams(window.location.search);
@@ -102,10 +115,12 @@ export default function GradualAwakening() {
     if (file && file.type.startsWith('image/')) {
       setPhotoFile(file);
       
-      // Create preview URL
+      // Create original image URL for cropping
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
+        const imageUrl = reader.result as string;
+        setOriginalImage(imageUrl);
+        setIsCropping(true);
       };
       reader.readAsDataURL(file);
     } else if (file) {
@@ -120,9 +135,184 @@ export default function GradualAwakening() {
   const removePhoto = () => {
     setPhotoFile(null);
     setPhotoPreview(null);
+    setOriginalImage(null);
+    setCropPreview(null);
+    setIsCropping(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  // Cropping utility functions
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    const containerWidth = img.clientWidth;
+    const containerHeight = img.clientHeight;
+    
+    setImageNaturalSize({ 
+      width: img.naturalWidth, 
+      height: img.naturalHeight 
+    });
+    
+    // Set initial crop area to center square
+    const size = Math.min(containerWidth, containerHeight) * 0.6;
+    setCropArea({
+      x: (containerWidth - size) / 2,
+      y: (containerHeight - size) / 2,
+      width: size,
+      height: size
+    });
+  };
+
+  const getCropCoordinates = (imageElement: HTMLImageElement) => {
+    const rect = imageElement.getBoundingClientRect();
+    const scaleX = imageElement.naturalWidth / imageElement.clientWidth;
+    const scaleY = imageElement.naturalHeight / imageElement.clientHeight;
+    
+    return {
+      x: cropArea.x * scaleX,
+      y: cropArea.y * scaleY,
+      width: cropArea.width * scaleX,
+      height: cropArea.height * scaleY
+    };
+  };
+
+  const generateCroppedImage = () => {
+    const img = cropImageRef.current;
+    const canvas = canvasRef.current;
+    
+    if (!img || !canvas) return;
+    
+    const coords = getCropCoordinates(img);
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) return;
+    
+    // Set canvas size to crop area
+    canvas.width = coords.width;
+    canvas.height = coords.height;
+    
+    // Draw cropped image
+    ctx.drawImage(
+      img,
+      coords.x, coords.y, coords.width, coords.height,
+      0, 0, coords.width, coords.height
+    );
+    
+    return canvas.toDataURL('image/jpeg', 0.9);
+  };
+
+  const handleCropConfirm = () => {
+    const croppedImage = generateCroppedImage();
+    if (croppedImage) {
+      setPhotoPreview(croppedImage);
+      setCropPreview(croppedImage);
+      setIsCropping(false);
+    }
+  };
+
+  const handleCropCancel = () => {
+    setIsCropping(false);
+    setOriginalImage(null);
+    setPhotoFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Handle cropping interactions
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Check if clicking on resize handles
+    const handleSize = 10;
+    const rightEdge = cropArea.x + cropArea.width;
+    const bottomEdge = cropArea.y + cropArea.height;
+    
+    if (Math.abs(x - rightEdge) < handleSize && Math.abs(y - bottomEdge) < handleSize) {
+      setIsResizing(true);
+      setResizeHandle('se');
+    } else if (x >= cropArea.x && x <= rightEdge && y >= cropArea.y && y <= bottomEdge) {
+      setIsDragging(true);
+      setDragStart({ x: x - cropArea.x, y: y - cropArea.y });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging && !isResizing) return;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const containerWidth = rect.width;
+    const containerHeight = rect.height;
+    
+    if (isDragging) {
+      const newX = Math.max(0, Math.min(x - dragStart.x, containerWidth - cropArea.width));
+      const newY = Math.max(0, Math.min(y - dragStart.y, containerHeight - cropArea.height));
+      setCropArea(prev => ({ ...prev, x: newX, y: newY }));
+    } else if (isResizing && resizeHandle === 'se') {
+      const newWidth = Math.max(50, Math.min(x - cropArea.x, containerWidth - cropArea.x));
+      const newHeight = Math.max(50, Math.min(y - cropArea.y, containerHeight - cropArea.y));
+      setCropArea(prev => ({ ...prev, width: newWidth, height: newHeight }));
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    setIsResizing(false);
+    setResizeHandle(null);
+  };
+
+  // Touch handlers for mobile support
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    
+    const handleSize = 20; // Larger for touch
+    const rightEdge = cropArea.x + cropArea.width;
+    const bottomEdge = cropArea.y + cropArea.height;
+    
+    if (Math.abs(x - rightEdge) < handleSize && Math.abs(y - bottomEdge) < handleSize) {
+      setIsResizing(true);
+      setResizeHandle('se');
+    } else if (x >= cropArea.x && x <= rightEdge && y >= cropArea.y && y <= bottomEdge) {
+      setIsDragging(true);
+      setDragStart({ x: x - cropArea.x, y: y - cropArea.y });
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging && !isResizing) return;
+    
+    const touch = e.touches[0];
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    const containerWidth = rect.width;
+    const containerHeight = rect.height;
+    
+    if (isDragging) {
+      const newX = Math.max(0, Math.min(x - dragStart.x, containerWidth - cropArea.width));
+      const newY = Math.max(0, Math.min(y - dragStart.y, containerHeight - cropArea.height));
+      setCropArea(prev => ({ ...prev, x: newX, y: newY }));
+    } else if (isResizing && resizeHandle === 'se') {
+      const newWidth = Math.max(50, Math.min(x - cropArea.x, containerWidth - cropArea.x));
+      const newHeight = Math.max(50, Math.min(y - cropArea.y, containerHeight - cropArea.y));
+      setCropArea(prev => ({ ...prev, width: newWidth, height: newHeight }));
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    setIsResizing(false);
+    setResizeHandle(null);
   };
 
   // Create persona mutation
@@ -419,12 +609,108 @@ export default function GradualAwakening() {
                         className="hidden"
                         data-testid="input-file-upload"
                       />
-                      {photoPreview ? (
+                      {isCropping ? (
+                        <div className="space-y-4">
+                          <div className="text-center mb-4">
+                            <h3 className="text-lg font-semibold text-gray-900">Crop Your Photo</h3>
+                            <p className="text-sm text-gray-600">Drag to move the selection area, drag the corner to resize</p>
+                          </div>
+                          <div 
+                            className="relative w-full h-80 bg-gray-100 rounded-lg overflow-hidden cursor-move select-none"
+                            onMouseDown={handleMouseDown}
+                            onMouseMove={handleMouseMove}
+                            onMouseUp={handleMouseUp}
+                            onTouchStart={handleTouchStart}
+                            onTouchMove={handleTouchMove}
+                            onTouchEnd={handleTouchEnd}
+                            data-testid="crop-container"
+                          >
+                            {originalImage && (
+                              <img 
+                                ref={cropImageRef}
+                                src={originalImage} 
+                                alt="Original"
+                                className="w-full h-full object-contain"
+                                onLoad={handleImageLoad}
+                                draggable={false}
+                                data-testid="crop-image"
+                              />
+                            )}
+                            
+                            {/* Crop overlay */}
+                            <div 
+                              className="absolute border-2 border-green-500 bg-green-500/10"
+                              style={{
+                                left: cropArea.x,
+                                top: cropArea.y,
+                                width: cropArea.width,
+                                height: cropArea.height,
+                                pointerEvents: 'none'
+                              }}
+                              data-testid="crop-overlay"
+                            >
+                              {/* Resize handle */}
+                              <div 
+                                className="absolute w-4 h-4 bg-green-600 border-2 border-white rounded-full cursor-nw-resize"
+                                style={{
+                                  right: -8,
+                                  bottom: -8,
+                                  pointerEvents: 'auto'
+                                }}
+                                data-testid="crop-resize-handle"
+                              />
+                            </div>
+                            
+                            {/* Darkened areas outside crop */}
+                            <div 
+                              className="absolute inset-0 pointer-events-none"
+                              style={{
+                                background: `
+                                  linear-gradient(to right, 
+                                    rgba(0,0,0,0.5) 0%, 
+                                    rgba(0,0,0,0.5) ${cropArea.x}px,
+                                    transparent ${cropArea.x}px,
+                                    transparent ${cropArea.x + cropArea.width}px,
+                                    rgba(0,0,0,0.5) ${cropArea.x + cropArea.width}px,
+                                    rgba(0,0,0,0.5) 100%
+                                  ),
+                                  linear-gradient(to bottom,
+                                    rgba(0,0,0,0.5) 0%,
+                                    rgba(0,0,0,0.5) ${cropArea.y}px,
+                                    transparent ${cropArea.y}px,
+                                    transparent ${cropArea.y + cropArea.height}px,
+                                    rgba(0,0,0,0.5) ${cropArea.y + cropArea.height}px,
+                                    rgba(0,0,0,0.5) 100%
+                                  )
+                                `
+                              }}
+                            />
+                          </div>
+                          
+                          <div className="flex space-x-3">
+                            <Button 
+                              variant="outline"
+                              onClick={handleCropCancel}
+                              className="flex-1 border-gray-300"
+                              data-testid="button-cancel-crop"
+                            >
+                              Cancel
+                            </Button>
+                            <Button 
+                              onClick={handleCropConfirm}
+                              className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white"
+                              data-testid="button-confirm-crop"
+                            >
+                              Use This Crop
+                            </Button>
+                          </div>
+                        </div>
+                      ) : photoPreview ? (
                         <div className="space-y-2">
                           <div className="relative w-full h-48 bg-gray-100 rounded-lg overflow-hidden">
                             <img 
                               src={photoPreview} 
-                              alt="Preview"
+                              alt="Cropped Preview"
                               className="w-full h-full object-cover"
                               data-testid="image-preview"
                             />
@@ -438,15 +724,27 @@ export default function GradualAwakening() {
                               <X className="w-4 h-4" />
                             </Button>
                           </div>
-                          <Button 
-                            variant="outline" 
-                            className="w-full justify-center border-green-200 hover:bg-green-50"
-                            onClick={() => fileInputRef.current?.click()}
-                            data-testid="button-change-photo"
-                          >
-                            <Upload className="w-4 h-4 mr-2" />
-                            Choose different photo
-                          </Button>
+                          <div className="flex space-x-2">
+                            <Button 
+                              variant="outline" 
+                              className="flex-1 justify-center border-green-200 hover:bg-green-50"
+                              onClick={() => {
+                                setIsCropping(true);
+                              }}
+                              data-testid="button-recrop-photo"
+                            >
+                              Re-crop
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              className="flex-1 justify-center border-green-200 hover:bg-green-50"
+                              onClick={() => fileInputRef.current?.click()}
+                              data-testid="button-change-photo"
+                            >
+                              <Upload className="w-4 h-4 mr-2" />
+                              Different photo
+                            </Button>
+                          </div>
                         </div>
                       ) : (
                         <Button 
@@ -460,6 +758,9 @@ export default function GradualAwakening() {
                         </Button>
                       )}
                       <p className="text-xs text-gray-500">You can always add more photos later</p>
+                      
+                      {/* Hidden canvas for image processing */}
+                      <canvas ref={canvasRef} className="hidden" />
                     </div>
                   </CardContent>
                 </Card>

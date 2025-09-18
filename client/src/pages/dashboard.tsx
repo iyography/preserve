@@ -996,18 +996,17 @@ export default function Dashboard() {
                         <CardHeader className="pb-4">
                           <div className="flex items-start justify-between">
                             <div className="flex items-center space-x-3">
-                              {photo ? (
-                                <img 
-                                  src={photo}
+                              <Avatar className="w-14 h-14 border-2 border-purple-200">
+                                <AvatarImage 
+                                  src={(persona.onboardingData as any)?.photoBase64 || ''} 
                                   alt={persona.name}
-                                  className="w-14 h-14 rounded-full object-cover border-2 border-purple-200"
+                                  className="object-cover"
                                   data-testid={`image-persona-${persona.id}`}
                                 />
-                              ) : (
-                                <div className="w-14 h-14 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full flex items-center justify-center">
+                                <AvatarFallback className="bg-gradient-to-br from-purple-100 to-indigo-100">
                                   <Heart className="w-6 h-6 text-purple-600" />
-                                </div>
-                              )}
+                                </AvatarFallback>
+                              </Avatar>
                               <div>
                                 {editingPersona === persona.id ? (
                                   <div className="flex items-center space-x-2">
