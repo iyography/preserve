@@ -276,7 +276,7 @@ export default function GradualAwakening() {
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-green-700 rounded-full flex items-center justify-center shadow-lg">
+              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold">∞</span>
               </div>
               <span className="text-gray-900 font-semibold text-lg">Preserving Connections</span>
