@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 
 interface PartnerFormData {
   businessName: string;
@@ -24,6 +25,7 @@ interface PartnerFormData {
   timeline: string;
   additionalInfo: string;
   ndaAgreed: boolean;
+  botcheck?: string; // Honeypot field
 }
 
 interface UserFormData {
@@ -35,6 +37,7 @@ interface UserFormData {
   technologyComfort: string;
   professionalSupport: string;
   additionalInfo: string;
+  botcheck?: string; // Honeypot field
 }
 
 export default function Waitlist() {
@@ -46,22 +49,102 @@ export default function Waitlist() {
   const partnerForm = useForm<PartnerFormData>();
   const userForm = useForm<UserFormData>();
 
-  const handlePartnerSubmit = (data: PartnerFormData) => {
-    console.log('Partner application:', data);
-    toast({
-      title: "Application Submitted",
-      description: "Thank you for your interest in partnering with us. We'll be in touch within 48 hours.",
-    });
-    setSubmitted(true);
+  const handlePartnerSubmit = async (data: PartnerFormData) => {
+    try {
+      // Add honeypot field
+      const submitData = { ...data, botcheck: '' };
+      
+      const response = await apiRequest('POST', '/api/waitlist/partner', submitData);
+      
+      if (response.ok) {
+        toast({
+          title: "Application Submitted",
+          description: "Thank you for your interest in partnering with us. We'll be in touch within 48 hours.",
+        });
+        setSubmitted(true);
+      } else {
+        const errorData = await response.json();
+        
+        // Handle rate limiting specifically
+        if (response.status === 429) {
+          toast({
+            title: "Rate Limit Exceeded",
+            description: errorData.message || "Too many submissions. Please try again later.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Handle validation errors
+        if (errorData.details && Array.isArray(errorData.details)) {
+          const firstError = errorData.details[0];
+          toast({
+            title: "Validation Error",
+            description: firstError.message || "Please check your form data and try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        throw new Error(errorData.message || errorData.error || 'Failed to submit application');
+      }
+    } catch (error) {
+      console.error('Error submitting partner application:', error);
+      toast({
+        title: "Submission Failed",
+        description: error instanceof Error ? error.message : "There was an error submitting your application. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleUserSubmit = (data: UserFormData) => {
-    console.log('User application:', data);
-    toast({
-      title: "Application Submitted", 
-      description: "Thank you for your interest. We'll review your application and contact you soon.",
-    });
-    setSubmitted(true);
+  const handleUserSubmit = async (data: UserFormData) => {
+    try {
+      // Add honeypot field
+      const submitData = { ...data, botcheck: '' };
+      
+      const response = await apiRequest('POST', '/api/waitlist/family', submitData);
+      
+      if (response.ok) {
+        toast({
+          title: "Application Submitted", 
+          description: "Thank you for your interest. We'll review your application and contact you soon.",
+        });
+        setSubmitted(true);
+      } else {
+        const errorData = await response.json();
+        
+        // Handle rate limiting specifically
+        if (response.status === 429) {
+          toast({
+            title: "Rate Limit Exceeded",
+            description: errorData.message || "Too many submissions. Please try again later.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Handle validation errors
+        if (errorData.details && Array.isArray(errorData.details)) {
+          const firstError = errorData.details[0];
+          toast({
+            title: "Validation Error",
+            description: firstError.message || "Please check your form data and try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        throw new Error(errorData.message || errorData.error || 'Failed to submit application');
+      }
+    } catch (error) {
+      console.error('Error submitting family application:', error);
+      toast({
+        title: "Submission Failed",
+        description: error instanceof Error ? error.message : "There was an error submitting your application. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleTrackSelection = (track: 'partner' | 'family') => {

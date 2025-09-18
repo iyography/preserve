@@ -14,6 +14,39 @@ import {
   insertPatternMetricsSchema,
   insertUserSettingsSchema
 } from "@shared/schema";
+
+// Waitlist validation schemas
+const partnerFormSchema = z.object({
+  businessName: z.string().min(1, 'Business name is required').max(200, 'Business name too long'),
+  contactName: z.string().min(1, 'Contact name is required').max(100, 'Contact name too long'),
+  email: z.string().email('Invalid email format'),
+  phone: z.string().min(1, 'Phone number is required').max(50, 'Phone number too long'),
+  businessType: z.string().min(1, 'Business type is required'),
+  businessSize: z.string().optional(),
+  currentGriefSupport: z.string().optional(),
+  technologyComfort: z.string().optional(),
+  revenueShareInterest: z.string().optional(),
+  pilotCapacity: z.string().optional(),
+  timeline: z.string().optional(),
+  additionalInfo: z.string().max(2000, 'Additional info too long').optional(),
+  ndaAgreed: z.boolean().optional(),
+  botcheck: z.string().max(0, 'Invalid submission').optional() // Honeypot field
+});
+
+const userFormSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100, 'Name too long'),
+  email: z.string().email('Invalid email format'),
+  phone: z.string().min(1, 'Phone number is required').max(50, 'Phone number too long'),
+  relationshipToDeceased: z.string().min(1, 'Relationship is required').max(100, 'Relationship description too long'),
+  timeSinceLoss: z.string().optional(),
+  technologyComfort: z.string().optional(),
+  professionalSupport: z.string().optional(),
+  additionalInfo: z.string().max(2000, 'Additional info too long').optional(),
+  botcheck: z.string().max(0, 'Invalid submission').optional() // Honeypot field
+});
+
+type PartnerFormData = z.infer<typeof partnerFormSchema>;
+type UserFormData = z.infer<typeof userFormSchema>;
 import multer from "multer";
 import { randomUUID } from "crypto";
 import path from "path";
@@ -90,11 +123,33 @@ interface TitleGenerationTracker {
   lastAttempt: Date;
 }
 
+// Waitlist rate limiting interfaces
+interface WaitlistIPLimiter {
+  count: number;
+  firstSubmission: Date;
+  lastSubmission: Date;
+}
+
+interface WaitlistEmailLimiter {
+  count: number;
+  firstSubmission: Date;
+  lastSubmission: Date;
+}
+
 const demoIPTracker = new Map<string, IPTracker>();
 const titleGenerationTracker = new Map<string, TitleGenerationTracker>();
+const waitlistIPLimiter = new Map<string, WaitlistIPLimiter>();
+const waitlistEmailLimiter = new Map<string, WaitlistEmailLimiter>();
+
 const DEMO_RESPONSE_LIMIT = 5;
 const TRACKING_RESET_HOURS = 24;
 const TITLE_GENERATION_DEBOUNCE_MS = 5000; // 5 seconds debounce
+
+// Waitlist rate limiting constants
+const WAITLIST_IP_LIMIT = 5; // Max 5 submissions per hour per IP
+const WAITLIST_IP_WINDOW_HOURS = 1;
+const WAITLIST_EMAIL_LIMIT = 2; // Max 2 submissions per day per email
+const WAITLIST_EMAIL_WINDOW_HOURS = 24;
 
 // Helper function to get client IP address
 function getClientIP(req: express.Request): string {
@@ -118,8 +173,100 @@ function cleanupOldIPEntries(): void {
   }
 }
 
+// Waitlist rate limiting helper functions
+function cleanupOldWaitlistEntries(): void {
+  const now = new Date();
+  
+  // Cleanup IP limiter entries
+  const ipCutoffTime = new Date(now.getTime() - (WAITLIST_IP_WINDOW_HOURS * 60 * 60 * 1000));
+  const ipEntries = Array.from(waitlistIPLimiter.entries());
+  for (const [ip, limiter] of ipEntries) {
+    if (limiter.lastSubmission < ipCutoffTime) {
+      waitlistIPLimiter.delete(ip);
+    }
+  }
+  
+  // Cleanup email limiter entries
+  const emailCutoffTime = new Date(now.getTime() - (WAITLIST_EMAIL_WINDOW_HOURS * 60 * 60 * 1000));
+  const emailEntries = Array.from(waitlistEmailLimiter.entries());
+  for (const [email, limiter] of emailEntries) {
+    if (limiter.lastSubmission < emailCutoffTime) {
+      waitlistEmailLimiter.delete(email);
+    }
+  }
+}
+
+function checkWaitlistRateLimit(clientIP: string, email: string): { allowed: boolean; message?: string; resetTime?: number } {
+  const now = new Date();
+  
+  // Check IP-based rate limiting
+  const ipLimiter = waitlistIPLimiter.get(clientIP);
+  const ipCutoffTime = new Date(now.getTime() - (WAITLIST_IP_WINDOW_HOURS * 60 * 60 * 1000));
+  
+  if (ipLimiter && ipLimiter.lastSubmission > ipCutoffTime) {
+    if (ipLimiter.count >= WAITLIST_IP_LIMIT) {
+      const resetTime = ipLimiter.firstSubmission.getTime() + (WAITLIST_IP_WINDOW_HOURS * 60 * 60 * 1000);
+      const waitMinutes = Math.ceil((resetTime - now.getTime()) / (1000 * 60));
+      return {
+        allowed: false,
+        message: `Too many submissions from your IP address. Please try again in ${waitMinutes} minutes.`,
+        resetTime: resetTime
+      };
+    }
+  }
+  
+  // Check email-based rate limiting
+  const emailLimiter = waitlistEmailLimiter.get(email);
+  const emailCutoffTime = new Date(now.getTime() - (WAITLIST_EMAIL_WINDOW_HOURS * 60 * 60 * 1000));
+  
+  if (emailLimiter && emailLimiter.lastSubmission > emailCutoffTime) {
+    if (emailLimiter.count >= WAITLIST_EMAIL_LIMIT) {
+      const resetTime = emailLimiter.firstSubmission.getTime() + (WAITLIST_EMAIL_WINDOW_HOURS * 60 * 60 * 1000);
+      const waitHours = Math.ceil((resetTime - now.getTime()) / (1000 * 60 * 60));
+      return {
+        allowed: false,
+        message: `This email has already been submitted recently. Please try again in ${waitHours} hours.`,
+        resetTime: resetTime
+      };
+    }
+  }
+  
+  return { allowed: true };
+}
+
+function recordWaitlistSubmission(clientIP: string, email: string): void {
+  const now = new Date();
+  
+  // Record IP submission
+  const ipLimiter = waitlistIPLimiter.get(clientIP);
+  if (ipLimiter) {
+    ipLimiter.count++;
+    ipLimiter.lastSubmission = now;
+  } else {
+    waitlistIPLimiter.set(clientIP, {
+      count: 1,
+      firstSubmission: now,
+      lastSubmission: now
+    });
+  }
+  
+  // Record email submission
+  const emailLimiter = waitlistEmailLimiter.get(email);
+  if (emailLimiter) {
+    emailLimiter.count++;
+    emailLimiter.lastSubmission = now;
+  } else {
+    waitlistEmailLimiter.set(email, {
+      count: 1,
+      firstSubmission: now,
+      lastSubmission: now
+    });
+  }
+}
+
 // Run cleanup every hour
 setInterval(cleanupOldIPEntries, 60 * 60 * 1000);
+setInterval(cleanupOldWaitlistEntries, 60 * 60 * 1000);
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint (no auth required) - primary health check for deployment
@@ -403,6 +550,164 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Partner waitlist endpoint (no auth required)
+  app.post('/api/waitlist/partner', async (req, res) => {
+    try {
+      // Validate request body with Zod schema
+      const validationResult = partnerFormSchema.safeParse(req.body);
+      
+      if (!validationResult.success) {
+        const errors = validationResult.error.errors.map(err => ({
+          field: err.path.join('.'),
+          message: err.message
+        }));
+        
+        return res.status(400).json({
+          error: 'Validation failed',
+          details: errors
+        });
+      }
+
+      const formData = validationResult.data;
+      const { email, businessName } = formData;
+
+      // Rate limiting check
+      const clientIP = getClientIP(req);
+      const rateLimitCheck = checkWaitlistRateLimit(clientIP, email);
+      
+      if (!rateLimitCheck.allowed) {
+        return res.status(429).json({
+          error: 'Rate limit exceeded',
+          message: rateLimitCheck.message,
+          retryAfter: rateLimitCheck.resetTime ? Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000) : undefined
+        });
+      }
+
+      // Send notification email to admin
+      const notificationResult = await EmailService.sendPartnerApplicationNotification(formData);
+      
+      // Send confirmation email to applicant
+      const confirmationResult = await EmailService.sendPartnerApplicationConfirmation(email, businessName);
+
+      // Check if both emails were sent successfully
+      if (notificationResult?.success && confirmationResult?.success) {
+        // Record successful submission for rate limiting
+        recordWaitlistSubmission(clientIP, email);
+        
+        res.json({
+          success: true,
+          message: 'Partner application submitted successfully',
+          emailsSent: {
+            notification: notificationResult.data?.id,
+            confirmation: confirmationResult.data?.id
+          }
+        });
+      } else {
+        // Email delivery failed - return proper error status code
+        console.error('Email sending failed:', {
+          notification: notificationResult,
+          confirmation: confirmationResult
+        });
+        
+        return res.status(502).json({
+          success: false,
+          error: 'Email delivery failed',
+          message: 'Your application could not be processed due to email delivery issues. Please try again later.',
+          details: {
+            notificationSent: notificationResult?.success || false,
+            confirmationSent: confirmationResult?.success || false
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Partner waitlist endpoint error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Family waitlist endpoint (no auth required)
+  app.post('/api/waitlist/family', async (req, res) => {
+    try {
+      // Validate request body with Zod schema
+      const validationResult = userFormSchema.safeParse(req.body);
+      
+      if (!validationResult.success) {
+        const errors = validationResult.error.errors.map(err => ({
+          field: err.path.join('.'),
+          message: err.message
+        }));
+        
+        return res.status(400).json({
+          error: 'Validation failed',
+          details: errors
+        });
+      }
+
+      const formData = validationResult.data;
+      const { email, name } = formData;
+
+      // Rate limiting check
+      const clientIP = getClientIP(req);
+      const rateLimitCheck = checkWaitlistRateLimit(clientIP, email);
+      
+      if (!rateLimitCheck.allowed) {
+        return res.status(429).json({
+          error: 'Rate limit exceeded',
+          message: rateLimitCheck.message,
+          retryAfter: rateLimitCheck.resetTime ? Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000) : undefined
+        });
+      }
+
+      // Send notification email to admin
+      const notificationResult = await EmailService.sendWaitlistApplicationNotification(formData);
+      
+      // Send confirmation email to applicant
+      const confirmationResult = await EmailService.sendWaitlistApplicationConfirmation(email, name);
+
+      // Check if both emails were sent successfully
+      if (notificationResult?.success && confirmationResult?.success) {
+        // Record successful submission for rate limiting
+        recordWaitlistSubmission(clientIP, email);
+        
+        res.json({
+          success: true,
+          message: 'Waitlist application submitted successfully',
+          emailsSent: {
+            notification: notificationResult.data?.id,
+            confirmation: confirmationResult.data?.id
+          }
+        });
+      } else {
+        // Email delivery failed - return proper error status code
+        console.error('Email sending failed:', {
+          notification: notificationResult,
+          confirmation: confirmationResult
+        });
+        
+        return res.status(502).json({
+          success: false,
+          error: 'Email delivery failed',
+          message: 'Your application could not be processed due to email delivery issues. Please try again later.',
+          details: {
+            notificationSent: notificationResult?.success || false,
+            confirmationSent: confirmationResult?.success || false
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Family waitlist endpoint error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Demo Chat Endpoint (no auth required) - for the homepage demo
   app.post('/api/chat/demo', async (req, res) => {
     try {
@@ -670,6 +975,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       '/api/confirm-email', 
       '/api/chat/demo',
       '/api/test-email',
+      '/api/waitlist/partner',
+      '/api/waitlist/family',
       '/api/reset-rate-limits',
       '/api/demo-ip-status',
       '/api/reset-demo-tracking'
