@@ -2200,16 +2200,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           memories.push(memory);
-              }
-            }
-            
-            // Also try to get multiple Set-Cookie headers if available 
-            // Note: Standard fetch API doesn't expose multiple headers with same name easily
-            // This is a limitation we'll accept for now
-          };
-          
-          // Make request with proper cookie and referer handling
-          const makeRequest = async (requestUrl: string, refererUrl?: string) => {
+        }
+        
+        return res.json({
+          success: true,
+          message: `Successfully imported ${memories.length} memories from Legacy.com obituary`,
+          memoriesCreated: memories.length
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error in Legacy.com enhancement:', error);
+      res.status(500).json({ error: 'Failed to process Legacy.com content' });
+    }
+  });
+  
+  // Advanced Questionnaire Enhancement Endpoint
+  app.post('/api/personas/:id/enhance/questionnaire', async (req: AuthenticatedRequest, res) => {
             const requestController = new AbortController();
             const requestTimeoutId = setTimeout(() => requestController.abort(), 10000);
             
