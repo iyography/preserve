@@ -2350,14 +2350,19 @@ export default function Dashboard() {
                           )}
                         </div>
                         
-                        {isTyping && (
+                        {isTyping && selectedConversationData && (
                           <div className="flex items-center space-x-2">
                             <div className="flex space-x-1">
                               <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
                               <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                               <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                             </div>
-                            <span className="text-sm text-gray-500">AI is thinking...</span>
+                            <span className="text-sm text-gray-500">
+                              {(() => {
+                                const persona = personas.find(p => p.id === selectedConversationData.personaId);
+                                return persona ? `${persona.name} is typing...` : 'AI is typing...';
+                              })()}
+                            </span>
                           </div>
                         )}
                       </div>

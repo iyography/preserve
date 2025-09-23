@@ -745,7 +745,7 @@ export default function Home() {
                             <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '200ms' }}></div>
                             <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '400ms' }}></div>
                           </div>
-                          <p className="text-sm italic">Grandma is thinking...</p>
+                          <p className="text-sm italic">Grandma is typing...</p>
                         </div>
                       </div>
                     </div>
