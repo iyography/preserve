@@ -1261,25 +1261,39 @@ export default function Dashboard() {
     canvas.width = scaledCropArea.width;
     canvas.height = scaledCropArea.height;
     
-    // Draw cropped image at full resolution
+    // Clear canvas with transparent background
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Create circular clipping path
+    ctx.save();
+    ctx.beginPath();
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = Math.min(canvas.width, canvas.height) / 2;
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.clip();
+    
+    // Draw cropped image within the circular clip
     ctx.drawImage(
       img,
       scaledCropArea.x, scaledCropArea.y, scaledCropArea.width, scaledCropArea.height,
       0, 0, scaledCropArea.width, scaledCropArea.height
     );
     
+    ctx.restore();
+    
     // Convert to blob and create a file
     canvas.toBlob((blob) => {
       if (blob) {
-        const croppedFile = new File([blob], 'cropped-image.jpg', { type: 'image/jpeg' });
+        const croppedFile = new File([blob], 'cropped-image.jpg', { type: 'image/png' });
         setPhotoFile(croppedFile);
         
         // Convert to base64 for preview
-        const croppedImageData = canvas.toDataURL('image/jpeg', 0.9);
+        const croppedImageData = canvas.toDataURL('image/png', 0.9);
         setPhotoPreview(croppedImageData);
         setCropPreview(croppedImageData);
       }
-    }, 'image/jpeg', 0.9);
+    }, 'image/png', 0.9);
   };
 
   const handleCropConfirm = () => {
@@ -1358,49 +1372,29 @@ export default function Dashboard() {
         let newArea = { ...resizeStartRect };
         
         switch (resizeHandle) {
-          case 'se': // bottom-right
-            newArea.width = Math.max(50, Math.min(resizeStartRect.width + totalDeltaX, rect.width - resizeStartRect.x));
-            newArea.height = Math.max(50, Math.min(resizeStartRect.height + totalDeltaY, rect.height - resizeStartRect.y));
-            break;
-          case 'sw': // bottom-left
+          case 'circle':
             {
-              // Clamp newX to ensure minimum width fits within bounds
-              const minNewX = Math.max(0, (resizeStartRect.x + resizeStartRect.width) - rect.width);
-              const maxNewX = Math.min(resizeStartRect.x + resizeStartRect.width - 50, rect.width - 50);
-              const newX = Math.max(minNewX, Math.min(maxNewX, resizeStartRect.x + totalDeltaX));
+              // For circular crop, calculate new size based on horizontal movement
+              const newSize = Math.max(50, resizeStartRect.width + totalDeltaX * 2);
               
-              newArea.width = resizeStartRect.x + resizeStartRect.width - newX;
-              newArea.height = Math.max(50, Math.min(resizeStartRect.height + totalDeltaY, rect.height - resizeStartRect.y));
-              newArea.x = newX;
-            }
-            break;
-          case 'ne': // top-right
-            {
-              // Clamp newY to ensure minimum height fits within bounds
-              const minNewY = Math.max(0, (resizeStartRect.y + resizeStartRect.height) - rect.height);
-              const maxNewY = Math.min(resizeStartRect.y + resizeStartRect.height - 50, rect.height - 50);
-              const newY = Math.max(minNewY, Math.min(maxNewY, resizeStartRect.y + totalDeltaY));
+              // Ensure the circle fits within the image bounds
+              const maxSize = Math.min(
+                rect.width - resizeStartRect.x,
+                rect.height - resizeStartRect.y,
+                resizeStartRect.x + resizeStartRect.width,
+                resizeStartRect.y + resizeStartRect.height
+              ) * 2;
               
-              newArea.width = Math.max(50, Math.min(resizeStartRect.width + totalDeltaX, rect.width - resizeStartRect.x));
-              newArea.height = resizeStartRect.y + resizeStartRect.height - newY;
-              newArea.y = newY;
-            }
-            break;
-          case 'nw': // top-left
-            {
-              // Clamp newX and newY to ensure minimum dimensions fit within bounds
-              const minNewX = Math.max(0, (resizeStartRect.x + resizeStartRect.width) - rect.width);
-              const maxNewX = Math.min(resizeStartRect.x + resizeStartRect.width - 50, rect.width - 50);
-              const newX = Math.max(minNewX, Math.min(maxNewX, resizeStartRect.x + totalDeltaX));
+              const clampedSize = Math.min(newSize, maxSize);
               
-              const minNewY = Math.max(0, (resizeStartRect.y + resizeStartRect.height) - rect.height);
-              const maxNewY = Math.min(resizeStartRect.y + resizeStartRect.height - 50, rect.height - 50);
-              const newY = Math.max(minNewY, Math.min(maxNewY, resizeStartRect.y + totalDeltaY));
+              // Calculate new position to keep the circle centered around the original center
+              const centerX = resizeStartRect.x + resizeStartRect.width / 2;
+              const centerY = resizeStartRect.y + resizeStartRect.height / 2;
               
-              newArea.width = resizeStartRect.x + resizeStartRect.width - newX;
-              newArea.height = resizeStartRect.y + resizeStartRect.height - newY;
-              newArea.x = newX;
-              newArea.y = newY;
+              newArea.width = clampedSize;
+              newArea.height = clampedSize; // Keep it circular
+              newArea.x = centerX - clampedSize / 2;
+              newArea.y = centerY - clampedSize / 2;
             }
             break;
         }
@@ -3039,7 +3033,7 @@ export default function Dashboard() {
                       width: img.naturalWidth, 
                       height: img.naturalHeight 
                     });
-                    const size = Math.min(img.clientWidth, img.clientHeight) * 0.6;
+                    const size = Math.min(img.clientWidth, img.clientHeight) * 0.8;
                     setCropArea({
                       x: (img.clientWidth - size) / 2,
                       y: (img.clientHeight - size) / 2,
@@ -3053,9 +3047,9 @@ export default function Dashboard() {
                   style={{ cursor: isDragging ? 'grabbing' : isResizing ? 'nw-resize' : 'default' }}
                 />
                 
-                {/* Interactive crop overlay */}
+                {/* Interactive circular crop overlay */}
                 <div
-                  className="absolute border-2 border-purple-500 bg-purple-500/20"
+                  className="absolute border-2 border-purple-500 bg-purple-500/20 rounded-full"
                   style={{
                     left: cropArea.x,
                     top: cropArea.y,
@@ -3065,35 +3059,17 @@ export default function Dashboard() {
                   }}
                   onMouseDown={(e) => handleCropMouseDown(e, 'drag')}
                 >
-                {/* Resize handles */}
-                <div
-                  className="absolute w-3 h-3 bg-purple-500 border border-white -top-1 -left-1 cursor-nw-resize"
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    handleCropMouseDown(e, 'resize', 'nw');
-                  }}
-                />
-                <div
-                  className="absolute w-3 h-3 bg-purple-500 border border-white -top-1 -right-1 cursor-ne-resize"
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    handleCropMouseDown(e, 'resize', 'ne');
-                  }}
-                />
-                <div
-                  className="absolute w-3 h-3 bg-purple-500 border border-white -bottom-1 -left-1 cursor-sw-resize"
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    handleCropMouseDown(e, 'resize', 'sw');
-                  }}
-                />
-                <div
-                  className="absolute w-3 h-3 bg-purple-500 border border-white -bottom-1 -right-1 cursor-se-resize"
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    handleCropMouseDown(e, 'resize', 'se');
-                  }}
-                />
+                  {/* Center dot to indicate draggable area */}
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-purple-500 rounded-full" />
+                  
+                  {/* Resize handle on the right edge */}
+                  <div
+                    className="absolute w-3 h-3 bg-purple-500 border border-white rounded-full top-1/2 -right-1.5 transform -translate-y-1/2 cursor-ew-resize"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      handleCropMouseDown(e, 'resize', 'circle');
+                    }}
+                  />
               </div>
               </div>
             </div>
