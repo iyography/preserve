@@ -2117,51 +2117,263 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If URL is provided and no reviewed content, try to extract content
       if (url && !reviewedContent) {
         try {
-          // For production use, implement proper web scraping with respect to robots.txt
-          // For now, we'll use a simple fetch approach
-          const response = await fetch(url, {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (compatible; EvermoreBot/1.0; grief-tech memorial service)'
-            }
-          });
-          
-          if (!response.ok) {
-            return res.status(400).json({ error: 'Unable to fetch content from the provided URL' });
+          // Secure URL validation for Legacy.com
+          let parsedUrl;
+          try {
+            parsedUrl = new URL(url);
+          } catch (urlError) {
+            return res.status(400).json({ error: 'Invalid URL format' });
           }
           
-          const html = await response.text();
-          
-          // Extract text content - this is a simplified approach
-          // In production, use a proper HTML parser like cheerio or jsdom
-          const textContent = html
-            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-            .replace(/<[^>]*>/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-          
-          // Look for obituary-specific content patterns
-          const obituaryMarkers = [
-            'passed away', 'died peacefully', 'beloved', 'funeral', 'memorial', 
-            'survived by', 'preceded in death', 'celebration of life', 'visitation'
+          // Validate hostname - must be exactly legacy.com or subdomain
+          const allowedHosts = [
+            'legacy.com',
+            'www.legacy.com',
+            'obituaries.legacy.com'
           ];
           
-          const hasObituaryContent = obituaryMarkers.some(marker => 
-            textContent.toLowerCase().includes(marker)
-          );
+          const isAllowedHost = allowedHosts.includes(parsedUrl.hostname.toLowerCase()) || 
+            parsedUrl.hostname.toLowerCase().endsWith('.legacy.com');
           
-          if (!hasObituaryContent) {
+          if (!isAllowedHost) {
             return res.status(400).json({ 
-              error: 'The provided URL does not appear to contain obituary content',
-              extractedContent: textContent.substring(0, 500) + '...'
+              error: 'Only Legacy.com URLs are supported for automatic content extraction' 
             });
           }
           
-          contentToSave = textContent;
+          // Create timeout controller for safe fetching
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+          
+          // Safe redirect handling - allow up to 2 Legacy.com redirects
+          const response = await fetch(url, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (compatible; EvermoreBot/1.0; grief-tech memorial service)'
+            },
+            redirect: 'manual', // Handle redirects manually for security
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          // Handle redirects safely - only to Legacy.com domains
+          let finalResponse = response;
+          let redirectCount = 0;
+          const maxRedirects = 2;
+          
+          while (finalResponse.status >= 300 && finalResponse.status < 400 && redirectCount < maxRedirects) {
+            const location = finalResponse.headers.get('location');
+            if (!location) break;
+            
+            let redirectUrl;
+            try {
+              redirectUrl = new URL(location, url); // Handle relative redirects
+            } catch {
+              break; // Invalid redirect URL
+            }
+            
+            // Validate redirect target is still Legacy.com
+            const isAllowedRedirect = allowedHosts.includes(redirectUrl.hostname.toLowerCase()) || 
+              redirectUrl.hostname.toLowerCase().endsWith('.legacy.com');
+            
+            if (!isAllowedRedirect) {
+              console.warn(`Legacy extraction blocked unsafe redirect to: ${redirectUrl.hostname}`);
+              break;
+            }
+            
+            redirectCount++;
+            const redirectController = new AbortController();
+            const redirectTimeoutId = setTimeout(() => redirectController.abort(), 10000);
+            
+            finalResponse = await fetch(redirectUrl.toString(), {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (compatible; EvermoreBot/1.0; grief-tech memorial service)'
+              },
+              redirect: 'manual',
+              signal: redirectController.signal
+            });
+            
+            clearTimeout(redirectTimeoutId);
+          }
+          
+          if (!finalResponse.ok) {
+            console.warn(`Legacy extraction failed: HTTP ${finalResponse.status} for ${url}`);
+            return res.status(400).json({ 
+              error: `Unable to fetch content from the provided URL (HTTP ${finalResponse.status})` 
+            });
+          }
+          
+          // Check content size to prevent memory exhaustion
+          const contentLength = finalResponse.headers.get('content-length');
+          const maxSize = 4 * 1024 * 1024; // 4MB limit
+          
+          if (contentLength && parseInt(contentLength) > maxSize) {
+            return res.status(400).json({ 
+              error: 'Content is too large to process (maximum 4MB)' 
+            });
+          }
+          
+          const html = await finalResponse.text();
+          
+          // Additional size check after download
+          if (html.length > maxSize) {
+            console.warn(`Legacy extraction: Content too large (${html.length} chars) from ${parsedUrl.hostname}`);
+            return res.status(400).json({ 
+              error: 'Content is too large to process' 
+            });
+          }
+          
+          console.info(`Legacy extraction: Successfully fetched ${html.length} chars from ${parsedUrl.hostname}`);
+          
+          // Use cheerio for robust HTML parsing
+          const cheerio = await import('cheerio');
+          const $ = cheerio.load(html);
+          
+          let extractedContent = '';
+          
+          // Structured content extraction with fallbacks
+          const extractionStrategies = [
+            // Strategy 1: JSON-LD structured data
+            () => {
+              const jsonLdScripts = $('script[type="application/ld+json"]');
+              for (let i = 0; i < jsonLdScripts.length; i++) {
+                try {
+                  const jsonLd = JSON.parse($(jsonLdScripts[i]).html() || '{}');
+                  const items = Array.isArray(jsonLd) ? jsonLd : [jsonLd];
+                  
+                  for (const item of items) {
+                    if (item['@type'] === 'Obituary' || item['@type'] === 'NewsArticle') {
+                      return item.articleBody || item.description || item.text || '';
+                    }
+                  }
+                } catch (e) {
+                  continue;
+                }
+              }
+              return '';
+            },
+            
+            // Strategy 2: Structured data selectors
+            () => $('[itemprop="articleBody"]').text(),
+            () => $('[data-obit-text]').text(),
+            
+            // Strategy 3: Legacy.com specific selectors with scoped search
+            () => {
+              // Look for obituary content within obituary-labeled containers
+              const obituaryContainers = $('[class*="obituary"], [id*="obituary"]');
+              if (obituaryContainers.length > 0) {
+                return obituaryContainers.find('p').text() || obituaryContainers.text();
+              }
+              
+              return $('.obit-text, .obituary-text, .obituary-content').text();
+            },
+            
+            // Strategy 4: Enhanced heuristic extraction - paragraph clustering
+            () => {
+              const obituaryKeywords = [
+                'passed away', 'died peacefully', 'beloved', 'funeral', 'memorial', 
+                'survived by', 'preceded in death', 'aged', 'years old', 'loved wife', 
+                'loved husband', 'loved mother', 'loved father', 'family', 'friends'
+              ];
+              
+              let bestContent = '';
+              let bestScore = 0;
+              
+              // Focus on paragraph clusters within semantic containers
+              $('div, section, article, main').each((i, container) => {
+                const $container = $(container);
+                const paragraphs = $container.find('p');
+                
+                if (paragraphs.length === 0) return;
+                
+                const containerText = paragraphs.map((j, p) => $(p).text()).get().join(' ');
+                if (containerText.length < 100) return;
+                
+                const keywordMatches = obituaryKeywords.filter(keyword => 
+                  containerText.toLowerCase().includes(keyword)
+                ).length;
+                
+                // Score based on keyword density and paragraph count
+                const score = keywordMatches * 15 + paragraphs.length * 2 + (containerText.length / 200);
+                
+                if (score > bestScore) {
+                  bestScore = score;
+                  bestContent = containerText;
+                }
+              });
+              
+              return bestContent;
+            },
+            
+            // Strategy 5: Generic article selectors (with paragraph preference)
+            () => {
+              const candidates = ['article', 'main', '.content'];
+              for (const selector of candidates) {
+                const $elem = $(selector);
+                if ($elem.length > 0) {
+                  const paragraphs = $elem.find('p').text();
+                  return paragraphs || $elem.text();
+                }
+              }
+              return '';
+            },
+            
+            // Strategy 6: Meta description fallback
+            () => $('meta[name="description"]').attr('content') || '',
+            () => $('meta[property="og:description"]').attr('content') || '',
+            () => $('meta[name="twitter:description"]').attr('content') || ''
+          ];
+          
+          // Try each extraction strategy
+          for (const strategy of extractionStrategies) {
+            try {
+              const content = strategy();
+              if (content && content.trim().length >= 50) {
+                extractedContent = content.trim()
+                  .replace(/\s+/g, ' ')
+                  .replace(/^\s*[,\.\-\s]+/, '')
+                  .replace(/[,\.\-\s]+\s*$/, '');
+                break;
+              }
+            } catch (strategyError) {
+              console.warn('Extraction strategy failed:', strategyError);
+              continue;
+            }
+          }
+          
+          // Final validation - ensure we have meaningful obituary content
+          if (!extractedContent || extractedContent.length < 30) {
+            console.warn(`Legacy extraction failed: Insufficient content extracted from ${url}`);
+            return res.status(400).json({ 
+              error: 'Could not extract sufficient obituary content from the provided URL. The page may be protected or have a different format.',
+              suggestion: 'Please try copying and pasting the obituary text manually.'
+            });
+          }
+          
+          // Validate that content appears to be an obituary
+          const obituaryKeywords = [
+            'passed away', 'died', 'beloved', 'funeral', 'memorial', 'survived by',
+            'aged', 'family', 'loved', 'wife', 'husband', 'mother', 'father'
+          ];
+          
+          const hasObituaryMarkers = obituaryKeywords.some(keyword => 
+            extractedContent.toLowerCase().includes(keyword)
+          );
+          
+          if (!hasObituaryMarkers) {
+            console.warn(`Legacy extraction warning: Content may not be obituary from ${url}`);
+            return res.status(400).json({ 
+              error: 'The extracted content does not appear to contain typical obituary information.',
+              extractedContent: extractedContent.substring(0, 500) + '...',
+              suggestion: 'Please verify this is an obituary page or copy the content manually.'
+            });
+          }
+          
+          console.info(`Legacy extraction successful: ${extractedContent.length} chars extracted from ${url}`);
           
           return res.json({
             success: true,
-            extractedContent: textContent,
+            extractedContent,
             requiresReview: true,
             message: 'Content extracted successfully. Please review before saving.'
           });
