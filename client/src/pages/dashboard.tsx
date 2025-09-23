@@ -3001,44 +3001,45 @@ export default function Dashboard() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
             <h3 className="text-lg font-semibold mb-4">Crop Photo</h3>
-            <div className="relative select-none">
-              <img
-                ref={cropImageRef}
-                src={originalImage}
-                alt="Crop preview"
-                className="max-w-full max-h-96 mx-auto block"
-                onLoad={(e) => {
-                  const img = e.currentTarget;
-                  setImageNaturalSize({ 
-                    width: img.naturalWidth, 
-                    height: img.naturalHeight 
-                  });
-                  const size = Math.min(img.clientWidth, img.clientHeight) * 0.6;
-                  setCropArea({
-                    x: (img.clientWidth - size) / 2,
-                    y: (img.clientHeight - size) / 2,
-                    width: size,
-                    height: size
-                  });
-                }}
-                onMouseMove={handleCropMouseMove}
-                onMouseUp={handleCropMouseUp}
-                onMouseLeave={handleCropMouseUp}
-                style={{ cursor: isDragging ? 'grabbing' : isResizing ? 'nw-resize' : 'default' }}
-              />
-              
-              {/* Interactive crop overlay */}
-              <div
-                className="absolute border-2 border-purple-500 bg-purple-500/20"
-                style={{
-                  left: cropArea.x,
-                  top: cropArea.y,
-                  width: cropArea.width,
-                  height: cropArea.height,
-                  cursor: 'grab'
-                }}
-                onMouseDown={(e) => handleCropMouseDown(e, 'drag')}
-              >
+            <div className="flex justify-center">
+              <div className="relative select-none inline-block">
+                <img
+                  ref={cropImageRef}
+                  src={originalImage}
+                  alt="Crop preview"
+                  className="max-w-full max-h-96 block"
+                  onLoad={(e) => {
+                    const img = e.currentTarget;
+                    setImageNaturalSize({ 
+                      width: img.naturalWidth, 
+                      height: img.naturalHeight 
+                    });
+                    const size = Math.min(img.clientWidth, img.clientHeight) * 0.6;
+                    setCropArea({
+                      x: (img.clientWidth - size) / 2,
+                      y: (img.clientHeight - size) / 2,
+                      width: size,
+                      height: size
+                    });
+                  }}
+                  onMouseMove={handleCropMouseMove}
+                  onMouseUp={handleCropMouseUp}
+                  onMouseLeave={handleCropMouseUp}
+                  style={{ cursor: isDragging ? 'grabbing' : isResizing ? 'nw-resize' : 'default' }}
+                />
+                
+                {/* Interactive crop overlay */}
+                <div
+                  className="absolute border-2 border-purple-500 bg-purple-500/20"
+                  style={{
+                    left: cropArea.x,
+                    top: cropArea.y,
+                    width: cropArea.width,
+                    height: cropArea.height,
+                    cursor: 'grab'
+                  }}
+                  onMouseDown={(e) => handleCropMouseDown(e, 'drag')}
+                >
                 {/* Resize handles */}
                 <div
                   className="absolute w-3 h-3 bg-purple-500 border border-white -top-1 -left-1 cursor-nw-resize"
@@ -3068,6 +3069,7 @@ export default function Dashboard() {
                     handleCropMouseDown(e, 'resize', 'se');
                   }}
                 />
+              </div>
               </div>
             </div>
             <div className="flex gap-3 mt-6">
