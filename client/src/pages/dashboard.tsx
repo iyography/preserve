@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import type { Persona, Memory, Conversation, Message, UserSettings } from "@shared/schema";
 import { insertMemorySchema, insertUserSettingsSchema } from "@shared/schema";
-import { Heart, Plus, Upload, MessageCircle, Clock, Shield, Calendar, Settings, Play, Bookmark, Share, Download, Mic, FileText, Video, Camera, Sparkles, Users, CheckCircle, Moon, Sun, Edit, Trash2, X, Menu, User2, LogOut, Bell, Home, ChevronRight, Brain, Archive, HelpCircle, CreditCard, Search, Tag, MicOff, Save, Hash, Link as LinkIcon, ChevronDown } from "lucide-react";
+import { Heart, Plus, Upload, MessageCircle, Clock, Shield, Calendar, Settings, Play, Bookmark, Share, Download, Mic, FileText, Video, Camera, Sparkles, Users, CheckCircle, Moon, Sun, Edit, Trash2, X, Menu, User2, LogOut, Bell, Home, ChevronRight, Brain, Archive, HelpCircle, CreditCard, Search, Tag, MicOff, Save, Hash, Link as LinkIcon, ChevronDown, ThumbsUp, ThumbsDown, Star, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -25,6 +25,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -486,6 +487,16 @@ export default function Dashboard() {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [editingConversationId, setEditingConversationId] = useState<string | null>(null);
   const [editingConversationTitle, setEditingConversationTitle] = useState('');
+
+  // Feedback system state
+  const [feedbackState, setFeedbackState] = useState<{
+    activeMessageId?: string;
+    showRating?: boolean;
+    showComment?: boolean;
+    rating?: number;
+    comment?: string;
+  }>({});
+  const [showLearningIndicator, setShowLearningIndicator] = useState(false);
   
   // Enhancement features state
   const [isLegacyDialogOpen, setIsLegacyDialogOpen] = useState(false);
@@ -878,6 +889,34 @@ export default function Dashboard() {
     },
   });
 
+  // Feedback mutation
+  const feedbackMutation = useMutation({
+    mutationFn: async (data: {
+      messageId?: string;
+      conversationId?: string;
+      personaId: string;
+      kind: string;
+      payload?: any;
+    }) => {
+      return apiRequest('POST', '/api/feedback', data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Thank you!",
+        description: "Your feedback helps improve the conversation quality.",
+      });
+      setShowLearningIndicator(true);
+      setTimeout(() => setShowLearningIndicator(false), 3000);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Feedback error",
+        description: "Couldn't save your feedback. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Generate title mutation for manual title generation
   const generateTitleMutation = useMutation({
     mutationFn: async (conversationId: string) => {
@@ -988,6 +1027,62 @@ export default function Dashboard() {
       grouped[conv.personaId].push(conv);
     });
     return grouped;
+  };
+
+  // Feedback handler functions
+  const handleThumbsFeedback = (messageId: string, type: 'thumbs_up' | 'thumbs_down') => {
+    const message = conversationMessages.find(m => m.id === messageId);
+    if (!message || !selectedConversationData) return;
+
+    feedbackMutation.mutate({
+      messageId,
+      conversationId: selectedConversation || undefined,
+      personaId: selectedConversationData.personaId,
+      kind: type,
+      payload: { timestamp: new Date().toISOString() },
+    });
+
+    setFeedbackState({});
+  };
+
+  const handleRatingSubmit = (messageId: string, rating: number) => {
+    const message = conversationMessages.find(m => m.id === messageId);
+    if (!message || !selectedConversationData) return;
+
+    feedbackMutation.mutate({
+      messageId,
+      conversationId: selectedConversation || undefined,
+      personaId: selectedConversationData.personaId,
+      kind: 'rating',
+      payload: { rating, timestamp: new Date().toISOString() },
+    });
+
+    setFeedbackState({});
+
+    toast({
+      title: "Rating submitted",
+      description: `You rated this response ${rating} star${rating !== 1 ? 's' : ''}.`,
+    });
+  };
+
+  const handleDetailedFeedback = (messageId: string, comment: string) => {
+    const message = conversationMessages.find(m => m.id === messageId);
+    if (!message || !selectedConversationData || !comment.trim()) return;
+
+    feedbackMutation.mutate({
+      messageId,
+      conversationId: selectedConversation || undefined,
+      personaId: selectedConversationData.personaId,
+      kind: 'comment',
+      payload: { comment, timestamp: new Date().toISOString() },
+    });
+
+    setFeedbackState({});
+
+    toast({
+      title: "Feedback received!",
+      description: "Your detailed feedback will help improve future conversations.",
+    });
   };
 
   // Theme management
@@ -2793,6 +2888,137 @@ export default function Dashboard() {
                                   )}>
                                     {formatMessageTime(message.createdAt)}
                                   </p>
+
+                                  {/* Feedback UI for persona messages */}
+                                  {message.role === 'persona' && (
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <TooltipProvider>
+                                        <div className="flex items-center gap-1">
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleThumbsFeedback(message.id, 'thumbs_up')}
+                                                className="h-7 px-2 text-gray-400 hover:text-green-600"
+                                                data-testid={`button-thumbs-up-${message.id}`}
+                                              >
+                                                <ThumbsUp className="w-3 h-3" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>This response was helpful</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                          
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleThumbsFeedback(message.id, 'thumbs_down')}
+                                                className="h-7 px-2 text-gray-400 hover:text-red-600"
+                                                data-testid={`button-thumbs-down-${message.id}`}
+                                              >
+                                                <ThumbsDown className="w-3 h-3" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>This could be better</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </div>
+                                        
+                                        {/* Star Rating */}
+                                        {feedbackState.activeMessageId === message.id && feedbackState.showRating ? (
+                                          <div className="flex items-center gap-1">
+                                            {[1, 2, 3, 4, 5].map((star) => (
+                                              <Button
+                                                key={star}
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleRatingSubmit(message.id, star)}
+                                                className="h-7 px-1"
+                                                data-testid={`button-star-${star}-${message.id}`}
+                                              >
+                                                <Star
+                                                  className={`w-3 h-3 text-gray-300`}
+                                                />
+                                              </Button>
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setFeedbackState({ activeMessageId: message.id, showRating: true })}
+                                                className="h-7 px-2 text-gray-400 hover:text-yellow-500"
+                                                data-testid={`button-rate-${message.id}`}
+                                              >
+                                                <Star className="w-3 h-3 mr-1" />
+                                                <span className="text-xs">Rate</span>
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>Rate this response</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        )}
+                                        
+                                        {/* Detailed Feedback */}
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => setFeedbackState({ activeMessageId: message.id, showComment: true })}
+                                              className="h-7 px-2 text-gray-400 hover:text-purple-600"
+                                              data-testid={`button-comment-${message.id}`}
+                                            >
+                                              <MessageSquare className="w-3 h-3" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Add detailed feedback</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    </div>
+                                  )}
+
+                                  {/* Comment Input */}
+                                  {feedbackState.activeMessageId === message.id && feedbackState.showComment && (
+                                    <div className="mt-2">
+                                      <Textarea
+                                        placeholder="Tell us more about how this response could be better..."
+                                        value={feedbackState.comment || ''}
+                                        onChange={(e) => setFeedbackState({ ...feedbackState, comment: e.target.value })}
+                                        className="text-xs h-20 resize-none"
+                                        data-testid={`textarea-feedback-${message.id}`}
+                                      />
+                                      <div className="flex justify-end gap-2 mt-2">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => setFeedbackState({})}
+                                          className="text-xs"
+                                          data-testid={`button-cancel-feedback-${message.id}`}
+                                        >
+                                          Cancel
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          onClick={() => handleDetailedFeedback(message.id, feedbackState.comment || '')}
+                                          className="text-xs bg-purple-600 hover:bg-purple-700"
+                                          data-testid={`button-submit-feedback-${message.id}`}
+                                        >
+                                          Submit
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             ))}
