@@ -385,6 +385,90 @@ export class EmailService {
   }
 
   /**
+   * Send password reset email to user
+   */
+  static async sendPasswordResetEmail(to: string, resetToken: string) {
+    if (!process.env.RESEND_API_KEY) {
+      console.warn('RESEND_API_KEY not configured, skipping password reset email');
+      return { success: false, error: 'Email service not configured' };
+    }
+
+    // Construct the password reset URL
+    let baseUrl: string;
+    
+    if (process.env.REPLIT_DEPLOYMENT === '1') {
+      // Production deployment - use the primary domain
+      const domains = process.env.REPLIT_DOMAINS?.split(',');
+      baseUrl = domains?.[0] ? `https://${domains[0]}` : 'https://preservingconnections.replit.app';
+    } else if (process.env.REPLIT_DEV_DOMAIN) {
+      // Development in Replit workspace
+      baseUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
+    } else {
+      // Fallback for local development
+      baseUrl = 'http://localhost:5000';
+    }
+    
+    const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+
+    try {
+      const { data, error } = await resend.emails.send({
+        from: 'support@preservingconnections.com',
+        to: [to],
+        subject: 'Reset Your Password - Preserving Connections',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #7c3aed; margin: 0; font-size: 28px;">Preserving Connections</h1>
+              <p style="color: #666; margin: 5px 0 0 0; font-size: 14px;">Keeping memories alive through meaningful connections</p>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 30px; border-radius: 8px; margin-bottom: 30px;">
+              <h2 style="color: #1a1a1a; margin: 0 0 20px 0; font-size: 24px;">Reset Your Password</h2>
+              <p style="margin: 0 0 20px 0; line-height: 1.6; font-size: 16px;">
+                We received a request to reset the password for your Preserving Connections account. If you requested this password reset, please click the button below to create a new password.
+              </p>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${resetUrl}" 
+                   style="background: #7c3aed; color: white; padding: 14px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">
+                  Reset Password
+                </a>
+              </div>
+              
+              <p style="margin: 20px 0 0 0; line-height: 1.6; font-size: 14px; color: #666;">
+                If the button doesn't work, you can copy and paste this link into your browser:
+              </p>
+              <p style="margin: 10px 0 0 0; word-break: break-all; font-size: 14px; color: #7c3aed;">
+                ${resetUrl}
+              </p>
+            </div>
+            
+            <div style="text-align: center; font-size: 14px; color: #666;">
+              <p style="margin: 0 0 10px 0;">This password reset link will expire in 1 hour for security.</p>
+              <p style="margin: 0;">If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e1e5e9; font-size: 14px; color: #666;">
+              <p style="margin: 0;">Best regards,<br>The Preserving Connections Team</p>
+            </div>
+          </div>
+        `,
+      });
+
+      if (error) {
+        console.error('Failed to send password reset email:', error);
+        return { success: false, error };
+      }
+
+      console.log('Password reset email sent successfully:', data);
+      return { success: true, data };
+    } catch (error) {
+      console.error('Email service error:', error);
+      return { success: false, error };
+    }
+  }
+
+  /**
    * Send waitlist application confirmation to applicant
    */
   static async sendWaitlistApplicationConfirmation(to: string, userName: string) {

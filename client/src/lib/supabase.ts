@@ -167,5 +167,41 @@ export const authHelpers = {
       console.error('Get session error:', error);
       throw error
     }
+  },
+
+  // Request password reset
+  async resetPassword(email: string) {
+    console.log('Supabase resetPassword called with:', { email });
+    
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    
+    console.log('Supabase resetPassword response:', { data, error });
+    
+    if (error) {
+      console.error('Supabase resetPassword error:', error);
+      throw new Error(error.message)
+    }
+    
+    return data
+  },
+
+  // Update password with reset token
+  async updatePassword(newPassword: string) {
+    console.log('Supabase updatePassword called');
+    
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+    
+    console.log('Supabase updatePassword response:', { data, error });
+    
+    if (error) {
+      console.error('Supabase updatePassword error:', error);
+      throw new Error(error.message)
+    }
+    
+    return data
   }
 }

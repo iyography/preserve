@@ -41,6 +41,8 @@ import Waitlist from "@/pages/waitlist";
 import NotFound from "@/pages/not-found";
 import Chat from "@/pages/chat";
 import EmailConfirmed from "@/pages/email-confirmed";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
 
 function Router() {
   return (
@@ -48,6 +50,8 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/sign-in" component={SignIn} />
       <Route path="/register" component={Register} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route path="/email-confirmed" component={EmailConfirmed} />
       <Route path="/community" component={Community} />
       <Route path="/onboarding" component={Onboarding} />

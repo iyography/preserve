@@ -550,6 +550,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Password reset endpoint (no auth required)
+  app.post('/api/forgot-password', async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ error: 'Email address is required' });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: 'Invalid email format' });
+      }
+
+      // Generate a reset token (using the same system as email confirmation)
+      const tokenResult = emailConfirmationService.generateToken(email);
+      
+      if (!tokenResult.success || !tokenResult.token) {
+        return res.status(429).json({ 
+          success: false,
+          error: tokenResult.error || 'Unable to process request',
+          message: 'Please try again later' 
+        });
+      }
+
+      // Send password reset email
+      const result = await EmailService.sendPasswordResetEmail(email, tokenResult.token);
+
+      if (result && result.success) {
+        res.json({ 
+          success: true, 
+          message: 'If an account with this email exists, you will receive a password reset link shortly.',
+          emailId: result.data?.id
+        });
+      } else {
+        // Don't reveal whether email exists or not for security
+        res.json({ 
+          success: true, 
+          message: 'If an account with this email exists, you will receive a password reset link shortly.'
+        });
+      }
+    } catch (error) {
+      console.error('Forgot password endpoint error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Verify password reset token endpoint (no auth required)
+  app.get('/api/verify-reset-token', async (req, res) => {
+    try {
+      const { token } = req.query;
+
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ 
+          valid: false, 
+          error: 'Invalid or missing token' 
+        });
+      }
+
+      // Verify the token using the email confirmation service
+      const result = emailConfirmationService.verifyToken(token);
+
+      if (!result.valid) {
+        return res.status(400).json({ 
+          valid: false, 
+          error: result.error || 'Token verification failed' 
+        });
+      }
+
+      res.json({ 
+        valid: true, 
+        email: result.email 
+      });
+    } catch (error) {
+      console.error('Verify reset token endpoint error:', error);
+      res.status(500).json({ 
+        valid: false, 
+        error: 'Internal server error'
+      });
+    }
+  });
+
   // Partner waitlist endpoint (no auth required)
   app.post('/api/waitlist/partner', async (req, res) => {
     try {

@@ -86,12 +86,38 @@ export function useAuth() {
     }
   }
 
+  const resetPassword = async (email: string) => {
+    setLoading(true)
+    try {
+      const result = await authHelpers.resetPassword(email)
+      return result
+    } catch (error) {
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const updatePassword = async (newPassword: string) => {
+    setLoading(true)
+    try {
+      const result = await authHelpers.updatePassword(newPassword)
+      return result
+    } catch (error) {
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return {
     user,
     session,
     loading,
     signUp,
     signIn,
-    signOut
+    signOut,
+    resetPassword,
+    updatePassword
   }
 }
