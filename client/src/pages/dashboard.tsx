@@ -1754,7 +1754,7 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-purple-100 dark:border-gray-700 sticky top-0 z-40">
-          <div className="px-6 py-4">
+          <div className="px-4 sm:px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 {/* Mobile Menu Button */}
@@ -1777,7 +1777,7 @@ export default function Dashboard() {
                   <Menu className="w-5 h-5" />
                 </Button>
 
-                <h1 className="text-xl font-semibold text-gray-900">
+                <h1 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">
                   {activeSection === 'personas' && 'My Personas'}
                   {activeSection === 'memories' && 'Memory Archive'}
                   {activeSection === 'conversations' && 'Conversations'}
@@ -1788,8 +1788,8 @@ export default function Dashboard() {
                 </h1>
               </div>
               
-              <div className="flex items-center space-x-4">
-                <Button variant="outline" size="sm">
+              <div className="flex items-center space-x-2 sm:space-x-4">
+                <Button variant="outline" size="sm" className="hidden sm:flex">
                   <Bell className="w-4 h-4" />
                 </Button>
                 <UserProfile />
@@ -1799,24 +1799,25 @@ export default function Dashboard() {
         </header>
 
         {/* Content */}
-        <div className="flex-1 p-6 overflow-y-auto">
+        <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
           {/* My Personas Section */}
           {activeSection === 'personas' && (
             <div className="space-y-6">
               {/* Quick Actions */}
-              <div className="flex justify-between items-center">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Your Personas</h2>
-                  <p className="text-gray-600 mt-1">Manage and interact with your preserved connections</p>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                <div className="text-center sm:text-left">
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Your Personas</h2>
+                  <p className="text-gray-600 mt-1 text-sm sm:text-base">Manage and interact with your preserved connections</p>
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button 
-                      className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white"
+                      className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white"
                       data-testid="button-create-persona"
                     >
                       <Plus className="w-4 h-4 mr-2" />
-                      Create New Persona
+                      <span className="hidden sm:inline">Create New Persona</span>
+                      <span className="sm:hidden">Create Persona</span>
                       <ChevronDown className="w-4 h-4 ml-2" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -1880,7 +1881,8 @@ export default function Dashboard() {
                           data-testid="button-create-first-persona"
                         >
                           <Plus className="w-4 h-4 mr-2" />
-                          Create Your First Persona
+                          <span className="hidden sm:inline">Create Your First Persona</span>
+                          <span className="sm:hidden">Create Persona</span>
                           <ChevronDown className="w-4 h-4 ml-2" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -1927,7 +1929,7 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {personas.map((persona) => {
                     const photo = getPersonaPhoto(persona);
                     const adjectives = getPersonaAdjectives(persona);
