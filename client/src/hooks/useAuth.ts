@@ -8,18 +8,40 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
-    authHelpers.getCurrentUser().then((currentUser) => {
-      setUser(currentUser)
-      setLoading(false)
-    }).catch(() => {
-      setUser(null)
-      setLoading(false)
-    })
+    // Initialize authentication state
+    const initializeAuth = async () => {
+      try {
+        setLoading(true)
+        
+        // First, try to get the existing session
+        const existingSession = await authHelpers.getSession()
+        
+        if (existingSession?.user) {
+          setUser(existingSession.user)
+          setSession(existingSession)
+          setLoading(false)
+          return
+        }
+        
+        // If no session, try to get current user
+        const currentUser = await authHelpers.getCurrentUser()
+        setUser(currentUser)
+        setLoading(false)
+        
+      } catch (error) {
+        console.log('No existing session found, user needs to sign in')
+        setUser(null)
+        setSession(null)
+        setLoading(false)
+      }
+    }
+
+    initializeAuth()
 
     // Listen for auth changes
     const { data: { subscription } } = authHelpers.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state change:', event, session?.user?.email)
         setSession(session)
         setUser(session?.user ?? null)
         setLoading(false)

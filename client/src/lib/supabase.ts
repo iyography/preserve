@@ -13,7 +13,22 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     persistSession: true,
     detectSessionInUrl: false, // Disable magic link detection since we're not using email confirmation
     storageKey: 'preserving-connections-auth',
-    flowType: 'pkce'
+    flowType: 'pkce',
+    storage: typeof window !== 'undefined' ? {
+      getItem: (key: string) => {
+        const item = localStorage.getItem(key)
+        console.log(`Getting auth storage item: ${key}`, item ? 'found' : 'not found')
+        return item
+      },
+      setItem: (key: string, value: string) => {
+        console.log(`Setting auth storage item: ${key}`)
+        localStorage.setItem(key, value)
+      },
+      removeItem: (key: string) => {
+        console.log(`Removing auth storage item: ${key}`)
+        localStorage.removeItem(key)
+      }
+    } : undefined
   }
 })
 
@@ -74,14 +89,15 @@ export const authHelpers = {
       throw new Error(error.message)
     }
     
-    // Store remember me preference for future reference
+    // Store remember me preference and user email for session recovery
     if (typeof window !== 'undefined') {
       if (rememberMe) {
         localStorage.setItem('remember_me', 'true');
-        // Supabase sessions are persistent by default, lasting 1 hour with auto-refresh
-        // For "remember me", we'll rely on the persistent session configuration
+        localStorage.setItem('user_email', email);
+        console.log('Stored remember me preference and email for session recovery');
       } else {
         localStorage.removeItem('remember_me');
+        localStorage.removeItem('user_email');
       }
     }
     
@@ -91,6 +107,13 @@ export const authHelpers = {
   // Sign out user
   async signOut() {
     const { error } = await supabase.auth.signOut()
+    
+    // Clear remember me preferences when explicitly signing out
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('remember_me');
+      localStorage.removeItem('user_email');
+      console.log('Cleared remember me preferences on sign out');
+    }
     
     if (error) {
       throw new Error(error.message)
