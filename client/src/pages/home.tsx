@@ -344,7 +344,7 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section id="home" className="relative min-h-screen flex items-center justify-center pt-16 px-4 z-10">
+      <section id="home" className="relative min-h-screen flex items-center justify-center pt-16 px-4 sm:px-6 lg:px-8 z-10">
         {/* Particle Animation Layer - Only in Hero */}
         <ParticleSystem />
         {/* Background ethereal clouds */}
@@ -356,7 +356,7 @@ export default function Home() {
         </div>
         
         <div className="max-w-4xl mx-auto text-center relative z-10">
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold mb-4 sm:mb-6 leading-tight">
             <span className="text-black">Talk to Your Loved Ones,</span>
             <br />
             <span className="text-black">
@@ -367,14 +367,14 @@ export default function Home() {
             </span>
           </h1>
           
-          <p className="text-xl md:text-2xl text-gray-700 mb-12 leading-relaxed max-w-3xl mx-auto">
+          <p className="text-lg sm:text-xl md:text-2xl text-gray-700 mb-8 sm:mb-12 leading-relaxed max-w-3xl mx-auto px-4 sm:px-0">
             Create an AI persona of your loved one that preserves their personality, stories, and wisdom. Continue meaningful conversations and share new memories with them.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-12">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center mb-8 sm:mb-12 px-4 sm:px-0">
             <Button 
               onClick={() => window.location.href = '/register'}
-              className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+              className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
               size="lg"
             >
               <ArrowRight className="w-5 h-5 mr-3" />
@@ -384,7 +384,7 @@ export default function Home() {
             <Button 
               variant="outline"
               onClick={() => setIsDemoOpen(true)}
-              className="bg-white/70 backdrop-blur-sm text-purple-700 px-8 py-4 rounded-xl text-lg font-medium border-purple-200 hover:bg-purple-50 hover:border-purple-300 shadow-lg transition-all duration-300"
+              className="w-full sm:w-auto bg-white/70 backdrop-blur-sm text-purple-700 px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-base sm:text-lg font-medium border-purple-200 hover:bg-purple-50 hover:border-purple-300 shadow-lg transition-all duration-300"
               size="lg"
             >
               <Play className="w-5 h-5 mr-3" />
@@ -393,9 +393,9 @@ export default function Home() {
           </div>
 
           {/* Audio Message Section moved to bottom of hero */}
-          <div className="max-w-3xl mx-auto">
-            <Card className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-xl transition-all duration-300 border-purple-100 hover:shadow-2xl hover:bg-white/80">
-              <div className="flex items-center space-x-4">
+          <div className="max-w-3xl mx-auto px-4 sm:px-0">
+            <Card className="bg-white/70 backdrop-blur-sm rounded-2xl p-4 sm:p-6 shadow-xl transition-all duration-300 border-purple-100 hover:shadow-2xl hover:bg-white/80">
+              <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-4 text-center sm:text-left">
                 <div className="flex-shrink-0">
                   <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center shadow-lg">
                     <Volume2 className="text-white w-5 h-5" />
@@ -403,10 +403,10 @@ export default function Home() {
                 </div>
                 
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1">
                     A Personal Message from Founder Michael Vallee
                   </h3>
-                  <p className="text-gray-600 text-sm mb-3">
+                  <p className="text-gray-600 text-xs sm:text-sm mb-3">
                     Hear why we created Preserving Connections and how it can help your family preserve precious memories
                   </p>
                   
