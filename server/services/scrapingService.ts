@@ -31,92 +31,54 @@ export class ScrapingService {
     try {
       console.log(`Attempting ScrapingBee extraction for: ${url}`);
       
-      // Security validation: Ensure this is a legitimate Legacy.com domain
-      const isLegitimateHostname = (hostname: string): boolean => {
-        // Extract the effective TLD+1 (eTLD+1) to determine the actual domain owner
-        const parts = hostname.split('.');
-        
-        if (parts.length < 2) return false;
-        
-        // Find "legacy" in the hostname parts
-        const legacyIndex = parts.findIndex(part => part === 'legacy');
-        if (legacyIndex === -1) return false;
-        
-        // Get the domain suffix after "legacy"
-        const suffixParts = parts.slice(legacyIndex + 1);
-        const suffix = suffixParts.join('.');
-        
-        // Comprehensive allowlist of legitimate Legacy.com operated domains
-        // This prevents SSRF via attacker-owned domains while supporting regional operations
-        const legitimateLegacySuffixes = new Set([
-          // Primary domains
-          'com',          // United States
-          'org',          // Organization
-          
-          // Major English-speaking regions
-          'ca',           // Canada
-          'com.au',       // Australia  
-          'co.uk',        // United Kingdom
-          'co.nz',        // New Zealand
-          'ie',           // Ireland
-          
-          // Additional major regions where Legacy.com likely operates
-          'de',           // Germany
-          'fr',           // France
-          'es',           // Spain
-          'it',           // Italy
-          'nl',           // Netherlands
-          'be',           // Belgium
-          'ch',           // Switzerland
-          'at',           // Austria
-          'se',           // Sweden
-          'no',           // Norway
-          'dk',           // Denmark
-          'fi',           // Finland
-          'pl',           // Poland
-          'cz',           // Czech Republic
-          'hu',           // Hungary
-          'sk',           // Slovakia
-          'si',           // Slovenia
-          'pt',           // Portugal
-          'gr',           // Greece
-          
-          // Asia-Pacific regions
-          'com.sg',       // Singapore
-          'com.my',       // Malaysia
-          'com.hk',       // Hong Kong
-          'com.ph',       // Philippines
-          'co.th',        // Thailand
-          'co.id',        // Indonesia
-          'co.in',        // India
-          'co.jp',        // Japan
-          'co.kr',        // South Korea
-          'com.tw',       // Taiwan
-          
-          // Additional regional patterns that Legacy.com might use
-          'net',          // Network domains
-          'co.za',        // South Africa
-          'com.br',       // Brazil
-          'com.mx',       // Mexico
-          'com.ar',       // Argentina
-          'cl',           // Chile
-          'co.ve',        // Venezuela
-          'com.co',       // Colombia
-          
-          // NOTE: To add new verified Legacy.com domains, simply add the suffix here
-          // This approach prioritizes legitimate Legacy.com operations while preventing SSRF
-        ]);
-        
-        return legitimateLegacySuffixes.has(suffix);
-      };
-      
       const urlObj = new URL(url);
       const hostname = urlObj.hostname.toLowerCase();
       
-      if (!isLegitimateHostname(hostname)) {
+      // Security validation: Allow any public domain (not just legacy.com) while blocking obvious SSRF targets
+      const isSafeUrl = (url: string, hostname: string): boolean => {
+        // Basic URL format validation
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+          return false;
+        }
+        
+        // Block obvious internal/private network indicators
+        const unsafePatterns = [
+          // Localhost variants
+          'localhost',
+          '127.',
+          '0.0.0.0',
+          
+          // Private network prefixes
+          '10.',
+          '172.16.', '172.17.', '172.18.', '172.19.', '172.20.',
+          '172.21.', '172.22.', '172.23.', '172.24.', '172.25.',
+          '172.26.', '172.27.', '172.28.', '172.29.', '172.30.', '172.31.',
+          '192.168.',
+          
+          // Link-local / cloud metadata
+          '169.254.',
+          
+          // IPv6 loopback
+          '::1',
+          '[::1]',
+          
+          // Internal service patterns
+          'metadata',
+          '.internal'
+        ];
+        
+        const lowerUrl = url.toLowerCase();
+        const lowerHostname = hostname.toLowerCase();
+        
+        return !unsafePatterns.some(pattern => 
+          lowerUrl.includes(pattern) || lowerHostname.includes(pattern)
+        );
+      };
+      
+      if (!isSafeUrl(url, hostname)) {
         return {
           success: false,
-          error: 'Invalid Legacy.com domain - only legitimate Legacy.com URLs are allowed',
+          error: 'URL not allowed - private networks and internal addresses are blocked',
           statusCode: 400
         };
       }
@@ -153,7 +115,7 @@ export class ScrapingService {
         }
         
         // For unknown TLDs, try to extract country code from the TLD itself
-        // Examples: legacy.ph -> PH, legacy.sg -> SG, legacy.my -> MY
+        // Examples: example.ph -> PH, example.sg -> SG, example.my -> MY
         const tldMatch = hostname.match(/\.([a-z]{2})$/);
         if (tldMatch) {
           const tld = tldMatch[1].toUpperCase();
