@@ -2,6 +2,7 @@ import type { Express, Response } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { scrapingService } from "./services/scrapingService";
 import { z } from "zod";
 import { 
   insertPersonaSchema, 
@@ -2114,57 +2115,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let contentToSave = reviewedContent;
       
-      // If URL is provided and no reviewed content, try to extract content
+      // If URL is provided and no reviewed content, try to extract content using ScrapingBee
       if (url && !reviewedContent) {
         try {
-          // Secure URL validation for Legacy.com
-          let parsedUrl;
-          try {
-            parsedUrl = new URL(url);
-          } catch (urlError) {
-            return res.status(400).json({ error: 'Invalid URL format' });
+          console.log(`Starting ScrapingBee extraction for: ${url}`);
+          
+          // Use ScrapingBee service to extract obituary content
+          const extractedObituary = await scrapingService.extractLegacyObituary(url);
+          
+          console.log(`ScrapingBee extraction successful for: ${extractedObituary.name}`);
+          
+          // Combine all extracted information into a readable format
+          let fullContent = '';
+          
+          if (extractedObituary.name) {
+            fullContent += `${extractedObituary.name}\n\n`;
           }
           
-          // Validate hostname - must be exactly legacy.com or subdomain
-          const allowedHosts = [
-            'legacy.com',
-            'www.legacy.com',
-            'obituaries.legacy.com'
-          ];
-          
-          const isAllowedHost = allowedHosts.includes(parsedUrl.hostname.toLowerCase()) || 
-            parsedUrl.hostname.toLowerCase().endsWith('.legacy.com');
-          
-          if (!isAllowedHost) {
-            return res.status(400).json({ 
-              error: 'Only Legacy.com URLs are supported for automatic content extraction' 
-            });
+          if (extractedObituary.dates) {
+            fullContent += `${extractedObituary.dates}\n\n`;
           }
           
-          // Robust fetch with state management and realistic browser simulation
-          let cookies = new Map<string, string>();
-          let finalResponse;
-          let redirectCount = 0;
-          const maxRedirects = 5;
-          let currentUrl = url;
-          let previousUrl = '';
+          if (extractedObituary.location) {
+            fullContent += `${extractedObituary.location}\n\n`;
+          }
           
-          // Helper to build cookie header from cookie map
-          const buildCookieHeader = () => {
-            return Array.from(cookies.entries()).map(([name, value]) => `${name}=${value}`).join('; ');
-          };
+          if (extractedObituary.content) {
+            fullContent += extractedObituary.content;
+          }
           
-          // Helper to parse Set-Cookie headers properly
-          const parseCookies = (response: globalThis.Response) => {
-            // Get all Set-Cookie headers - fetch Response doesn't have .raw(), so we need to handle this differently
-            const setCookieHeader = response.headers.get('set-cookie');
-            if (setCookieHeader) {
-              // Handle multiple cookies in a single header (comma-separated but need to be careful about Expires dates)
-              // For now, just parse the first cookie to avoid complexity
-              const cookiePart = setCookieHeader.split(';')[0].trim();
-              const [name, value] = cookiePart.split('=');
-              if (name && value !== undefined) {
-                cookies.set(name, value);
+          contentToSave = fullContent.trim();
+          
+          console.log(`Processed ${contentToSave.length} characters of obituary content`);
+          
+        } catch (error) {
+          console.error('ScrapingBee extraction failed:', error);
+          
+          let errorMessage = 'Failed to extract obituary content from Legacy.com';
+          let suggestion = 'Please copy and paste the obituary text manually using the option below';
+          
+          if (error instanceof Error) {
+            if (error.message.includes('Only Legacy.com URLs are allowed')) {
+              errorMessage = 'Only Legacy.com URLs are supported for automatic extraction';
+            } else if (error.message.includes('Could not extract obituary information')) {
+              errorMessage = 'Unable to extract obituary information from this page';
+              suggestion = 'The page may have an unusual format. Please copy the content manually';
+            } else if (error.message.includes('SCRAPINGBEE_API_KEY')) {
+              errorMessage = 'Automatic extraction service is not configured';
+              suggestion = 'Please use the manual paste option to add the obituary content';
+            }
+          }
+          
+          return res.status(400).json({ 
+            error: errorMessage,
+            suggestion,
+            manualOption: 'You can copy the obituary text from the webpage and paste it manually below.'
+          });
+        }
+      }
+      
+      // Save the content (either from ScrapingBee extraction or manual input)
+      if (contentToSave) {
+        // Split content into meaningful chunks for better memory management
+        const sentences = contentToSave.split(/[.!?]+/).filter((s: string) => s.trim().length > 10);
+        const memories = [];
+        
+        // Create different types of memories based on content
+        for (const sentence of sentences.slice(0, 10)) { // Limit to first 10 meaningful sentences
+          const content = sentence.trim();
+          if (content.length < 20) continue;
+          
+          const memoryType = content.toLowerCase().includes('born') || content.toLowerCase().includes('early life') ? 'episodic' :
+                           content.toLowerCase().includes('loved') || content.toLowerCase().includes('enjoyed') ? 'preference' :
+                           content.toLowerCase().includes('family') || content.toLowerCase().includes('survived') ? 'relationship' :
+                           'semantic';
+          
+          const memory = await storage.createMemory({
+            personaId,
+            type: memoryType,
+            content,
+            source: 'legacy_import',
+            tags: ['legacy.com', 'obituary'],
+            salience: 1.0
+          });
+          
+          memories.push(memory);
               }
             }
             
@@ -2439,41 +2474,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
           
-          // Validate that content appears to be an obituary
-          const obituaryKeywords = [
-            'passed away', 'died', 'beloved', 'funeral', 'memorial', 'survived by',
-            'aged', 'family', 'loved', 'wife', 'husband', 'mother', 'father'
-          ];
-          
-          const hasObituaryMarkers = obituaryKeywords.some(keyword => 
-            extractedContent.toLowerCase().includes(keyword)
-          );
-          
-          if (!hasObituaryMarkers) {
-            console.warn(`Legacy extraction warning: Content may not be obituary from ${url}`);
-            return res.status(400).json({ 
-              error: 'The extracted content does not appear to contain typical obituary information.',
-              extractedContent: extractedContent.substring(0, 500) + '...',
-              suggestion: 'Please verify this is an obituary page or copy the content manually.'
-            });
-          }
-          
-          console.info(`Legacy extraction successful: ${extractedContent.length} chars extracted from ${url}`);
-          
-          return res.json({
-            success: true,
-            extractedContent,
-            requiresReview: true,
-            message: 'Content extracted successfully. Please review before saving.'
-          });
-          
-        } catch (error) {
-          console.error('Error extracting content from URL:', error);
-          return res.status(500).json({ 
-            error: 'Failed to extract content from URL',
-            details: 'Please check the URL and try again, or manually paste the obituary content.'
-          });
-        }
       }
       
       // Save the reviewed content as memories
