@@ -2133,15 +2133,18 @@ export default function Dashboard() {
             <div className="space-y-6">
               {/* Memory Archive Header */}
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">Memory Archive</h2>
-                <Button 
-                  onClick={() => setIsAddMemoryOpen(true)}
-                  className="bg-gradient-to-r from-purple-500 to-purple-700 text-white hover:from-purple-600 hover:to-purple-800"
-                  data-testid="button-add-memory"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Memory
-                </Button>
+                <h2 className="text-2xl font-bold text-gray-900" style={{textTransform: 'capitalize'}}>Memory Archive</h2>
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={() => setIsAddMemoryOpen(true)}
+                    className="bg-gradient-to-r from-purple-500 to-purple-700 text-white hover:from-purple-600 hover:to-purple-800"
+                    style={{textTransform: 'capitalize'}}
+                    data-testid="button-add-memory"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Memory
+                  </Button>
+                </div>
                 <Dialog open={isAddMemoryOpen} onOpenChange={setIsAddMemoryOpen}>
                   <DialogTrigger />
                   <DialogContent className="max-w-2xl">
@@ -2350,38 +2353,58 @@ export default function Dashboard() {
                       return (
                         <Card key={memory.id} className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg hover:shadow-xl transition-shadow">
                           <CardContent className="pt-6">
-                            <div className="flex items-start justify-between">
+                            <div className="flex items-start gap-4">
+                              {/* Persona Image */}
+                              <div className="flex-shrink-0">
+                                {(() => {
+                                  const persona = personas.find(p => p.id === memory.personaId);
+                                  const photoBase64 = persona?.onboardingData && typeof persona.onboardingData === 'object' 
+                                    ? (persona.onboardingData as any)?.photoBase64 
+                                    : null;
+                                  return (
+                                    <Avatar className="w-12 h-12 ring-2 ring-purple-100">
+                                      {photoBase64 ? (
+                                        <AvatarImage src={photoBase64} alt={persona?.name || memory.personaName} />
+                                      ) : (
+                                        <AvatarFallback className="bg-purple-100 text-purple-700 font-semibold text-sm">
+                                          {memory.personaName?.slice(0, 2).toUpperCase()}
+                                        </AvatarFallback>
+                                      )}
+                                    </Avatar>
+                                  );
+                                })()}
+                              </div>
+
                               <div className="flex-1">
                                 {/* Memory Type, Persona, and Date */}
                                 <div className="flex items-center gap-3 mb-3 flex-wrap">
                                   <div className="flex items-center gap-2">
                                     <TypeIcon className="w-4 h-4 text-purple-600" />
-                                    <Badge className={cn("text-xs", getMemoryTypeColor(memory.type))}>
+                                    <Badge className={cn("text-xs", getMemoryTypeColor(memory.type))} style={{textTransform: 'capitalize'}}>
                                       {memory.type}
                                     </Badge>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <Heart className="w-3 h-3 text-purple-500" />
-                                    <Badge variant="outline" className="text-xs text-purple-700 border-purple-200">
+                                    <Badge variant="outline" className="text-xs text-purple-700 border-purple-200" style={{textTransform: 'capitalize'}}>
                                       {memory.personaName}
                                     </Badge>
                                   </div>
-                                  <span className="text-sm text-gray-500">
+                                  <span className="text-sm text-gray-500" style={{textTransform: 'capitalize'}}>
                                     {new Date(memory.createdAt).toLocaleDateString()}
                                   </span>
                                 </div>
 
                                 {/* Memory Content */}
-                                <p className="text-gray-900 mb-3 leading-relaxed">
+                                <p className="text-gray-900 mb-3 leading-relaxed" style={{textTransform: 'capitalize'}}>
                                   {memory.content}
                                 </p>
 
                                 {/* Tags */}
                                 {memory.tags && memory.tags.length > 0 && (
-                                  <div className="flex items-center gap-2 flex-wrap">
+                                  <div className="flex items-center gap-2 flex-wrap mb-3">
                                     <Tag className="w-3 h-3 text-gray-400" />
                                     {memory.tags.map((tag, index) => (
-                                      <Badge key={index} variant="secondary" className="text-xs">
+                                      <Badge key={index} variant="secondary" className="text-xs" style={{textTransform: 'capitalize'}}>
                                         {tag}
                                       </Badge>
                                     ))}
@@ -2390,18 +2413,18 @@ export default function Dashboard() {
 
                                 {/* Memory Metadata */}
                                 <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
-                                  <span>Salience: {memory.salience}</span>
+                                  <span style={{textTransform: 'capitalize'}}>Priority: {memory.salience}/5</span>
                                   {memory.usageCount > 0 && (
-                                    <span>Used {memory.usageCount} times</span>
+                                    <span style={{textTransform: 'capitalize'}}>Used {memory.usageCount} Times</span>
                                   )}
                                   {memory.lastUsedAt && (
-                                    <span>Last used: {new Date(memory.lastUsedAt).toLocaleDateString()}</span>
+                                    <span style={{textTransform: 'capitalize'}}>Last Used: {new Date(memory.lastUsedAt).toLocaleDateString()}</span>
                                   )}
                                 </div>
                               </div>
 
                               {/* Action Buttons */}
-                              <div className="flex gap-2 ml-4">
+                              <div className="flex flex-col gap-2 items-end">
                                 <Button
                                   size="sm"
                                   variant="outline"
