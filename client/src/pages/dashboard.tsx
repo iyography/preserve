@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Heart, Plus, Upload, MessageCircle, Clock, Shield, Calendar, Settings, Play, Bookmark, Share, Download, Mic, FileText, Video, Camera, Sparkles, Users, BarChart3, CheckCircle, Moon, Sun, Edit, Trash2, X, Menu, User2, LogOut, Bell, Home, ChevronRight, Brain, Archive, HelpCircle, CreditCard, Search, Tag, MicOff, Save, Hash, Link as LinkIcon, ChevronDown } from "lucide-react";
+import { Heart, Plus, Upload, MessageCircle, Clock, Shield, Calendar, Settings, Play, Bookmark, Share, Download, Mic, FileText, Video, Camera, Sparkles, Users, CheckCircle, Moon, Sun, Edit, Trash2, X, Menu, User2, LogOut, Bell, Home, ChevronRight, Brain, Archive, HelpCircle, CreditCard, Search, Tag, MicOff, Save, Hash, Link as LinkIcon, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -730,12 +730,6 @@ export default function Dashboard() {
       label: 'Conversations',
       icon: MessageCircle,
       active: activeSection === 'conversations'
-    },
-    {
-      id: 'analytics',
-      label: 'Analytics',
-      icon: BarChart3,
-      active: activeSection === 'analytics'
     }
   ];
 
@@ -1159,7 +1153,19 @@ export default function Dashboard() {
                               className="flex-1"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setLocation(`/chat/${persona.id}`);
+                                // Find existing conversation for this persona or create new one
+                                const existingConversation = conversations.find(conv => conv.personaId === persona.id);
+                                if (existingConversation) {
+                                  setSelectedConversation(existingConversation.id);
+                                  setActiveSection('conversations');
+                                } else {
+                                  // Create new conversation and switch to conversations tab
+                                  createConversationMutation.mutate({ 
+                                    personaId: persona.id,
+                                    title: `Chat with ${persona.name}`
+                                  });
+                                  setActiveSection('conversations');
+                                }
                               }}
                               data-testid={`button-chat-${persona.id}`}
                             >
@@ -2011,20 +2017,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {activeSection === 'analytics' && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-gray-900">Analytics</h2>
-              <Card className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg">
-                <CardContent className="py-16 text-center">
-                  <BarChart3 className="w-12 h-12 text-purple-600 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Analytics Coming Soon</h3>
-                  <p className="text-gray-600">
-                    Track your memory building progress and insights.
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          )}
 
           {activeSection === 'settings' && (
             <SettingsSection />
