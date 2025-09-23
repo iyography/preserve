@@ -2253,7 +2253,12 @@ export default function Dashboard() {
                                         )}
                                         
                                         <p className="text-xs text-gray-500 mt-1 truncate">
-                                          {getLastMessagePreview([])}
+                                          {(conversation as any).lastMessageContent ? 
+                            ((conversation as any).lastMessageContent.length > 50 ? 
+                              (conversation as any).lastMessageContent.substring(0, 50) + '...' : 
+                              (conversation as any).lastMessageContent
+                            ) : 'No messages yet'
+                          }
                                         </p>
                                         <p className="text-xs text-gray-400 mt-1">
                                           {formatMessageTime(conversation.lastMessageAt)}

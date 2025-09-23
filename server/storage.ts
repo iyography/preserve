@@ -28,7 +28,7 @@ import {
   userSettings
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, sql } from "drizzle-orm";
+import { eq, and, desc, asc, sql, max, getTableColumns } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 // modify the interface with any CRUD methods
@@ -278,11 +278,36 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getConversationsByUser(userId: string): Promise<Conversation[]> {
-    return await db
-      .select()
+    // Get conversations with their last message content using a simpler approach
+    const conversationsData = await db
+      .select({
+        conversation: conversations,
+        lastMessageContent: messages.content,
+      })
       .from(conversations)
+      .leftJoin(
+        messages,
+        eq(conversations.id, messages.conversationId)
+      )
       .where(eq(conversations.userId, userId))
-      .orderBy(desc(conversations.lastMessageAt));
+      .orderBy(desc(conversations.lastMessageAt), desc(messages.createdAt));
+
+    // Group by conversation and get the latest message for each
+    const conversationMap = new Map<string, any>();
+    
+    for (const row of conversationsData) {
+      const conv = row.conversation;
+      if (!conversationMap.has(conv.id)) {
+        conversationMap.set(conv.id, {
+          ...conv,
+          lastMessageContent: row.lastMessageContent || null,
+        });
+      }
+    }
+
+    return Array.from(conversationMap.values()).sort((a, b) => 
+      new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+    );
   }
 
   async getConversationsByPersona(personaId: string, userId: string): Promise<Conversation[]> {
