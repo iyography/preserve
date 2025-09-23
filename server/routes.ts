@@ -2254,17 +2254,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
             finalResponse = await makeRequest(currentUrl, previousUrl);
           }
           
-          // Handle various error cases with helpful user feedback
+          // Handle various error cases with ScrapingBee fallback for 403 errors
           if (!finalResponse.ok) {
             const statusCode = finalResponse.status;
             console.warn(`Legacy extraction failed: HTTP ${statusCode} for ${url} after ${redirectCount} redirects`);
+            
+            // Try ScrapingBee for 403 errors (bot detection)
+            if (statusCode === 403 && process.env.SCRAPINGBEE_API_KEY) {
+              console.log('Attempting ScrapingBee fallback for Legacy.com 403 error...');
+              
+              try {
+                const { scrapingService } = await import('./services/scrapingService');
+                const scrapingResult = await scrapingService.scrapeLegacyUrl(url);
+                
+                if (scrapingResult.success && scrapingResult.content) {
+                  console.log('ScrapingBee successfully bypassed Legacy.com bot detection');
+                  contentToSave = scrapingResult.content;
+                  
+                  // Skip the normal extraction and proceed to save the content
+                  const memory = await storage.createMemory({
+                    personaId,
+                    type: 'legacy_import' as const,
+                    content: contentToSave,
+                    source: 'legacy.com',
+                    metadata: { 
+                      originalUrl: url,
+                      extractionMethod: 'scrapingbee',
+                      extractedAt: new Date().toISOString()
+                    }
+                  });
+
+                  res.json({ 
+                    memory,
+                    extractedContent: contentToSave,
+                    message: 'Content successfully extracted using advanced scraping methods'
+                  });
+                  return;
+                } else {
+                  console.warn('ScrapingBee also failed:', scrapingResult.error);
+                }
+              } catch (scrapingError) {
+                console.error('ScrapingBee service error:', scrapingError);
+              }
+            }
             
             let errorMessage = '';
             let suggestion = '';
             
             switch (statusCode) {
               case 403:
-                errorMessage = 'Legacy.com is blocking automated access to this page';
+                errorMessage = process.env.SCRAPINGBEE_API_KEY 
+                  ? 'Legacy.com is blocking access and advanced scraping also failed'
+                  : 'Legacy.com is blocking automated access to this page';
                 suggestion = 'Please copy and paste the obituary text manually using the text area below';
                 break;
               case 404:
