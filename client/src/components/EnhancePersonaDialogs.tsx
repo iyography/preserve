@@ -1,6 +1,6 @@
 import React from "react";
 import type { Persona } from "@shared/schema";
-import { Save, LinkIcon } from "lucide-react";
+import { Save, LinkIcon, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -417,51 +417,71 @@ export default function EnhancePersonaDialogs({
               />
             </div>
             
-            {!extractedContent && (
-              <Button
-                onClick={() => {
-                  if (!legacyUrl) {
-                    toast({
-                      title: "URL Required",
-                      description: "Please enter a Legacy.com obituary URL",
-                      variant: "destructive",
+            {!extractedContent && !reviewedContent && (
+              <div className="space-y-3">
+                <Button
+                  onClick={() => {
+                    if (!legacyUrl) {
+                      toast({
+                        title: "URL Required",
+                        description: "Please enter a Legacy.com obituary URL",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    setIsExtracting(true);
+                    legacyImportMutation.mutate({
+                      personaId: selectedEnhancementPersona!,
+                      url: legacyUrl
                     });
-                    return;
-                  }
-                  setIsExtracting(true);
-                  legacyImportMutation.mutate({
-                    personaId: selectedEnhancementPersona!,
-                    url: legacyUrl
-                  });
-                  setIsExtracting(false);
-                }}
-                disabled={!legacyUrl || isExtracting || legacyImportMutation.isPending}
-                className="w-full"
-                data-testid="button-extract-content"
-              >
-                {isExtracting || legacyImportMutation.isPending ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Extracting Content...
-                  </>
-                ) : (
-                  <>
-                    <LinkIcon className="w-4 h-4 mr-2" />
-                    Extract Content
-                  </>
-                )}
-              </Button>
+                    setIsExtracting(false);
+                  }}
+                  disabled={!legacyUrl || isExtracting || legacyImportMutation.isPending}
+                  className="w-full"
+                  data-testid="button-extract-content"
+                >
+                  {isExtracting || legacyImportMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Extracting Content...
+                    </>
+                  ) : (
+                    <>
+                      <LinkIcon className="w-4 h-4 mr-2" />
+                      Extract Content
+                    </>
+                  )}
+                </Button>
+                
+                <div className="text-center">
+                  <p className="text-sm text-gray-500 mb-2">or</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setReviewedContent("Paste the obituary text here...\n\nOf [Name], peacefully... [Add full obituary content]");
+                    }}
+                    className="w-full"
+                    data-testid="button-manual-input"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Paste Content Manually
+                  </Button>
+                  <p className="text-xs text-gray-400 mt-1">
+                    If automatic extraction fails, copy the obituary text from Legacy.com and paste it here
+                  </p>
+                </div>
+              </div>
             )}
             
-            {extractedContent && (
+            {(extractedContent || reviewedContent) && (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label htmlFor="reviewed-content" className="text-sm font-medium">
-                    Extracted Content (Review & Edit)
+                    {extractedContent ? 'Extracted Content (Review & Edit)' : 'Obituary Content'}
                   </label>
                   <Textarea
                     id="reviewed-content"
-                    placeholder="Review and edit the extracted content before saving..."
+                    placeholder="Paste the obituary text here..."
                     value={reviewedContent}
                     onChange={(e) => setReviewedContent(e.target.value)}
                     rows={10}
@@ -470,7 +490,10 @@ export default function EnhancePersonaDialogs({
                   />
                 </div>
                 <p className="text-xs text-gray-500">
-                  Please review the extracted content for accuracy before saving. You can edit it to add or remove information.
+                  {extractedContent 
+                    ? 'Please review the extracted content for accuracy before saving. You can edit it to add or remove information.'
+                    : 'Copy the obituary text from Legacy.com and paste it here. Include details like relationships, personality, interests, and life events.'
+                  }
                 </p>
               </div>
             )}
@@ -489,13 +512,13 @@ export default function EnhancePersonaDialogs({
             >
               Cancel
             </Button>
-            {extractedContent && (
+            {(extractedContent || reviewedContent) && (
               <Button
                 onClick={() => {
                   if (!reviewedContent.trim()) {
                     toast({
                       title: "Content Required",
-                      description: "Please review and approve the content before saving",
+                      description: "Please add obituary content before saving",
                       variant: "destructive",
                     });
                     return;
