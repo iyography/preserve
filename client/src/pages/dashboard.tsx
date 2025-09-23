@@ -1245,21 +1245,41 @@ export default function Dashboard() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    // Set canvas size to crop area
-    canvas.width = cropArea.width;
-    canvas.height = cropArea.height;
+    // Calculate the scale factor between displayed image and natural image
+    const scaleX = imageNaturalSize.width / img.clientWidth;
+    const scaleY = imageNaturalSize.height / img.clientHeight;
     
-    // Draw cropped image
+    // Scale crop coordinates to match the natural image size
+    const scaledCropArea = {
+      x: cropArea.x * scaleX,
+      y: cropArea.y * scaleY,
+      width: cropArea.width * scaleX,
+      height: cropArea.height * scaleY
+    };
+    
+    // Set canvas size to crop area (at natural resolution)
+    canvas.width = scaledCropArea.width;
+    canvas.height = scaledCropArea.height;
+    
+    // Draw cropped image at full resolution
     ctx.drawImage(
       img,
-      cropArea.x, cropArea.y, cropArea.width, cropArea.height,
-      0, 0, cropArea.width, cropArea.height
+      scaledCropArea.x, scaledCropArea.y, scaledCropArea.width, scaledCropArea.height,
+      0, 0, scaledCropArea.width, scaledCropArea.height
     );
     
-    // Convert to base64
-    const croppedImageData = canvas.toDataURL('image/jpeg', 0.9);
-    setPhotoPreview(croppedImageData);
-    setCropPreview(croppedImageData);
+    // Convert to blob and create a file
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const croppedFile = new File([blob], 'cropped-image.jpg', { type: 'image/jpeg' });
+        setPhotoFile(croppedFile);
+        
+        // Convert to base64 for preview
+        const croppedImageData = canvas.toDataURL('image/jpeg', 0.9);
+        setPhotoPreview(croppedImageData);
+        setCropPreview(croppedImageData);
+      }
+    }, 'image/jpeg', 0.9);
   };
 
   const handleCropConfirm = () => {
@@ -1296,6 +1316,8 @@ export default function Dashboard() {
 
     if (action === 'drag') {
       setIsDragging(true);
+      // Store the initial crop position when drag starts
+      setResizeStartRect({ ...cropArea });
     } else if (action === 'resize' && handle) {
       setIsResizing(true);
       setResizeHandle(handle);
@@ -1318,12 +1340,15 @@ export default function Dashboard() {
     const deltaY = currentMouseY - dragStart.y;
 
     if (isDragging) {
-      setCropArea(prev => {
-        const newX = Math.max(0, Math.min(prev.x + deltaX, rect.width - prev.width));
-        const newY = Math.max(0, Math.min(prev.y + deltaY, rect.height - prev.height));
-        return { ...prev, x: newX, y: newY };
-      });
-      setDragStart({ x: currentMouseX, y: currentMouseY });
+      // Calculate new position based on total movement from initial drag start
+      const newX = Math.max(0, Math.min(resizeStartRect.x + deltaX, rect.width - resizeStartRect.width));
+      const newY = Math.max(0, Math.min(resizeStartRect.y + deltaY, rect.height - resizeStartRect.height));
+      
+      setCropArea(prev => ({
+        ...prev,
+        x: newX,
+        y: newY
+      }));
     } else if (isResizing && resizeHandle) {
       setCropArea(prev => {
         // Calculate from the resize start position to avoid delta accumulation
