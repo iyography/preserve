@@ -1290,8 +1290,8 @@ export default function Dashboard() {
     });
 
     setDragStart({
-      x: e.clientX,
-      y: e.clientY
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
     });
 
     if (action === 'drag') {
@@ -1308,49 +1308,55 @@ export default function Dashboard() {
     if (!isDragging && !isResizing) return;
     e.preventDefault();
 
-    const deltaX = e.clientX - dragStart.x;
-    const deltaY = e.clientY - dragStart.y;
+    const rect = cropImageRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const currentMouseX = e.clientX - rect.left;
+    const currentMouseY = e.clientY - rect.top;
+    
+    const deltaX = currentMouseX - dragStart.x;
+    const deltaY = currentMouseY - dragStart.y;
 
     if (isDragging) {
       setCropArea(prev => {
-        const newX = Math.max(0, Math.min(prev.x + deltaX, imageContainerBounds.width - prev.width));
-        const newY = Math.max(0, Math.min(prev.y + deltaY, imageContainerBounds.height - prev.height));
+        const newX = Math.max(0, Math.min(prev.x + deltaX, rect.width - prev.width));
+        const newY = Math.max(0, Math.min(prev.y + deltaY, rect.height - prev.height));
         return { ...prev, x: newX, y: newY };
       });
-      setDragStart({ x: e.clientX, y: e.clientY });
+      setDragStart({ x: currentMouseX, y: currentMouseY });
     } else if (isResizing && resizeHandle) {
       setCropArea(prev => {
         // Calculate from the resize start position to avoid delta accumulation
-        const totalDeltaX = e.clientX - dragStart.x;
-        const totalDeltaY = e.clientY - dragStart.y;
+        const totalDeltaX = currentMouseX - dragStart.x;
+        const totalDeltaY = currentMouseY - dragStart.y;
         
         let newArea = { ...resizeStartRect };
         
         switch (resizeHandle) {
           case 'se': // bottom-right
-            newArea.width = Math.max(50, Math.min(resizeStartRect.width + totalDeltaX, imageContainerBounds.width - resizeStartRect.x));
-            newArea.height = Math.max(50, Math.min(resizeStartRect.height + totalDeltaY, imageContainerBounds.height - resizeStartRect.y));
+            newArea.width = Math.max(50, Math.min(resizeStartRect.width + totalDeltaX, rect.width - resizeStartRect.x));
+            newArea.height = Math.max(50, Math.min(resizeStartRect.height + totalDeltaY, rect.height - resizeStartRect.y));
             break;
           case 'sw': // bottom-left
             {
               // Clamp newX to ensure minimum width fits within bounds
-              const minNewX = Math.max(0, (resizeStartRect.x + resizeStartRect.width) - imageContainerBounds.width);
-              const maxNewX = Math.min(resizeStartRect.x + resizeStartRect.width - 50, imageContainerBounds.width - 50);
+              const minNewX = Math.max(0, (resizeStartRect.x + resizeStartRect.width) - rect.width);
+              const maxNewX = Math.min(resizeStartRect.x + resizeStartRect.width - 50, rect.width - 50);
               const newX = Math.max(minNewX, Math.min(maxNewX, resizeStartRect.x + totalDeltaX));
               
               newArea.width = resizeStartRect.x + resizeStartRect.width - newX;
-              newArea.height = Math.max(50, Math.min(resizeStartRect.height + totalDeltaY, imageContainerBounds.height - resizeStartRect.y));
+              newArea.height = Math.max(50, Math.min(resizeStartRect.height + totalDeltaY, rect.height - resizeStartRect.y));
               newArea.x = newX;
             }
             break;
           case 'ne': // top-right
             {
               // Clamp newY to ensure minimum height fits within bounds
-              const minNewY = Math.max(0, (resizeStartRect.y + resizeStartRect.height) - imageContainerBounds.height);
-              const maxNewY = Math.min(resizeStartRect.y + resizeStartRect.height - 50, imageContainerBounds.height - 50);
+              const minNewY = Math.max(0, (resizeStartRect.y + resizeStartRect.height) - rect.height);
+              const maxNewY = Math.min(resizeStartRect.y + resizeStartRect.height - 50, rect.height - 50);
               const newY = Math.max(minNewY, Math.min(maxNewY, resizeStartRect.y + totalDeltaY));
               
-              newArea.width = Math.max(50, Math.min(resizeStartRect.width + totalDeltaX, imageContainerBounds.width - resizeStartRect.x));
+              newArea.width = Math.max(50, Math.min(resizeStartRect.width + totalDeltaX, rect.width - resizeStartRect.x));
               newArea.height = resizeStartRect.y + resizeStartRect.height - newY;
               newArea.y = newY;
             }
@@ -1358,12 +1364,12 @@ export default function Dashboard() {
           case 'nw': // top-left
             {
               // Clamp newX and newY to ensure minimum dimensions fit within bounds
-              const minNewX = Math.max(0, (resizeStartRect.x + resizeStartRect.width) - imageContainerBounds.width);
-              const maxNewX = Math.min(resizeStartRect.x + resizeStartRect.width - 50, imageContainerBounds.width - 50);
+              const minNewX = Math.max(0, (resizeStartRect.x + resizeStartRect.width) - rect.width);
+              const maxNewX = Math.min(resizeStartRect.x + resizeStartRect.width - 50, rect.width - 50);
               const newX = Math.max(minNewX, Math.min(maxNewX, resizeStartRect.x + totalDeltaX));
               
-              const minNewY = Math.max(0, (resizeStartRect.y + resizeStartRect.height) - imageContainerBounds.height);
-              const maxNewY = Math.min(resizeStartRect.y + resizeStartRect.height - 50, imageContainerBounds.height - 50);
+              const minNewY = Math.max(0, (resizeStartRect.y + resizeStartRect.height) - rect.height);
+              const maxNewY = Math.min(resizeStartRect.y + resizeStartRect.height - 50, rect.height - 50);
               const newY = Math.max(minNewY, Math.min(maxNewY, resizeStartRect.y + totalDeltaY));
               
               newArea.width = resizeStartRect.x + resizeStartRect.width - newX;
@@ -1375,10 +1381,10 @@ export default function Dashboard() {
         }
         
         // Final boundary check to ensure crop area stays within image bounds
-        newArea.x = Math.max(0, Math.min(newArea.x, imageContainerBounds.width - newArea.width));
-        newArea.y = Math.max(0, Math.min(newArea.y, imageContainerBounds.height - newArea.height));
-        newArea.width = Math.min(newArea.width, imageContainerBounds.width - newArea.x);
-        newArea.height = Math.min(newArea.height, imageContainerBounds.height - newArea.y);
+        newArea.x = Math.max(0, Math.min(newArea.x, rect.width - newArea.width));
+        newArea.y = Math.max(0, Math.min(newArea.y, rect.height - newArea.height));
+        newArea.width = Math.min(newArea.width, rect.width - newArea.x);
+        newArea.height = Math.min(newArea.height, rect.height - newArea.y);
         
         return newArea;
       });
