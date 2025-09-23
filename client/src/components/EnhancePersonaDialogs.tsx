@@ -29,146 +29,204 @@ function AdvancedQuestionnaireForm({ personaName, onSubmit, onCancel, isSubmitti
   const [currentStep, setCurrentStep] = React.useState(0);
   const [responses, setResponses] = React.useState<Record<string, string>>({});
   
-  // Define the 20 questions across 3 types
+  // Define the 30 relationship-focused questions
   const questions = [
-    // Multiple Choice Questions (7 questions)
+    // Communication & Language Patterns
     {
       id: 'q1',
-      type: 'multiple_choice',
+      type: 'open_ended',
       category: 'Communication',
-      question: `How did ${personaName} typically express affection?`,
-      options: ['Words of affirmation', 'Physical touch', 'Acts of service', 'Quality time', 'Gift giving', 'Written notes/messages']
+      question: `How did ${personaName} typically greet you? Include their specific phrases, whether they used pet names for you, and if their greeting changed based on time of day or how long since they'd seen you.`
     },
     {
       id: 'q2',
-      type: 'multiple_choice',
-      category: 'Social',
-      question: `What was ${personaName}'s preferred social setting?`,
-      options: ['Large gatherings', 'Small intimate groups', 'One-on-one conversations', 'Family-only events', 'Community events', 'Quiet at home']
+      type: 'open_ended',
+      category: 'Communication',
+      question: `What phrases or expressions did ${personaName} use specifically with you? Include inside jokes, references only you two understood, or things they'd say that became "your thing."`
     },
     {
       id: 'q3',
-      type: 'multiple_choice',
+      type: 'open_ended',
       category: 'Communication',
-      question: `How did ${personaName} typically handle disagreements?`,
-      options: ['Direct conversation', 'Needed time to think first', 'Avoided confrontation', 'Used humor to defuse', 'Sought compromise', 'Got passionate but fair']
+      question: `How did ${personaName} tell stories to you? When sharing experiences with you, did they assume you knew context, repeat favorite stories, or tell them differently than to others?`
     },
     {
       id: 'q4',
-      type: 'multiple_choice',
-      category: 'Personality',
-      question: `What was ${personaName}'s approach to new experiences?`,
-      options: ['Embraced adventure', 'Cautiously curious', 'Preferred familiar routines', 'Researched thoroughly first', 'Went with the flow', 'Needed encouragement']
+      type: 'open_ended',
+      category: 'Communication',
+      question: `What subjects did ${personaName} avoid discussing with you? Were there topics they'd deflect when you brought them up, or things they'd never share with you specifically?`
     },
+    
+    // Emotional Expression & Reactions
     {
       id: 'q5',
-      type: 'multiple_choice',
-      category: 'Values',
-      question: `What motivated ${personaName} most in life?`,
-      options: ['Family and relationships', 'Personal achievement', 'Helping others', 'Learning and growth', 'Security and stability', 'Creative expression']
+      type: 'open_ended',
+      category: 'Emotion',
+      question: `How did ${personaName} show affection toward you? Were they physically affectionate with you, express love verbally, or show it through specific actions unique to your relationship?`
     },
     {
       id: 'q6',
-      type: 'multiple_choice',
-      category: 'Lifestyle',
-      question: `How did ${personaName} typically spend free time?`,
-      options: ['Reading or learning', 'Physical activities', 'Social activities', 'Creative pursuits', 'Quiet reflection', 'Home projects']
+      type: 'open_ended',
+      category: 'Emotion',
+      question: `What could you do or say that would make ${personaName} laugh? What inside jokes did you share, and how did they respond to your sense of humor?`
     },
     {
       id: 'q7',
-      type: 'multiple_choice',
-      category: 'Communication',
-      question: `What was ${personaName}'s communication style?`,
-      options: ['Direct and straightforward', 'Gentle and diplomatic', 'Humorous and lighthearted', 'Deep and philosophical', 'Practical and solution-focused', 'Emotional and expressive']
+      type: 'open_ended',
+      category: 'Emotion',
+      question: `How did ${personaName} handle disagreements with you? When you two had conflict, what was their pattern - did they need space, want to talk it out immediately, or have specific ways of making up?`
     },
-    
-    // Rating Scale Questions (7 questions)
     {
       id: 'q8',
-      type: 'rating_scale',
-      category: 'Social',
-      question: `On a scale of 1-10, how important was family time to ${personaName}?`,
-      scale: { min: 1, max: 10, minLabel: 'Not important', maxLabel: 'Extremely important' }
+      type: 'open_ended',
+      category: 'Emotion',
+      question: `What about you triggered strong reactions in ${personaName}? What could you do that would make them especially proud, worried, upset, or joyful?`
     },
+    
+    // Life Philosophy & Values
     {
       id: 'q9',
-      type: 'rating_scale',
-      category: 'Personality',
-      question: `How spontaneous was ${personaName}? (1 = Very planned, 10 = Very spontaneous)`,
-      scale: { min: 1, max: 10, minLabel: 'Very planned', maxLabel: 'Very spontaneous' }
+      type: 'open_ended',
+      category: 'Values',
+      question: `What advice did ${personaName} repeatedly give you? What wisdom did they share specifically about your life choices, challenges, or situations?`
     },
     {
       id: 'q10',
-      type: 'rating_scale',
-      category: 'Social',
-      question: `How outgoing was ${personaName} in social situations? (1 = Very shy, 10 = Very outgoing)`,
-      scale: { min: 1, max: 10, minLabel: 'Very shy', maxLabel: 'Very outgoing' }
+      type: 'open_ended',
+      category: 'Values',
+      question: `What did ${personaName} always want you to understand or believe? What principles or values did they try hardest to instill in you?`
     },
     {
       id: 'q11',
-      type: 'rating_scale',
+      type: 'open_ended',
       category: 'Values',
-      question: `How important was personal independence to ${personaName}? (1-10)`,
-      scale: { min: 1, max: 10, minLabel: 'Not important', maxLabel: 'Extremely important' }
+      question: `How did ${personaName} respond to your successes and failures? What would they say when you achieved something or when you fell short?`
     },
     {
       id: 'q12',
-      type: 'rating_scale',
-      category: 'Emotion',
-      question: `How emotionally expressive was ${personaName}? (1 = Very reserved, 10 = Very expressive)`,
-      scale: { min: 1, max: 10, minLabel: 'Very reserved', maxLabel: 'Very expressive' }
+      type: 'open_ended',
+      category: 'Values',
+      question: `What did ${personaName} tell you about death, loss, or their own mortality? Did they share fears, wishes, or beliefs about death specifically with you?`
     },
+    
+    // Daily Life & Preferences
     {
       id: 'q13',
-      type: 'rating_scale',
-      category: 'Lifestyle',
-      question: `How much did ${personaName} enjoy trying new things? (1-10)`,
-      scale: { min: 1, max: 10, minLabel: 'Preferred routine', maxLabel: 'Loved novelty' }
+      type: 'open_ended',
+      category: 'Daily Life',
+      question: `How did your presence fit into ${personaName}'s daily routine? When did they prefer to see/talk to you, and how did you affect their typical day?`
     },
     {
       id: 'q14',
-      type: 'rating_scale',
-      category: 'Values',
-      question: `How important was helping others to ${personaName}? (1-10)`,
-      scale: { min: 1, max: 10, minLabel: 'Not a priority', maxLabel: 'Core value' }
+      type: 'open_ended',
+      category: 'Daily Life',
+      question: `What did ${personaName} do when they needed comfort from you? How did they seek support from you when stressed or sad, and what comfort could only you provide?`
     },
-    
-    // Open-ended Questions (6 questions)
     {
       id: 'q15',
       type: 'open_ended',
-      category: 'Wisdom',
-      question: `Describe ${personaName}'s approach to giving advice or solving problems.`
+      category: 'Daily Life',
+      question: `How did ${personaName} involve you in their decisions? Did they seek your opinion, tell you after deciding, or have specific types of decisions they'd always run by you?`
     },
     {
       id: 'q16',
       type: 'open_ended',
-      category: 'Humor',
-      question: `What was ${personaName}'s sense of humor like? Share an example if you can.`
+      category: 'Daily Life',
+      question: `What quirky habits did ${personaName} have around you? Any specific rituals when you visited, things they'd only do with you, or habits you noticed that others didn't?`
     },
+    
+    // Relationships & Social Patterns
     {
       id: 'q17',
       type: 'open_ended',
       category: 'Relationships',
-      question: `How did ${personaName} show they cared about someone? What were their unique ways of expressing love?`
+      question: `How did ${personaName} support you during your hard times? What would they specifically say or do when you were struggling, grieving, or in pain?`
     },
     {
       id: 'q18',
       type: 'open_ended',
-      category: 'Fears',
-      question: `What were ${personaName}'s biggest fears or concerns? How did they handle worry or anxiety?`
+      category: 'Relationships',
+      question: `How did ${personaName} celebrate your achievements? How did they react to your good news, and what would they do to mark your special moments?`
     },
     {
       id: 'q19',
       type: 'open_ended',
-      category: 'Dreams',
-      question: `What were ${personaName}'s dreams, aspirations, or things they were most proud of?`
+      category: 'Relationships',
+      question: `What role did ${personaName} play in your life? Were they your protector, cheerleader, teacher, confidant, or another specific role unique to your relationship?`
     },
     {
       id: 'q20',
       type: 'open_ended',
+      category: 'Relationships',
+      question: `How did ${personaName} act when you introduced them to people important to you? How did they behave when meeting your friends, partners, or other significant people?`
+    },
+    
+    // Interests & Expertise
+    {
+      id: 'q21',
+      type: 'open_ended',
+      category: 'Interests',
+      question: `What topics did ${personaName} love discussing with you? What subjects would they eagerly explore with you, and how did they teach or share their knowledge with you?`
+    },
+    {
+      id: 'q22',
+      type: 'open_ended',
+      category: 'Interests',
+      question: `What did ${personaName} try to teach you? What skills, knowledge, or capabilities did they specifically want to pass on to you?`
+    },
+    {
+      id: 'q23',
+      type: 'open_ended',
+      category: 'Interests',
+      question: `What did ${personaName} share with you - books, shows, music? What content did they recommend or insist you experience together?`
+    },
+    
+    // Memory & Storytelling
+    {
+      id: 'q24',
+      type: 'open_ended',
+      category: 'Memory',
+      question: `What stories about you did ${personaName} tell most often? How did they describe you to others, and what moments from your shared history did they love recounting?`
+    },
+    {
+      id: 'q25',
+      type: 'open_ended',
+      category: 'Memory',
+      question: `What did ${personaName} tell you about their life before you? What stories from their past did they share specifically with you, and why those particular ones?`
+    },
+    {
+      id: 'q26',
+      type: 'open_ended',
+      category: 'Memory',
+      question: `What moments with you did ${personaName} say changed them? What impact did they say you had on their life, and what did your relationship mean to them?`
+    },
+    
+    // Problem-Solving & Opinions
+    {
+      id: 'q27',
+      type: 'open_ended',
+      category: 'Problem-Solving',
+      question: `How did ${personaName} respond when you needed help? When you came to them with problems, what was their approach to helping you specifically?`
+    },
+    {
+      id: 'q28',
+      type: 'open_ended',
+      category: 'Problem-Solving',
+      question: `What opinions did ${personaName} express most strongly to you? What beliefs or views did they particularly want you to understand or adopt?`
+    },
+    {
+      id: 'q29',
+      type: 'open_ended',
+      category: 'Problem-Solving',
+      question: `How did ${personaName} give you feedback or criticism? When they needed to correct you or disagreed with your choices, how did they approach it?`
+    },
+    
+    // Legacy & Self-Perception
+    {
+      id: 'q30',
+      type: 'open_ended',
       category: 'Legacy',
-      question: `What would ${personaName} want to be remembered for? What was their lasting impact on others?`
+      question: `What did ${personaName} explicitly want you to remember about them? What did they say they hoped you'd carry forward, and how did they want to live on in your life?`
     }
   ];
 
@@ -236,60 +294,14 @@ function AdvancedQuestionnaireForm({ personaName, onSubmit, onCancel, isSubmitti
           <h3 className="text-lg font-medium">{currentQuestion.question}</h3>
         </div>
 
-        {/* Answer Input Based on Question Type */}
-        {currentQuestion.type === 'multiple_choice' && (
-          <div className="space-y-2">
-            {currentQuestion.options!.map((option) => (
-              <label key={option} className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name={currentQuestion.id}
-                  value={option}
-                  checked={responses[currentQuestion.id] === option}
-                  onChange={(e) => updateResponse(currentQuestion.id, e.target.value)}
-                  className="text-purple-600"
-                  data-testid={`radio-${currentQuestion.id}-${option.replace(/\s+/g, '-').toLowerCase()}`}
-                />
-                <span>{option}</span>
-              </label>
-            ))}
-          </div>
-        )}
-
-        {currentQuestion.type === 'rating_scale' && (
-          <div className="space-y-4">
-            <div className="flex justify-between text-sm text-gray-500">
-              <span>{currentQuestion.scale!.minLabel}</span>
-              <span>{currentQuestion.scale!.maxLabel}</span>
-            </div>
-            <div className="flex space-x-2">
-              {Array.from({ length: currentQuestion.scale!.max }, (_, i) => i + 1).map((value) => (
-                <label key={value} className="flex flex-col items-center space-y-1 cursor-pointer">
-                  <input
-                    type="radio"
-                    name={currentQuestion.id}
-                    value={value.toString()}
-                    checked={responses[currentQuestion.id] === value.toString()}
-                    onChange={(e) => updateResponse(currentQuestion.id, e.target.value)}
-                    className="text-purple-600"
-                    data-testid={`rating-${currentQuestion.id}-${value}`}
-                  />
-                  <span className="text-sm">{value}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {currentQuestion.type === 'open_ended' && (
-          <Textarea
-            placeholder="Share your thoughts..."
-            value={responses[currentQuestion.id] || ''}
-            onChange={(e) => updateResponse(currentQuestion.id, e.target.value)}
-            rows={4}
-            data-testid={`textarea-${currentQuestion.id}`}
-          />
-        )}
+        {/* Answer Input - All questions are now open-ended */}
+        <Textarea
+          placeholder="Share your thoughts and memories..."
+          value={responses[currentQuestion.id] || ''}
+          onChange={(e) => updateResponse(currentQuestion.id, e.target.value)}
+          rows={6}
+          data-testid={`textarea-${currentQuestion.id}`}
+        />
       </div>
 
       {/* Navigation */}
@@ -324,7 +336,7 @@ function AdvancedQuestionnaireForm({ personaName, onSubmit, onCancel, isSubmitti
           ) : (
             <Button
               onClick={handleSubmit}
-              disabled={isSubmitting || totalAnswered < 5} // Require at least 5 answers
+              disabled={isSubmitting || totalAnswered < 10} // Require at least 10 answers
               data-testid="button-questionnaire-submit"
             >
               {isSubmitting ? (
