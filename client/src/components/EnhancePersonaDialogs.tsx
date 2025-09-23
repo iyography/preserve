@@ -300,6 +300,7 @@ function AdvancedQuestionnaireForm({ personaName, onSubmit, onCancel, isSubmitti
           value={responses[currentQuestion.id] || ''}
           onChange={(e) => updateResponse(currentQuestion.id, e.target.value)}
           rows={6}
+          className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
           data-testid={`textarea-${currentQuestion.id}`}
         />
       </div>
