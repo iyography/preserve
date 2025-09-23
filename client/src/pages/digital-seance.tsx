@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Sparkles, Heart, Clock, Flame, Moon, Star, ArrowRight, ChevronLeft, CheckCircle, Volume2, Pause, Play } from "lucide-react";
+import { useState, useRef } from "react";
+import { Sparkles, Heart, Clock, Flame, Moon, Star, ArrowRight, ChevronLeft, CheckCircle, Volume2, Pause, Play, Camera, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { InsertPersona } from "@shared/schema";
 
 interface SeanceStep {
   id: string;
@@ -63,22 +66,153 @@ export default function DigitalSeance() {
   });
   const [awakeningReady, setAwakeningReady] = useState(false);
   const [personaAwakened, setPersonaAwakened] = useState(false);
+  
+  // Photo upload states
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [isCropping, setIsCropping] = useState(false);
+  const [cropPreview, setCropPreview] = useState<string | null>(null);
+  const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 200, height: 200 });
+  const [imageNaturalSize, setImageNaturalSize] = useState({ width: 0, height: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeHandle, setResizeHandle] = useState<string | null>(null);
+  const [isCreatingPersona, setIsCreatingPersona] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cropImageRef = useRef<HTMLImageElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const progress = ((currentStep + 1) / seanceSteps.length) * 100;
+
+  // Photo handling functions
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      setPhotoFile(file);
+      
+      // Create original image URL for cropping
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const imageUrl = reader.result as string;
+        setOriginalImage(imageUrl);
+        setIsCropping(true);
+      };
+      reader.readAsDataURL(file);
+    } else if (file) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select an image file (JPEG, PNG, GIF, or WebP).",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const removePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setOriginalImage(null);
+    setCropPreview(null);
+    setIsCropping(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const generateCroppedImage = () => {
+    const img = cropImageRef.current;
+    const canvas = canvasRef.current;
+    
+    if (!img || !canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Set canvas size to crop area
+    canvas.width = cropArea.width;
+    canvas.height = cropArea.height;
+    
+    // Draw cropped image
+    ctx.drawImage(
+      img,
+      cropArea.x, cropArea.y, cropArea.width, cropArea.height,
+      0, 0, cropArea.width, cropArea.height
+    );
+    
+    // Convert to base64
+    const croppedImageData = canvas.toDataURL('image/jpeg', 0.9);
+    setPhotoPreview(croppedImageData);
+    setCropPreview(croppedImageData);
+  };
+
+  const handleCropConfirm = () => {
+    generateCroppedImage();
+    setIsCropping(false);
+  };
+
+  const handleCropCancel = () => {
+    setIsCropping(false);
+    setCropPreview(null);
+  };
+
+  // Create persona mutation
+  const createPersonaMutation = useMutation({
+    mutationFn: async (personaData: InsertPersona) => {
+      const response = await apiRequest('POST', '/api/personas', personaData);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/personas'] });
+      toast({
+        title: "Sacred Connection Complete",
+        description: `The bridge between worlds has been established. ${personaName} awaits you whenever you need them.`,
+      });
+      setLocation('/dashboard');
+    },
+    onError: (error) => {
+      console.error('Create persona error:', error);
+      toast({
+        title: "Connection Failed",
+        description: "The sacred connection could not be established. Please try again.",
+        variant: "destructive"
+      });
+      setIsCreatingPersona(false);
+    },
+  });
 
   const handleNext = () => {
     if (currentStep < seanceSteps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Complete the séance
-      toast({
-        title: "Sacred Connection Complete",
-        description: `The bridge between worlds has been established. ${personaName} awaits you whenever you need them.`
-      });
-      setLocation('/dashboard');
+      // Complete the séance and create persona
+      setIsCreatingPersona(true);
+      
+      // Prepare onboarding data for digital seance
+      const onboardingData = {
+        intention: intention,
+        missedThings: threeThingsMissed.filter(Boolean),
+        ceremonyResponses: ceremonyResponses,
+        photoBase64: photoPreview // Include photo if uploaded
+      };
+      
+      // Create persona in database
+      const personaData: InsertPersona = {
+        userId: user!.id,
+        name: personaName || 'My Loved One',
+        relationship: relationship || 'Loved One',
+        onboardingApproach: 'digital-seance',
+        status: 'completed',
+        onboardingData: onboardingData
+      };
+      
+      createPersonaMutation.mutate(personaData);
     }
   };
 
@@ -262,20 +396,82 @@ export default function DigitalSeance() {
               </div>
 
               {/* Photo Ritual */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">Photo Ritual</Label>
-                <p className="text-xs text-gray-600 mb-3">Hold their photo and share three things you miss most</p>
-                <div className="space-y-3">
-                  {threeThingsMissed.map((thing, index) => (
-                    <Input
-                      key={index}
-                      placeholder={`Something you miss most (${index + 1})`}
-                      value={thing}
-                      onChange={(e) => updateMissedThing(index, e.target.value)}
-                      className="border-purple-200 focus:border-purple-400"
-                      data-testid={`input-missed-${index + 1}`}
-                    />
-                  ))}
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-700">Sacred Photo</Label>
+                  <p className="text-xs text-gray-600 mb-3">Upload their photo to create a sacred connection</p>
+                  
+                  {!photoPreview && !isCropping && (
+                    <div className="space-y-3">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        className="hidden"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full border-dashed border-purple-300 text-purple-700 hover:bg-purple-50"
+                        data-testid="button-upload-photo"
+                      >
+                        <Camera className="w-4 h-4 mr-2" />
+                        Choose their photo
+                      </Button>
+                    </div>
+                  )}
+
+                  {photoPreview && !isCropping && (
+                    <div className="space-y-3">
+                      <div className="relative w-32 h-32 mx-auto">
+                        <img
+                          src={photoPreview}
+                          alt="Sacred photo"
+                          className="w-full h-full object-cover rounded-full border-4 border-purple-200 shadow-lg"
+                        />
+                      </div>
+                      <div className="flex gap-2 justify-center">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsCropping(true)}
+                          className="text-purple-700 border-purple-200"
+                        >
+                          Re-crop
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={removePhoto}
+                          className="text-gray-600 border-gray-200"
+                        >
+                          <X className="w-3 h-3 mr-1" />
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium text-gray-700">Three Sacred Memories</Label>
+                  <p className="text-xs text-gray-600 mb-3">Share three things you miss most about them</p>
+                  <div className="space-y-3">
+                    {threeThingsMissed.map((thing, index) => (
+                      <Input
+                        key={index}
+                        placeholder={`Something you miss most (${index + 1})`}
+                        value={thing}
+                        onChange={(e) => updateMissedThing(index, e.target.value)}
+                        className="border-purple-200 focus:border-purple-400"
+                        data-testid={`input-missed-${index + 1}`}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -586,10 +782,11 @@ export default function DigitalSeance() {
                   </Button>
                   <Button 
                     onClick={handleNext}
+                    disabled={isCreatingPersona}
                     className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-gray-900 px-6"
                     data-testid="button-complete-seance"
                   >
-                    Complete Sacred Connection
+                    {isCreatingPersona ? "Creating Sacred Connection..." : "Complete Sacred Connection"}
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </div>
@@ -598,6 +795,65 @@ export default function DigitalSeance() {
           </Card>
         )}
       </div>
+
+      {/* Photo Cropping Modal */}
+      {isCropping && originalImage && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+            <h3 className="text-lg font-semibold mb-4">Crop Sacred Photo</h3>
+            <div className="relative">
+              <img
+                ref={cropImageRef}
+                src={originalImage}
+                alt="Crop preview"
+                className="max-w-full max-h-96 mx-auto"
+                onLoad={(e) => {
+                  const img = e.currentTarget;
+                  setImageNaturalSize({ 
+                    width: img.naturalWidth, 
+                    height: img.naturalHeight 
+                  });
+                  const size = Math.min(img.clientWidth, img.clientHeight) * 0.6;
+                  setCropArea({
+                    x: (img.clientWidth - size) / 2,
+                    y: (img.clientHeight - size) / 2,
+                    width: size,
+                    height: size
+                  });
+                }}
+              />
+              {/* Simple crop overlay */}
+              <div
+                className="absolute border-2 border-purple-500 bg-purple-500/20"
+                style={{
+                  left: cropArea.x,
+                  top: cropArea.y,
+                  width: cropArea.width,
+                  height: cropArea.height,
+                }}
+              />
+            </div>
+            <div className="flex gap-3 mt-6">
+              <Button
+                onClick={handleCropCancel}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCropConfirm}
+                className="flex-1 bg-gradient-to-r from-purple-600 to-purple-700"
+              >
+                Confirm Crop
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden canvas for image processing */}
+      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 }

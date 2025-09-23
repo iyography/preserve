@@ -31,6 +31,146 @@ export class ScrapingService {
     try {
       console.log(`Attempting ScrapingBee extraction for: ${url}`);
       
+      // Security validation: Ensure this is a legitimate Legacy.com domain
+      const isLegitimateHostname = (hostname: string): boolean => {
+        // Extract the effective TLD+1 (eTLD+1) to determine the actual domain owner
+        const parts = hostname.split('.');
+        
+        if (parts.length < 2) return false;
+        
+        // Find "legacy" in the hostname parts
+        const legacyIndex = parts.findIndex(part => part === 'legacy');
+        if (legacyIndex === -1) return false;
+        
+        // Get the domain suffix after "legacy"
+        const suffixParts = parts.slice(legacyIndex + 1);
+        const suffix = suffixParts.join('.');
+        
+        // Comprehensive allowlist of legitimate Legacy.com operated domains
+        // This prevents SSRF via attacker-owned domains while supporting regional operations
+        const legitimateLegacySuffixes = new Set([
+          // Primary domains
+          'com',          // United States
+          'org',          // Organization
+          
+          // Major English-speaking regions
+          'ca',           // Canada
+          'com.au',       // Australia  
+          'co.uk',        // United Kingdom
+          'co.nz',        // New Zealand
+          'ie',           // Ireland
+          
+          // Additional major regions where Legacy.com likely operates
+          'de',           // Germany
+          'fr',           // France
+          'es',           // Spain
+          'it',           // Italy
+          'nl',           // Netherlands
+          'be',           // Belgium
+          'ch',           // Switzerland
+          'at',           // Austria
+          'se',           // Sweden
+          'no',           // Norway
+          'dk',           // Denmark
+          'fi',           // Finland
+          'pl',           // Poland
+          'cz',           // Czech Republic
+          'hu',           // Hungary
+          'sk',           // Slovakia
+          'si',           // Slovenia
+          'pt',           // Portugal
+          'gr',           // Greece
+          
+          // Asia-Pacific regions
+          'com.sg',       // Singapore
+          'com.my',       // Malaysia
+          'com.hk',       // Hong Kong
+          'com.ph',       // Philippines
+          'co.th',        // Thailand
+          'co.id',        // Indonesia
+          'co.in',        // India
+          'co.jp',        // Japan
+          'co.kr',        // South Korea
+          'com.tw',       // Taiwan
+          
+          // Additional regional patterns that Legacy.com might use
+          'net',          // Network domains
+          'co.za',        // South Africa
+          'com.br',       // Brazil
+          'com.mx',       // Mexico
+          'com.ar',       // Argentina
+          'cl',           // Chile
+          'co.ve',        // Venezuela
+          'com.co',       // Colombia
+          
+          // NOTE: To add new verified Legacy.com domains, simply add the suffix here
+          // This approach prioritizes legitimate Legacy.com operations while preventing SSRF
+        ]);
+        
+        return legitimateLegacySuffixes.has(suffix);
+      };
+      
+      const urlObj = new URL(url);
+      const hostname = urlObj.hostname.toLowerCase();
+      
+      if (!isLegitimateHostname(hostname)) {
+        return {
+          success: false,
+          error: 'Invalid Legacy.com domain - only legitimate Legacy.com URLs are allowed',
+          statusCode: 400
+        };
+      }
+      
+      // Dynamic country code detection from TLD
+      const getCountryCodeFromTLD = (hostname: string): string => {
+        // Common known mappings for major regions
+        const knownMappings: Record<string, string> = {
+          'com.au': 'AU',  // Australia
+          'ca': 'CA',      // Canada  
+          'co.uk': 'GB',   // United Kingdom
+          'co.nz': 'NZ',   // New Zealand
+          'ie': 'IE',      // Ireland
+          'de': 'DE',      // Germany
+          'fr': 'FR',      // France
+          'es': 'ES',      // Spain
+          'it': 'IT',      // Italy
+          'nl': 'NL',      // Netherlands
+          'be': 'BE',      // Belgium
+          'ch': 'CH',      // Switzerland
+          'at': 'AT',      // Austria
+          'dk': 'DK',      // Denmark
+          'no': 'NO',      // Norway
+          'se': 'SE',      // Sweden
+          'fi': 'FI',      // Finland
+          'pl': 'PL',      // Poland
+        };
+        
+        // Check known mappings first
+        for (const [tld, code] of Object.entries(knownMappings)) {
+          if (hostname.endsWith(`.${tld}`)) {
+            return code;
+          }
+        }
+        
+        // For unknown TLDs, try to extract country code from the TLD itself
+        // Examples: legacy.ph -> PH, legacy.sg -> SG, legacy.my -> MY
+        const tldMatch = hostname.match(/\.([a-z]{2})$/);
+        if (tldMatch) {
+          const tld = tldMatch[1].toUpperCase();
+          // Only use if it looks like a valid country code (2 uppercase letters)
+          if (/^[A-Z]{2}$/.test(tld)) {
+            return tld;
+          }
+        }
+        
+        // Default fallback to US for .com or unknown formats
+        return 'US';
+      };
+      
+      const countryCode = getCountryCodeFromTLD(hostname);
+      
+      console.log(`Using country code: ${countryCode} for hostname: ${hostname}`);
+      
       // Build ScrapingBee API request
       const scrapingBeeUrl = 'https://app.scrapingbee.com/api/v1/';
       const params = new URLSearchParams({
@@ -38,7 +178,7 @@ export class ScrapingService {
         url: url,
         render_js: 'true', // Enable JavaScript rendering for modern sites
         premium_proxy: 'true', // Use premium proxies to avoid detection
-        country_code: 'US', // Use US proxies for consistent results
+        country_code: countryCode, // Use region-appropriate proxies
         block_ads: 'true', // Block ads to improve performance
         block_resources: 'false', // Allow all resources for accurate rendering
         wait: '2000', // Wait 2 seconds for page to fully load

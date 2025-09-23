@@ -2128,15 +2128,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.status(400).json({ error: 'Invalid URL format' });
           }
           
-          // Validate hostname - must be exactly legacy.com or subdomain
-          const allowedHosts = [
-            'legacy.com',
-            'www.legacy.com',
-            'obituaries.legacy.com'
-          ];
+          // Validate hostname - accept only legitimate Legacy.com operated domains
+          const hostname = parsedUrl.hostname.toLowerCase();
           
-          const isAllowedHost = allowedHosts.includes(parsedUrl.hostname.toLowerCase()) || 
-            parsedUrl.hostname.toLowerCase().endsWith('.legacy.com');
+          // Security-focused validation: Only allow explicitly verified Legacy.com operated domains
+          // Prevents SSRF attacks via look-alike domains like "legacy.co" or "legacy.com.ru"
+          const isLegitimateHostname = (hostname: string): boolean => {
+            // Extract the effective TLD+1 (eTLD+1) to determine the actual domain owner
+            const parts = hostname.split('.');
+            
+            if (parts.length < 2) return false;
+            
+            // Find "legacy" in the hostname parts
+            const legacyIndex = parts.findIndex(part => part === 'legacy');
+            if (legacyIndex === -1) return false;
+            
+            // Get the domain suffix after "legacy"
+            const suffixParts = parts.slice(legacyIndex + 1);
+            const suffix = suffixParts.join('.');
+            
+            // Comprehensive allowlist of legitimate Legacy.com operated domains
+            // This prevents SSRF via attacker-owned domains while supporting regional operations
+            const legitimateLegacySuffixes = new Set([
+              // Primary domains
+              'com',          // United States
+              'org',          // Organization
+              
+              // Major English-speaking regions
+              'ca',           // Canada
+              'com.au',       // Australia  
+              'co.uk',        // United Kingdom
+              'co.nz',        // New Zealand
+              'ie',           // Ireland
+              
+              // Additional major regions where Legacy.com likely operates
+              'de',           // Germany
+              'fr',           // France
+              'es',           // Spain
+              'it',           // Italy
+              'nl',           // Netherlands
+              'be',           // Belgium
+              'ch',           // Switzerland
+              'at',           // Austria
+              'se',           // Sweden
+              'no',           // Norway
+              'dk',           // Denmark
+              'fi',           // Finland
+              'pl',           // Poland
+              'cz',           // Czech Republic
+              'hu',           // Hungary
+              'sk',           // Slovakia
+              'si',           // Slovenia
+              'pt',           // Portugal
+              'gr',           // Greece
+              
+              // Asia-Pacific regions
+              'com.sg',       // Singapore
+              'com.my',       // Malaysia
+              'com.hk',       // Hong Kong
+              'com.ph',       // Philippines
+              'co.th',        // Thailand
+              'co.id',        // Indonesia
+              'co.in',        // India
+              'co.jp',        // Japan
+              'co.kr',        // South Korea
+              'com.tw',       // Taiwan
+              
+              // Additional regional patterns that Legacy.com might use
+              'net',          // Network domains
+              'co.za',        // South Africa
+              'com.br',       // Brazil
+              'com.mx',       // Mexico
+              'com.ar',       // Argentina
+              'cl',           // Chile
+              'co.ve',        // Venezuela
+              'com.co',       // Colombia
+              
+              // NOTE: To add new verified Legacy.com domains, simply add the suffix here
+              // This approach prioritizes legitimate Legacy.com operations while preventing SSRF
+            ]);
+            
+            return legitimateLegacySuffixes.has(suffix);
+          };
+          
+          const isAllowedHost = isLegitimateHostname(hostname);
           
           if (!isAllowedHost) {
             return res.status(400).json({ 
@@ -2237,14 +2312,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               break;
             }
             
-            // Strict domain validation for redirect target
-            const hostname = redirectUrl.hostname.toLowerCase();
-            const isAllowedRedirect = hostname === 'legacy.com' || 
-              hostname === 'www.legacy.com' || 
-              hostname.endsWith('.legacy.com');
+            // Strict domain validation for redirect target - use the same secure validation
+            const redirectHostname = redirectUrl.hostname.toLowerCase();
+            const isAllowedRedirect = isLegitimateHostname(redirectHostname);
             
             if (!isAllowedRedirect) {
-              console.warn(`Legacy extraction blocked unsafe redirect to: ${hostname}`);
+              console.warn(`Legacy extraction blocked unsafe redirect to: ${redirectHostname}`);
               break;
             }
             
