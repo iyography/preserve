@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Heart, Plus, Upload, MessageCircle, Clock, Shield, Calendar, Settings, Play, Bookmark, Share, Download, Mic, FileText, Video, Camera, Sparkles, Users, BarChart3, CheckCircle, Moon, Sun, Edit, Trash2, X, Menu, User2, LogOut, Bell, Home, ChevronRight, Brain, Archive, HelpCircle, CreditCard, Search, Tag, MicOff, Save, Hash } from "lucide-react";
+import { Heart, Plus, Upload, MessageCircle, Clock, Shield, Calendar, Settings, Play, Bookmark, Share, Download, Mic, FileText, Video, Camera, Sparkles, Users, BarChart3, CheckCircle, Moon, Sun, Edit, Trash2, X, Menu, User2, LogOut, Bell, Home, ChevronRight, Brain, Archive, HelpCircle, CreditCard, Search, Tag, MicOff, Save, Hash, Link as LinkIcon, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -22,6 +22,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
@@ -524,10 +525,6 @@ export default function Dashboard() {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
-  };
-
   // Auto scroll to bottom when new messages arrive
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
@@ -896,31 +893,6 @@ export default function Dashboard() {
 
       {/* Bottom Actions */}
       <div className="p-4 border-t space-y-3">
-        {/* Theme Toggle */}
-        <div className="flex items-center justify-between">
-          {!isSidebarCollapsed && (
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {theme === 'light' ? 'Light Mode' : 'Dark Mode'}
-            </span>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleTheme}
-            className={cn(
-              "p-2 transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-800",
-              isSidebarCollapsed && "mx-auto"
-            )}
-            data-testid="theme-toggle"
-          >
-            {theme === 'light' ? (
-              <Moon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-            ) : (
-              <Sun className="w-4 h-4 text-yellow-500" />
-            )}
-          </Button>
-        </div>
-        
         {/* Sign Out Button */}
         <Button
           variant="outline"
@@ -1224,16 +1196,53 @@ export default function Dashboard() {
               {/* Memory Archive Header */}
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">Memory Archive</h2>
-                <Dialog open={isAddMemoryOpen} onOpenChange={setIsAddMemoryOpen}>
-                  <DialogTrigger asChild>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <Button 
                       className="bg-gradient-to-r from-purple-500 to-purple-700 text-white hover:from-purple-600 hover:to-purple-800"
-                      data-testid="button-add-memory"
+                      data-testid="button-enhance-persona"
+                    >
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Enhance Persona
+                      <ChevronDown className="w-4 h-4 ml-2" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem 
+                      onClick={() => setIsAddMemoryOpen(true)}
+                      data-testid="dropdown-add-memory"
                     >
                       <Plus className="w-4 h-4 mr-2" />
                       Add Memory
-                    </Button>
-                  </DialogTrigger>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => {
+                        toast({
+                          title: "Coming Soon",
+                          description: "Legacy.com obituary import will be available soon",
+                        });
+                      }}
+                      data-testid="dropdown-import-obituary"
+                    >
+                      <LinkIcon className="w-4 h-4 mr-2" />
+                      Import from Legacy.com
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => {
+                        toast({
+                          title: "Coming Soon",
+                          description: "Advanced questionnaire will be available soon",
+                        });
+                      }}
+                      data-testid="dropdown-advanced-questionnaire"
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Advanced Questionnaire
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Dialog open={isAddMemoryOpen} onOpenChange={setIsAddMemoryOpen}>
+                  <DialogTrigger />
                   <DialogContent className="max-w-2xl">
                     <DialogHeader>
                       <DialogTitle>Add New Memory</DialogTitle>
