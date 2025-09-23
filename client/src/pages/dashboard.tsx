@@ -547,15 +547,6 @@ export default function Dashboard() {
   // Memory queries and mutations
   const { data: memories = [], isLoading: memoriesLoading } = useQuery<Memory[]>({
     queryKey: ['/api/memories', selectedMemoryPersona],
-    queryFn: async () => {
-      if (!selectedMemoryPersona) return [];
-      const response = await fetch(`/api/memories?personaId=${selectedMemoryPersona}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      return response.json();
-    },
     enabled: !!selectedMemoryPersona && !!user && !loading,
   });
 
