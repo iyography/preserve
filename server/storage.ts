@@ -518,6 +518,25 @@ export class DatabaseStorage implements IStorage {
     return await query;
   }
 
+  async getAllMemoriesByUser(userId: string, limit?: number): Promise<(Memory & { personaName: string })[]> {
+    const query = db
+      .select({
+        memory: memories,
+        personaName: personas.name
+      })
+      .from(memories)
+      .innerJoin(personas, eq(memories.personaId, personas.id))
+      .where(eq(personas.userId, userId))
+      .orderBy(desc(memories.salience), desc(memories.createdAt));
+
+    const results = limit ? await query.limit(limit) : await query;
+    
+    return results.map(row => ({
+      ...row.memory,
+      personaName: row.personaName
+    }));
+  }
+
   async getMemoryById(id: string, userId: string): Promise<Memory | undefined> {
     const [memory] = await db
       .select()

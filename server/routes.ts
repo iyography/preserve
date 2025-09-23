@@ -1961,8 +1961,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user!.id;
       const { personaId, limit, tags } = req.query;
       
+      // If no personaId provided, return all memories for the user
       if (!personaId) {
-        return res.status(400).json({ error: 'Persona ID is required' });
+        const limitNum = limit ? parseInt(limit as string) : undefined;
+        const allMemories = await storage.getAllMemoriesByUser(userId, limitNum);
+        return res.json(allMemories);
       }
       
       // Verify persona belongs to user

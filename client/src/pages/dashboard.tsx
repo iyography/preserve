@@ -450,7 +450,6 @@ export default function Dashboard() {
   const [editingMemory, setEditingMemory] = useState<Memory | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMemoryPersona, setSelectedMemoryPersona] = useState<string | null>(null);
   
   // New persona creation state
   const [isNewPersonaDialogOpen, setIsNewPersonaDialogOpen] = useState(false);
@@ -544,10 +543,10 @@ export default function Dashboard() {
 
   type MemoryFormValues = z.infer<typeof memoryFormSchema>;
 
-  // Memory queries and mutations
-  const { data: memories = [], isLoading: memoriesLoading } = useQuery<Memory[]>({
-    queryKey: ['/api/memories', selectedMemoryPersona],
-    enabled: !!selectedMemoryPersona && !!user && !loading,
+  // Memory queries and mutations - Now gets all memories for the user
+  const { data: memories = [], isLoading: memoriesLoading } = useQuery<(Memory & { personaName: string })[]>({
+    queryKey: ['/api/memories'],
+    enabled: !!user && !loading,
   });
 
   const createMemoryMutation = useMutation({
@@ -556,7 +555,7 @@ export default function Dashboard() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/memories', selectedMemoryPersona] });
+      queryClient.invalidateQueries({ queryKey: ['/api/memories'] });
       setIsAddMemoryOpen(false);
       toast({
         title: "Success",
@@ -579,7 +578,7 @@ export default function Dashboard() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/memories', selectedMemoryPersona] });
+      queryClient.invalidateQueries({ queryKey: ['/api/memories'] });
       setEditingMemory(null);
       toast({
         title: "Success",
@@ -602,7 +601,7 @@ export default function Dashboard() {
       return response;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/memories', selectedMemoryPersona] });
+      queryClient.invalidateQueries({ queryKey: ['/api/memories'] });
       toast({
         title: "Success",
         description: "Memory deleted successfully",
@@ -643,7 +642,7 @@ export default function Dashboard() {
       
       // Open the appropriate enhancement dialog based on pending type
       if (pendingEnhancementType === 'memory') {
-        setSelectedMemoryPersona(newPersona.id);
+        form.setValue('personaId', newPersona.id);
         setIsAddMemoryOpen(true);
       } else if (pendingEnhancementType === 'legacy') {
         setSelectedEnhancementPersona(newPersona.id);
@@ -1068,7 +1067,7 @@ export default function Dashboard() {
 
   // Memory form submission
   const onSubmitMemory = async (values: MemoryFormValues) => {
-    if (!selectedMemoryPersona) {
+    if (!values.personaId) {
       toast({
         title: "Error",
         description: "Please select a persona first",
@@ -1086,17 +1085,18 @@ export default function Dashboard() {
       source: values.source,
       salience: values.salience,
       tags: tagsArray,
-      personaId: selectedMemoryPersona,
+      personaId: values.personaId,
     };
     
     createMemoryMutation.mutate(memoryData);
   };
 
-  // Filter memories based on search term
+  // Filter memories based on search term (now includes persona name)
   const filteredMemories = (Array.isArray(memories) ? memories : []).filter(memory => 
     memory?.content?.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
     (memory?.tags && Array.isArray(memory.tags) && memory.tags.some(tag => tag?.toLowerCase()?.includes(searchTerm.toLowerCase()))) ||
-    memory?.type?.toLowerCase()?.includes(searchTerm.toLowerCase())
+    memory?.type?.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
+    memory?.personaName?.toLowerCase()?.includes(searchTerm.toLowerCase())
   );
 
   // Get memory type icon
@@ -1773,7 +1773,7 @@ export default function Dashboard() {
                                 <DropdownMenuItem 
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setSelectedMemoryPersona(persona.id);
+                                    form.setValue('personaId', persona.id);
                                     setIsAddMemoryOpen(true);
                                   }}
                                   data-testid={`dropdown-add-memory-${persona.id}`}
@@ -1847,10 +1847,7 @@ export default function Dashboard() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Persona</FormLabel>
-                              <Select onValueChange={(value) => {
-                                field.onChange(value);
-                                setSelectedMemoryPersona(value);
-                              }} defaultValue={field.value}>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
                                 <FormControl>
                                   <SelectTrigger data-testid="select-persona">
                                     <SelectValue placeholder="Select a persona" />
@@ -1982,83 +1979,58 @@ export default function Dashboard() {
                 </Dialog>
               </div>
 
-              {/* Persona Selection for Memory View */}
+              {/* Search and Filter - Now always visible */}
               <Card className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-lg">Select Persona</CardTitle>
-                  <CardDescription>Choose a persona to view and manage their memories</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Select onValueChange={setSelectedMemoryPersona} value={selectedMemoryPersona || ""}>
-                    <SelectTrigger data-testid="select-memory-persona">
-                      <SelectValue placeholder="Select a persona to view memories" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {personas.map((persona) => (
-                        <SelectItem key={persona.id} value={persona.id}>
-                          {persona.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <CardContent className="pt-6">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      placeholder="Search memories by content, tags, type, or persona..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                      data-testid="input-search-memories"
+                    />
+                  </div>
                 </CardContent>
               </Card>
 
-              {/* Search and Filter */}
-              {selectedMemoryPersona && (
+              {/* Memory Display - Now always visible */}
+              {memoriesLoading ? (
                 <Card className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg">
-                  <CardContent className="pt-6">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input
-                        placeholder="Search memories by content, tags, or type..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10"
-                        data-testid="input-search-memories"
-                      />
+                  <CardContent className="py-16 text-center">
+                    <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                      <Archive className="w-4 h-4 text-white" />
                     </div>
+                    <p className="text-gray-600">Loading memories...</p>
                   </CardContent>
                 </Card>
-              )}
-
-              {/* Memory Display */}
-              {selectedMemoryPersona ? (
-                memoriesLoading ? (
-                  <Card className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg">
-                    <CardContent className="py-16 text-center">
-                      <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-                        <Archive className="w-4 h-4 text-white" />
-                      </div>
-                      <p className="text-gray-600">Loading memories...</p>
-                    </CardContent>
-                  </Card>
-                ) : filteredMemories.length === 0 ? (
-                  <Card className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg">
-                    <CardContent className="py-16 text-center">
-                      <Archive className="w-12 h-12 text-purple-600 mx-auto mb-4" />
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">
-                        {searchTerm ? "No memories found" : "No memories yet"}
-                      </h3>
-                      <p className="text-gray-600 mb-6">
-                        {searchTerm 
-                          ? "Try adjusting your search terms or create a new memory."
-                          : "Start building memories for this persona by clicking 'Add Memory'."
-                        }
-                      </p>
-                      {!searchTerm && (
-                        <Button 
-                          onClick={() => setIsAddMemoryOpen(true)}
-                          className="bg-gradient-to-r from-purple-500 to-purple-700 text-white hover:from-purple-600 hover:to-purple-800"
-                          data-testid="button-add-first-memory"
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add First Memory
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                ) : (
+              ) : filteredMemories.length === 0 ? (
+                <Card className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg">
+                  <CardContent className="py-16 text-center">
+                    <Archive className="w-12 h-12 text-purple-600 mx-auto mb-4" />
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      {searchTerm ? "No memories found" : "No memories yet"}
+                    </h3>
+                    <p className="text-gray-600 mb-6">
+                      {searchTerm 
+                        ? "Try adjusting your search terms or create a new memory."
+                        : "Start building memories by clicking 'Add Memory'."
+                      }
+                    </p>
+                    {!searchTerm && (
+                      <Button 
+                        onClick={() => setIsAddMemoryOpen(true)}
+                        className="bg-gradient-to-r from-purple-500 to-purple-700 text-white hover:from-purple-600 hover:to-purple-800"
+                        data-testid="button-add-first-memory"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add First Memory
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : (
                   <div className="grid gap-4">
                     {filteredMemories.map((memory) => {
                       const TypeIcon = getMemoryTypeIcon(memory.type);
@@ -2067,12 +2039,18 @@ export default function Dashboard() {
                           <CardContent className="pt-6">
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                {/* Memory Type and Date */}
-                                <div className="flex items-center gap-3 mb-3">
+                                {/* Memory Type, Persona, and Date */}
+                                <div className="flex items-center gap-3 mb-3 flex-wrap">
                                   <div className="flex items-center gap-2">
                                     <TypeIcon className="w-4 h-4 text-purple-600" />
                                     <Badge className={cn("text-xs", getMemoryTypeColor(memory.type))}>
                                       {memory.type}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Heart className="w-3 h-3 text-purple-500" />
+                                    <Badge variant="outline" className="text-xs text-purple-700 border-purple-200">
+                                      {memory.personaName}
                                     </Badge>
                                   </div>
                                   <span className="text-sm text-gray-500">
@@ -2123,7 +2101,7 @@ export default function Dashboard() {
                                       salience: memory.salience,
                                       source: memory.source,
                                     });
-                                    setSelectedMemoryPersona(memory.personaId);
+                                    form.setValue('personaId', memory.personaId);
                                     setIsAddMemoryOpen(true);
                                   }}
                                   data-testid={`button-edit-memory-${memory.id}`}
@@ -2167,18 +2145,7 @@ export default function Dashboard() {
                       );
                     })}
                   </div>
-                )
-              ) : (
-                <Card className="bg-white/70 backdrop-blur-sm border-purple-100 shadow-lg">
-                  <CardContent className="py-16 text-center">
-                    <Archive className="w-12 h-12 text-purple-600 mx-auto mb-4" />
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">Select a Persona</h3>
-                    <p className="text-gray-600">
-                      Choose a persona above to view and manage their memories.
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
+                )}
             </div>
           )}
 
