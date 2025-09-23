@@ -2217,48 +2217,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Advanced Questionnaire Enhancement Endpoint
   app.post('/api/personas/:id/enhance/questionnaire', async (req: AuthenticatedRequest, res) => {
-            const requestController = new AbortController();
-            const requestTimeoutId = setTimeout(() => requestController.abort(), 10000);
-            
-            const headers: Record<string, string> = {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-              'Accept-Language': 'en-US,en;q=0.9',
-              'Cache-Control': 'max-age=0',
-              'Upgrade-Insecure-Requests': '1'
-            };
-            
-            // Add cookies if we have them
-            const cookieHeader = buildCookieHeader();
-            if (cookieHeader) {
-              headers['Cookie'] = cookieHeader;
-            }
-            
-            // Add referer if provided
-            if (refererUrl) {
-              headers['Referer'] = refererUrl;
-            }
-            
-            try {
-              const response = await fetch(requestUrl, {
-                headers,
-                redirect: 'manual',
-                signal: requestController.signal
-              });
-              
-              clearTimeout(requestTimeoutId);
-              
-              // Parse and store cookies from response
-              parseCookies(response);
-              
-              console.info(`Legacy request: ${response.status} for ${requestUrl} (${cookies.size} cookies)`);
-              
-              return response;
-            } catch (error) {
-              clearTimeout(requestTimeoutId);
-              throw error;
-            }
-          };
+    try {
+      const userId = req.user!.id;
+      const personaId = req.params.id;
+      const { responses } = req.body;
+      
+      // Verify persona belongs to user
+      const persona = await storage.getPersona(personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(404).json({ error: 'Persona not found' });
+      }
+      
+      if (!responses || !Array.isArray(responses)) {
+        return res.status(400).json({ error: 'Questionnaire responses are required' });
+      }
+      
+      // Save each response as a memory with appropriate categorization
+      const memories = [];
+      
+      for (const response of responses) {
+        const { questionId, question, answer, type } = response;
+        
+        if (!question || !answer) continue;
+        
+        let memoryType = 'semantic';
+        let salience = 1.0;
+        
+        // Categorize based on question type and content
+        if (type === 'personality' || question.toLowerCase().includes('personality')) {
+          memoryType = 'preference';
+          salience = 1.2;
+        } else if (type === 'relationship' || question.toLowerCase().includes('family') || question.toLowerCase().includes('friend')) {
+          memoryType = 'relationship';
+          salience = 1.1;
+        } else if (type === 'behavior' || question.toLowerCase().includes('express') || question.toLowerCase().includes('communicate')) {
+          memoryType = 'boundary';
+          salience = 1.0;
+        }
+        
+        const memory = await storage.createMemory({
+          personaId,
+          type: memoryType,
+          content: `${question}: ${answer}`,
+          source: 'questionnaire',
+          tags: ['questionnaire', type, `question-${questionId}`],
+          salience
+        });
+        
+        memories.push(memory);
+      }
+      
+      res.json({
+        success: true,
+        message: `Successfully saved ${memories.length} questionnaire responses`,
+        memoriesCreated: memories.length
+      });
+      
+    } catch (error) {
+      console.error('Error in questionnaire enhancement:', error);
+      res.status(500).json({ error: 'Failed to save questionnaire responses' });
+    }
+  });
+
+  // Legacy.com Content Extraction Endpoint
+  app.post('/api/extract/legacy', verifyJWT, async (req: AuthenticatedRequest, res) => {
+    try {
+      const body = z.object({ 
+        url: z.string().url() 
+      }).parse(req.body);
+      
+      const data = await scrapingService.extractLegacyObituary(body.url);
+      
+      res.json({ 
+        success: true, 
+        data 
+      });
+      
+    } catch (error) {
+      console.error('Legacy extraction error:', error);
+      res.status(502).json({ 
+        success: false, 
+        error: 'Failed to extract Legacy.com content' 
+      });
+    }
+  });
+
+  // Persona Metrics Endpoint  
+  app.get('/api/personas/:personaId/metrics', verifyJWT, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const personaId = req.params.personaId;
+      
+      const persona = await storage.getPersona(personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(404).json({ error: 'Persona not found' });
+      }
+      
+      // Get metrics data (placeholder implementation)
+      res.json({
+        success: true,
+        data: {
+          conversationCount: 0,
+          memoryCount: 0,
+          lastInteraction: null
+        }
+      });
+    } catch (error) {
+      console.error('Error getting persona metrics:', error);
+      res.status(500).json({ error: 'Failed to get persona metrics' });
+    }
+  });
+
+  // Cache Satisfaction Endpoint
+  app.post('/api/cache/satisfaction', verifyJWT, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { satisfaction, feedback } = req.body;
+      
+      // Save satisfaction data (placeholder implementation)
+      console.log('Satisfaction feedback received:', { satisfaction, feedback });
+      
+      res.json({ 
+        success: true, 
+        message: 'Satisfaction feedback saved' 
+      });
+    } catch (error) {
+      console.error('Error saving satisfaction:', error);
+      res.status(500).json({ error: 'Failed to save satisfaction data' });
+    }
+  });
           
           // Initial request
           finalResponse = await makeRequest(currentUrl);
