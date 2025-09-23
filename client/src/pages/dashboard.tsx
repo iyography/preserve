@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import UserProfile from "@/components/UserProfile";
@@ -451,6 +452,11 @@ export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMemoryPersona, setSelectedMemoryPersona] = useState<string | null>(null);
   
+  // New persona creation state
+  const [isNewPersonaDialogOpen, setIsNewPersonaDialogOpen] = useState(false);
+  const [newPersonaInfo, setNewPersonaInfo] = useState({ name: '', relationship: '' });
+  const [pendingEnhancementType, setPendingEnhancementType] = useState<'memory' | 'legacy' | 'questionnaire' | null>(null);
+  
   // Conversation-related state
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [newMessageContent, setNewMessageContent] = useState('');
@@ -616,6 +622,58 @@ export default function Dashboard() {
       toast({
         title: "Error",
         description: "Failed to delete memory",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Persona creation mutation for new persona with enhancements
+  const createPersonaMutation = useMutation({
+    mutationFn: async (personaData: { name: string; relationship: string }) => {
+      const response = await apiRequest('POST', '/api/personas', {
+        name: personaData.name,
+        relationship: personaData.relationship,
+        onboardingApproach: 'enhancement',
+        onboardingData: {
+          approach: 'enhancement',
+          basicInfo: {
+            name: personaData.name,
+            relationship: personaData.relationship
+          }
+        },
+        status: 'active'
+      });
+      return response.json();
+    },
+    onSuccess: (newPersona) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/personas'] });
+      setIsNewPersonaDialogOpen(false);
+      setNewPersonaInfo({ name: '', relationship: '' });
+      
+      // Open the appropriate enhancement dialog based on pending type
+      if (pendingEnhancementType === 'memory') {
+        setSelectedMemoryPersona(newPersona.id);
+        setIsAddMemoryOpen(true);
+      } else if (pendingEnhancementType === 'legacy') {
+        setSelectedEnhancementPersona(newPersona.id);
+        setIsLegacyDialogOpen(true);
+      } else if (pendingEnhancementType === 'questionnaire') {
+        setSelectedEnhancementPersona(newPersona.id);
+        setIsQuestionnaireDialogOpen(true);
+      }
+      
+      setPendingEnhancementType(null);
+      
+      toast({
+        title: "Persona Created",
+        description: `${newPersona.name} has been created successfully`,
+      });
+    },
+    onError: (error) => {
+      console.error('Create persona error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create persona",
         variant: "destructive",
       });
     },
@@ -1390,15 +1448,56 @@ export default function Dashboard() {
                   <h2 className="text-2xl font-bold text-gray-900">Your Personas</h2>
                   <p className="text-gray-600 mt-1">Manage and interact with your preserved connections</p>
                 </div>
-                <Link href="/gradual-awakening?mode=create">
-                  <Button 
-                    className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white"
-                    data-testid="button-create-persona"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create New Persona
-                  </Button>
-                </Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white"
+                      data-testid="button-create-persona"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create New Persona
+                      <ChevronDown className="w-4 h-4 ml-2" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuItem asChild>
+                      <Link href="/gradual-awakening?mode=create" className="w-full cursor-pointer">
+                        <User2 className="w-4 h-4 mr-2" />
+                        Standard Onboarding
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => {
+                        setPendingEnhancementType('memory');
+                        setIsNewPersonaDialogOpen(true);
+                      }}
+                      data-testid="dropdown-create-add-memory"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Memory
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => {
+                        setPendingEnhancementType('legacy');
+                        setIsNewPersonaDialogOpen(true);
+                      }}
+                      data-testid="dropdown-create-import-legacy"
+                    >
+                      <LinkIcon className="w-4 h-4 mr-2" />
+                      Import from Legacy.com
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => {
+                        setPendingEnhancementType('questionnaire');
+                        setIsNewPersonaDialogOpen(true);
+                      }}
+                      data-testid="dropdown-create-questionnaire"
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Advanced Questionnaire
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
               {/* Personas Grid */}
@@ -1412,15 +1511,56 @@ export default function Dashboard() {
                     <p className="text-gray-600 mb-6 max-w-md mx-auto">
                       Start preserving memories by creating your first AI persona of a loved one.
                     </p>
-                    <Link href="/gradual-awakening?mode=create">
-                      <Button 
-                        className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white"
-                        data-testid="button-create-first-persona"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create Your First Persona
-                      </Button>
-                    </Link>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white"
+                          data-testid="button-create-first-persona"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create Your First Persona
+                          <ChevronDown className="w-4 h-4 ml-2" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="center" className="w-64">
+                        <DropdownMenuItem asChild>
+                          <Link href="/gradual-awakening?mode=create" className="w-full cursor-pointer">
+                            <User2 className="w-4 h-4 mr-2" />
+                            Standard Onboarding
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setPendingEnhancementType('memory');
+                            setIsNewPersonaDialogOpen(true);
+                          }}
+                          data-testid="dropdown-create-first-add-memory"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Memory
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setPendingEnhancementType('legacy');
+                            setIsNewPersonaDialogOpen(true);
+                          }}
+                          data-testid="dropdown-create-first-import-legacy"
+                        >
+                          <LinkIcon className="w-4 h-4 mr-2" />
+                          Import from Legacy.com
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setPendingEnhancementType('questionnaire');
+                            setIsNewPersonaDialogOpen(true);
+                          }}
+                          data-testid="dropdown-create-first-questionnaire"
+                        >
+                          <FileText className="w-4 h-4 mr-2" />
+                          Advanced Questionnaire
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </CardContent>
                 </Card>
               ) : (
@@ -2460,6 +2600,106 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* New Persona Creation Dialog */}
+      <Dialog open={isNewPersonaDialogOpen} onOpenChange={setIsNewPersonaDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Persona</DialogTitle>
+            <DialogDescription>
+              Enter basic information about your loved one to create their persona.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="persona-name">Name</Label>
+              <Input
+                id="persona-name"
+                placeholder="Enter their full name"
+                value={newPersonaInfo.name}
+                onChange={(e) => setNewPersonaInfo(prev => ({ ...prev, name: e.target.value }))}
+                data-testid="input-new-persona-name"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="persona-relationship">Relationship to You</Label>
+              <Select 
+                value={newPersonaInfo.relationship} 
+                onValueChange={(value) => setNewPersonaInfo(prev => ({ ...prev, relationship: value }))}
+              >
+                <SelectTrigger data-testid="select-new-persona-relationship">
+                  <SelectValue placeholder="Select relationship" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="parent">Parent</SelectItem>
+                  <SelectItem value="grandparent">Grandparent</SelectItem>
+                  <SelectItem value="spouse">Spouse/Partner</SelectItem>
+                  <SelectItem value="sibling">Sibling</SelectItem>
+                  <SelectItem value="child">Child</SelectItem>
+                  <SelectItem value="friend">Friend</SelectItem>
+                  <SelectItem value="relative">Other Relative</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {pendingEnhancementType && (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <p className="text-sm text-purple-800">
+                  After creating {newPersonaInfo.name || 'this persona'}, you'll be able to {
+                    pendingEnhancementType === 'memory' ? 'add a memory' :
+                    pendingEnhancementType === 'legacy' ? 'import from Legacy.com' :
+                    'complete an advanced questionnaire'
+                  } to enhance their personality.
+                </p>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsNewPersonaDialogOpen(false);
+                setNewPersonaInfo({ name: '', relationship: '' });
+                setPendingEnhancementType(null);
+              }}
+              data-testid="button-cancel-new-persona"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!newPersonaInfo.name.trim() || !newPersonaInfo.relationship) {
+                  toast({
+                    title: "Missing Information",
+                    description: "Please enter a name and select a relationship",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                createPersonaMutation.mutate(newPersonaInfo);
+              }}
+              disabled={!newPersonaInfo.name.trim() || !newPersonaInfo.relationship || createPersonaMutation.isPending}
+              data-testid="button-create-new-persona"
+            >
+              {createPersonaMutation.isPending ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Persona
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Enhancement Dialogs */}
       <EnhancePersonaDialogs
