@@ -51,6 +51,7 @@ function Router() {
       <Route path="/email-confirmed" component={EmailConfirmed} />
       <Route path="/community" component={Community} />
       <Route path="/onboarding" component={Onboarding} />
+      <Route path="/gradual-awakening" component={GradualAwakening} />
       <Route path="/onboarding/gradual-awakening" component={GradualAwakening} />
       <Route path="/onboarding/digital-seance" component={DigitalSeance} />
       <Route path="/onboarding/living-archive" component={LivingArchive} />

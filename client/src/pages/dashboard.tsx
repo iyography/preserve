@@ -1460,11 +1460,12 @@ export default function Dashboard() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-64">
-                    <DropdownMenuItem asChild>
-                      <Link href="/gradual-awakening?mode=create" className="w-full cursor-pointer">
-                        <User2 className="w-4 h-4 mr-2" />
-                        Standard Onboarding
-                      </Link>
+                    <DropdownMenuItem 
+                      onClick={() => setLocation('/gradual-awakening?mode=create')}
+                      data-testid="dropdown-create-standard-onboarding"
+                    >
+                      <User2 className="w-4 h-4 mr-2" />
+                      Standard Onboarding
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={() => {
@@ -1523,11 +1524,12 @@ export default function Dashboard() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="center" className="w-64">
-                        <DropdownMenuItem asChild>
-                          <Link href="/gradual-awakening?mode=create" className="w-full cursor-pointer">
-                            <User2 className="w-4 h-4 mr-2" />
-                            Standard Onboarding
-                          </Link>
+                        <DropdownMenuItem 
+                          onClick={() => setLocation('/gradual-awakening?mode=create')}
+                          data-testid="dropdown-create-first-standard-onboarding"
+                        >
+                          <User2 className="w-4 h-4 mr-2" />
+                          Standard Onboarding
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => {
