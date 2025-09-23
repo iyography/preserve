@@ -744,12 +744,6 @@ export default function Dashboard() {
 
   const { data: conversationMessages = [], isLoading: messagesLoading } = useQuery<Message[]>({
     queryKey: ['/api/conversations', selectedConversation, 'messages'],
-    queryFn: async () => {
-      if (!selectedConversation) return [];
-      const response = await fetch(`/api/conversations/${selectedConversation}/messages`);
-      if (!response.ok) throw new Error('Failed to fetch messages');
-      return response.json();
-    },
     enabled: !!selectedConversation,
   });
 
