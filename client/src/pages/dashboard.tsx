@@ -1198,13 +1198,15 @@ export default function Dashboard() {
       id: 'billing',
       label: 'Billing',
       icon: CreditCard,
-      active: activeSection === 'billing'
+      active: activeSection === 'billing',
+      disabled: true
     },
     {
       id: 'help',
       label: 'Help & Support',
       icon: HelpCircle,
-      active: activeSection === 'help'
+      active: activeSection === 'help',
+      disabled: true
     }
   ];
 
@@ -1315,14 +1317,19 @@ export default function Dashboard() {
                   <button
                     key={item.id}
                     onClick={() => {
-                      setActiveSection(item.id);
-                      setIsMobileSidebarOpen(false);
+                      if (!item.disabled) {
+                        setActiveSection(item.id);
+                        setIsMobileSidebarOpen(false);
+                      }
                     }}
+                    disabled={item.disabled}
                     className={cn(
                       "w-full flex items-center px-2 py-2 rounded-lg transition-colors",
-                      item.active
-                        ? "bg-purple-100 text-purple-700"
-                        : "text-gray-600 hover:bg-gray-100",
+                      item.disabled
+                        ? "text-gray-400 cursor-not-allowed opacity-50"
+                        : item.active
+                          ? "bg-purple-100 text-purple-700"
+                          : "text-gray-600 hover:bg-gray-100",
                       isSidebarCollapsed && "justify-center"
                     )}
                     data-testid={`sidebar-${item.id}`}
