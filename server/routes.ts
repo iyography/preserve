@@ -2141,65 +2141,154 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
           
-          // Create timeout controller for safe fetching
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-          
-          // Safe redirect handling - allow up to 2 Legacy.com redirects
-          const response = await fetch(url, {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (compatible; EvermoreBot/1.0; grief-tech memorial service)'
-            },
-            redirect: 'manual', // Handle redirects manually for security
-            signal: controller.signal
-          });
-          
-          clearTimeout(timeoutId);
-          
-          // Handle redirects safely - only to Legacy.com domains
-          let finalResponse = response;
+          // Robust fetch with state management and realistic browser simulation
+          let cookies = new Map<string, string>();
+          let finalResponse;
           let redirectCount = 0;
-          const maxRedirects = 2;
+          const maxRedirects = 5;
+          let currentUrl = url;
+          let previousUrl = '';
           
+          // Helper to build cookie header from cookie map
+          const buildCookieHeader = () => {
+            return Array.from(cookies.entries()).map(([name, value]) => `${name}=${value}`).join('; ');
+          };
+          
+          // Helper to parse Set-Cookie headers properly
+          const parseCookies = (response: globalThis.Response) => {
+            // Get all Set-Cookie headers - fetch Response doesn't have .raw(), so we need to handle this differently
+            const setCookieHeader = response.headers.get('set-cookie');
+            if (setCookieHeader) {
+              // Handle multiple cookies in a single header (comma-separated but need to be careful about Expires dates)
+              // For now, just parse the first cookie to avoid complexity
+              const cookiePart = setCookieHeader.split(';')[0].trim();
+              const [name, value] = cookiePart.split('=');
+              if (name && value !== undefined) {
+                cookies.set(name, value);
+              }
+            }
+            
+            // Also try to get multiple Set-Cookie headers if available 
+            // Note: Standard fetch API doesn't expose multiple headers with same name easily
+            // This is a limitation we'll accept for now
+          };
+          
+          // Make request with proper cookie and referer handling
+          const makeRequest = async (requestUrl: string, refererUrl?: string) => {
+            const requestController = new AbortController();
+            const requestTimeoutId = setTimeout(() => requestController.abort(), 10000);
+            
+            const headers: Record<string, string> = {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+              'Accept-Language': 'en-US,en;q=0.9',
+              'Cache-Control': 'max-age=0',
+              'Upgrade-Insecure-Requests': '1'
+            };
+            
+            // Add cookies if we have them
+            const cookieHeader = buildCookieHeader();
+            if (cookieHeader) {
+              headers['Cookie'] = cookieHeader;
+            }
+            
+            // Add referer if provided
+            if (refererUrl) {
+              headers['Referer'] = refererUrl;
+            }
+            
+            try {
+              const response = await fetch(requestUrl, {
+                headers,
+                redirect: 'manual',
+                signal: requestController.signal
+              });
+              
+              clearTimeout(requestTimeoutId);
+              
+              // Parse and store cookies from response
+              parseCookies(response);
+              
+              console.info(`Legacy request: ${response.status} for ${requestUrl} (${cookies.size} cookies)`);
+              
+              return response;
+            } catch (error) {
+              clearTimeout(requestTimeoutId);
+              throw error;
+            }
+          };
+          
+          // Initial request
+          finalResponse = await makeRequest(currentUrl);
+          
+          // Handle redirects with state preservation
           while (finalResponse.status >= 300 && finalResponse.status < 400 && redirectCount < maxRedirects) {
             const location = finalResponse.headers.get('location');
             if (!location) break;
             
             let redirectUrl;
             try {
-              redirectUrl = new URL(location, url); // Handle relative redirects
+              redirectUrl = new URL(location, currentUrl);
             } catch {
-              break; // Invalid redirect URL
+              console.warn(`Legacy extraction: Invalid redirect URL ${location}`);
+              break;
             }
             
-            // Validate redirect target is still Legacy.com
-            const isAllowedRedirect = allowedHosts.includes(redirectUrl.hostname.toLowerCase()) || 
-              redirectUrl.hostname.toLowerCase().endsWith('.legacy.com');
+            // Strict domain validation for redirect target
+            const hostname = redirectUrl.hostname.toLowerCase();
+            const isAllowedRedirect = hostname === 'legacy.com' || 
+              hostname === 'www.legacy.com' || 
+              hostname.endsWith('.legacy.com');
             
             if (!isAllowedRedirect) {
-              console.warn(`Legacy extraction blocked unsafe redirect to: ${redirectUrl.hostname}`);
+              console.warn(`Legacy extraction blocked unsafe redirect to: ${hostname}`);
               break;
             }
             
             redirectCount++;
-            const redirectController = new AbortController();
-            const redirectTimeoutId = setTimeout(() => redirectController.abort(), 10000);
+            previousUrl = currentUrl;
+            currentUrl = redirectUrl.toString();
             
-            finalResponse = await fetch(redirectUrl.toString(), {
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; EvermoreBot/1.0; grief-tech memorial service)'
-              },
-              redirect: 'manual',
-              signal: redirectController.signal
-            });
+            console.info(`Legacy redirect ${redirectCount}: ${finalResponse.status} -> ${currentUrl}`);
             
-            clearTimeout(redirectTimeoutId);
+            finalResponse = await makeRequest(currentUrl, previousUrl);
           }
           
+          // Handle various error cases with helpful user feedback
           if (!finalResponse.ok) {
-            console.warn(`Legacy extraction failed: HTTP ${finalResponse.status} for ${url}`);
+            const statusCode = finalResponse.status;
+            console.warn(`Legacy extraction failed: HTTP ${statusCode} for ${url} after ${redirectCount} redirects`);
+            
+            let errorMessage = '';
+            let suggestion = '';
+            
+            switch (statusCode) {
+              case 403:
+                errorMessage = 'Legacy.com is blocking automated access to this page';
+                suggestion = 'Please copy and paste the obituary text manually using the text area below';
+                break;
+              case 404:
+                errorMessage = 'The obituary page was not found';
+                suggestion = 'Please check the URL and try again, or paste the content manually';
+                break;
+              case 429:
+                errorMessage = 'Too many requests to Legacy.com - rate limited';
+                suggestion = 'Please wait a moment and try again, or copy the content manually';
+                break;
+              case 503:
+                errorMessage = 'Legacy.com is temporarily unavailable';
+                suggestion = 'Please try again later or copy the content manually';
+                break;
+              default:
+                errorMessage = `Unable to access the Legacy.com page (HTTP ${statusCode})`;
+                suggestion = 'Please copy and paste the obituary text manually';
+            }
+            
             return res.status(400).json({ 
-              error: `Unable to fetch content from the provided URL (HTTP ${finalResponse.status})` 
+              error: errorMessage,
+              suggestion,
+              statusCode,
+              manualOption: 'You can copy the obituary text from the webpage and paste it in the text area below for review.'
             });
           }
           
