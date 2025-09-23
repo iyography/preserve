@@ -1784,51 +1784,14 @@ export default function Dashboard() {
               {/* Memory Archive Header */}
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">Memory Archive</h2>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button 
-                      className="bg-gradient-to-r from-purple-500 to-purple-700 text-white hover:from-purple-600 hover:to-purple-800"
-                      data-testid="button-enhance-persona"
-                    >
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Enhance Persona
-                      <ChevronDown className="w-4 h-4 ml-2" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem 
-                      onClick={() => setIsAddMemoryOpen(true)}
-                      data-testid="dropdown-add-memory"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Memory
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => {
-                        toast({
-                          title: "Coming Soon",
-                          description: "Legacy.com obituary import will be available soon",
-                        });
-                      }}
-                      data-testid="dropdown-import-obituary"
-                    >
-                      <LinkIcon className="w-4 h-4 mr-2" />
-                      Import from Legacy.com
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => {
-                        toast({
-                          title: "Coming Soon",
-                          description: "Advanced questionnaire will be available soon",
-                        });
-                      }}
-                      data-testid="dropdown-advanced-questionnaire"
-                    >
-                      <FileText className="w-4 h-4 mr-2" />
-                      Advanced Questionnaire
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <Button 
+                  onClick={() => setIsAddMemoryOpen(true)}
+                  className="bg-gradient-to-r from-purple-500 to-purple-700 text-white hover:from-purple-600 hover:to-purple-800"
+                  data-testid="button-add-memory"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Memory
+                </Button>
                 <Dialog open={isAddMemoryOpen} onOpenChange={setIsAddMemoryOpen}>
                   <DialogTrigger />
                   <DialogContent className="max-w-2xl">
