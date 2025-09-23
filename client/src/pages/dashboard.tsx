@@ -445,6 +445,21 @@ export default function Dashboard() {
   const [editingPersona, setEditingPersona] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   
+  // Photo editing state
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const [isCropping, setIsCropping] = useState(false);
+  const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 100, height: 100 });
+  const [cropPreview, setCropPreview] = useState<string | null>(null);
+  const [imageNaturalSize, setImageNaturalSize] = useState({ width: 0, height: 0 });
+  const [photoExplicitlyRemoved, setPhotoExplicitlyRemoved] = useState(false);
+  
+  // Refs for photo editing
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cropImageRef = useRef<HTMLImageElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
   // Memory-related state
   const [isAddMemoryOpen, setIsAddMemoryOpen] = useState(false);
   const [editingMemory, setEditingMemory] = useState<Memory | null>(null);
@@ -1127,20 +1142,126 @@ export default function Dashboard() {
   const startEditing = (persona: Persona) => {
     setEditingPersona(persona.id);
     setEditName(persona.name);
+    // Set current photo if available
+    const currentPhoto = getPersonaPhoto(persona);
+    setPhotoPreview(currentPhoto);
+    setPhotoExplicitlyRemoved(false);
   };
 
   const cancelEditing = () => {
     setEditingPersona(null);
     setEditName('');
+    // Reset photo editing state
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setOriginalImage(null);
+    setIsCropping(false);
+    setCropPreview(null);
+    setPhotoExplicitlyRemoved(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const saveEdit = () => {
     if (editingPersona && editName.trim()) {
+      const updates: any = { name: editName.trim() };
+      const currentPersona = personas.find(p => p.id === editingPersona);
+      
+      if (currentPersona) {
+        // Handle photo updates - both additions and deletions
+        if (photoExplicitlyRemoved) {
+          // Explicitly remove photo
+          updates.onboardingData = {
+            ...(currentPersona.onboardingData || {}),
+            photoBase64: null
+          };
+        } else if (photoPreview && photoPreview !== getPersonaPhoto(currentPersona)) {
+          // Add or update photo
+          updates.onboardingData = {
+            ...(currentPersona.onboardingData || {}),
+            photoBase64: photoPreview
+          };
+        }
+      }
+      
       updatePersonaMutation.mutate({
         personaId: editingPersona,
-        updates: { name: editName.trim() }
+        updates
       });
     }
+  };
+
+  // Photo handling functions
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      setPhotoFile(file);
+      setPhotoExplicitlyRemoved(false); // Reset removal flag when uploading new photo
+      
+      // Create original image URL for cropping
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const imageUrl = reader.result as string;
+        setOriginalImage(imageUrl);
+        setIsCropping(true);
+      };
+      reader.readAsDataURL(file);
+    } else if (file) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select an image file (JPEG, PNG, GIF, or WebP).",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const removePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setOriginalImage(null);
+    setCropPreview(null);
+    setIsCropping(false);
+    setPhotoExplicitlyRemoved(true);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const generateCroppedImage = () => {
+    const img = cropImageRef.current;
+    const canvas = canvasRef.current;
+    
+    if (!img || !canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Set canvas size to crop area
+    canvas.width = cropArea.width;
+    canvas.height = cropArea.height;
+    
+    // Draw cropped image
+    ctx.drawImage(
+      img,
+      cropArea.x, cropArea.y, cropArea.width, cropArea.height,
+      0, 0, cropArea.width, cropArea.height
+    );
+    
+    // Convert to base64
+    const croppedImageData = canvas.toDataURL('image/jpeg', 0.9);
+    setPhotoPreview(croppedImageData);
+    setCropPreview(croppedImageData);
+  };
+
+  const handleCropConfirm = () => {
+    generateCroppedImage();
+    setIsCropping(false);
+  };
+
+  const handleCropCancel = () => {
+    setIsCropping(false);
+    setCropPreview(null);
   };
 
   // Redirect to sign-in if not authenticated
@@ -1573,17 +1694,49 @@ export default function Dashboard() {
                         <CardHeader className="pb-4">
                           <div className="flex items-start justify-between">
                             <div className="flex items-center space-x-3">
-                              <Avatar className="w-14 h-14 border-2 border-purple-200">
-                                <AvatarImage 
-                                  src={(persona.onboardingData as any)?.photoBase64 || ''} 
-                                  alt={persona.name}
-                                  className="object-cover"
-                                  data-testid={`image-persona-${persona.id}`}
-                                />
-                                <AvatarFallback className="bg-gradient-to-br from-purple-100 to-indigo-100">
-                                  <Heart className="w-6 h-6 text-purple-600" />
-                                </AvatarFallback>
-                              </Avatar>
+                              <div 
+                                className={cn(
+                                  "relative",
+                                  editingPersona === persona.id && "cursor-pointer group"
+                                )}
+                                onClick={(e) => {
+                                  if (editingPersona === persona.id) {
+                                    e.stopPropagation();
+                                    fileInputRef.current?.click();
+                                  }
+                                }}
+                              >
+                                <Avatar className="w-14 h-14 border-2 border-purple-200">
+                                  <AvatarImage 
+                                    src={editingPersona === persona.id ? (
+                                      photoExplicitlyRemoved ? '' : (photoPreview || getPersonaPhoto(persona) || '')
+                                    ) : (getPersonaPhoto(persona) || '')}
+                                    alt={persona.name}
+                                    className="object-cover"
+                                    data-testid={`image-persona-${persona.id}`}
+                                  />
+                                  <AvatarFallback className="bg-gradient-to-br from-purple-100 to-indigo-100">
+                                    <Heart className="w-6 h-6 text-purple-600" />
+                                  </AvatarFallback>
+                                </Avatar>
+                                {editingPersona === persona.id && (
+                                  <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Camera className="w-5 h-5 text-white" />
+                                  </div>
+                                )}
+                                {editingPersona === persona.id && !photoExplicitlyRemoved && (photoPreview || getPersonaPhoto(persona)) && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removePhoto();
+                                    }}
+                                    className="absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs transition-colors"
+                                    data-testid={`button-remove-photo-${persona.id}`}
+                                  >
+                                    ×
+                                  </button>
+                                )}
+                              </div>
                               <div>
                                 {editingPersona === persona.id ? (
                                   <div className="flex items-center space-x-2">
@@ -2699,6 +2852,74 @@ export default function Dashboard() {
         legacyImportMutation={legacyImportMutation}
         questionnaireMutation={questionnaireMutation}
       />
+
+      {/* Hidden file input for photo upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handlePhotoUpload}
+        className="hidden"
+      />
+
+      {/* Photo Cropping Modal */}
+      {isCropping && originalImage && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+            <h3 className="text-lg font-semibold mb-4">Crop Photo</h3>
+            <div className="relative">
+              <img
+                ref={cropImageRef}
+                src={originalImage}
+                alt="Crop preview"
+                className="max-w-full max-h-96 mx-auto"
+                onLoad={(e) => {
+                  const img = e.currentTarget;
+                  setImageNaturalSize({ 
+                    width: img.naturalWidth, 
+                    height: img.naturalHeight 
+                  });
+                  const size = Math.min(img.clientWidth, img.clientHeight) * 0.6;
+                  setCropArea({
+                    x: (img.clientWidth - size) / 2,
+                    y: (img.clientHeight - size) / 2,
+                    width: size,
+                    height: size
+                  });
+                }}
+              />
+              {/* Simple crop overlay */}
+              <div
+                className="absolute border-2 border-purple-500 bg-purple-500/20"
+                style={{
+                  left: cropArea.x,
+                  top: cropArea.y,
+                  width: cropArea.width,
+                  height: cropArea.height,
+                }}
+              />
+            </div>
+            <div className="flex gap-3 mt-6">
+              <Button
+                onClick={handleCropCancel}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCropConfirm}
+                className="flex-1 bg-gradient-to-r from-purple-600 to-purple-700"
+              >
+                Confirm Crop
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden canvas for image processing */}
+      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 }
