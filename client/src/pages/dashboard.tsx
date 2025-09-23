@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import EnhancePersonaDialogs from "@/components/EnhancePersonaDialogs";
 
 // Type declarations for Web Speech API
 interface SpeechRecognition extends EventTarget {
@@ -2459,6 +2460,28 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* Enhancement Dialogs */}
+      <EnhancePersonaDialogs
+        personas={personas}
+        isLegacyDialogOpen={isLegacyDialogOpen}
+        setIsLegacyDialogOpen={setIsLegacyDialogOpen}
+        isQuestionnaireDialogOpen={isQuestionnaireDialogOpen}
+        setIsQuestionnaireDialogOpen={setIsQuestionnaireDialogOpen}
+        selectedEnhancementPersona={selectedEnhancementPersona}
+        legacyUrl={legacyUrl}
+        setLegacyUrl={setLegacyUrl}
+        extractedContent={extractedContent}
+        setExtractedContent={setExtractedContent}
+        reviewedContent={reviewedContent}
+        setReviewedContent={setReviewedContent}
+        isExtracting={isExtracting}
+        setIsExtracting={setIsExtracting}
+        questionnaireProgress={questionnaireProgress}
+        setQuestionnaireProgress={setQuestionnaireProgress}
+        legacyImportMutation={legacyImportMutation}
+        questionnaireMutation={questionnaireMutation}
+      />
     </div>
   );
 }
@@ -3277,164 +3300,6 @@ function SettingsSection() {
         </Form>
       </Tabs>
 
-      {/* Enhancement Dialogs - Legacy.com Integration Dialog */}
-      <Dialog open={isLegacyDialogOpen} onOpenChange={setIsLegacyDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Import from Legacy.com</DialogTitle>
-            <DialogDescription>
-              Enter a Legacy.com obituary URL to extract and import content to enhance your persona's knowledge.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label htmlFor="legacy-url" className="text-sm font-medium">
-                Legacy.com Obituary URL
-              </label>
-              <Input
-                id="legacy-url"
-                type="url"
-                placeholder="https://www.legacy.com/us/obituaries/..."
-                value={legacyUrl}
-                onChange={(e) => setLegacyUrl(e.target.value)}
-                disabled={isExtracting || legacyImportMutation.isPending}
-                data-testid="input-legacy-url"
-              />
-            </div>
-            
-            {!extractedContent && (
-              <Button
-                onClick={() => {
-                  if (!legacyUrl) {
-                    toast({
-                      title: "URL Required",
-                      description: "Please enter a Legacy.com obituary URL",
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-                  setIsExtracting(true);
-                  legacyImportMutation.mutate({
-                    personaId: selectedEnhancementPersona!,
-                    url: legacyUrl
-                  });
-                  setIsExtracting(false);
-                }}
-                disabled={!legacyUrl || isExtracting || legacyImportMutation.isPending}
-                className="w-full"
-                data-testid="button-extract-content"
-              >
-                {isExtracting || legacyImportMutation.isPending ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Extracting Content...
-                  </>
-                ) : (
-                  <>
-                    <LinkIcon className="w-4 h-4 mr-2" />
-                    Extract Content
-                  </>
-                )}
-              </Button>
-            )}
-            
-            {extractedContent && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label htmlFor="reviewed-content" className="text-sm font-medium">
-                    Extracted Content (Review & Edit)
-                  </label>
-                  <Textarea
-                    id="reviewed-content"
-                    placeholder="Review and edit the extracted content before saving..."
-                    value={reviewedContent}
-                    onChange={(e) => setReviewedContent(e.target.value)}
-                    rows={10}
-                    className="text-sm"
-                    data-testid="textarea-reviewed-content"
-                  />
-                </div>
-                <p className="text-xs text-gray-500">
-                  Please review the extracted content for accuracy before saving. You can edit it to add or remove information.
-                </p>
-              </div>
-            )}
-          </div>
-          
-          <DialogFooter className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsLegacyDialogOpen(false);
-                setLegacyUrl('');
-                setExtractedContent('');
-                setReviewedContent('');
-              }}
-              data-testid="button-cancel-legacy"
-            >
-              Cancel
-            </Button>
-            {extractedContent && (
-              <Button
-                onClick={() => {
-                  if (!reviewedContent.trim()) {
-                    toast({
-                      title: "Content Required",
-                      description: "Please review and approve the content before saving",
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-                  legacyImportMutation.mutate({
-                    personaId: selectedEnhancementPersona!,
-                    reviewedContent: reviewedContent
-                  });
-                }}
-                disabled={!reviewedContent.trim() || legacyImportMutation.isPending}
-                data-testid="button-save-legacy-content"
-              >
-                {legacyImportMutation.isPending ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Content
-                  </>
-                )}
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Advanced Questionnaire Dialog */}
-      <Dialog open={isQuestionnaireDialogOpen} onOpenChange={setIsQuestionnaireDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Advanced Questionnaire</DialogTitle>
-            <DialogDescription>
-              Answer these questions to help us better understand your loved one's personality, preferences, and unique characteristics.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <AdvancedQuestionnaireForm
-            personaName={personas.find((p: Persona) => p.id === selectedEnhancementPersona)?.name || "your loved one"}
-            onSubmit={(responses) => {
-              questionnaireMutation.mutate({
-                personaId: selectedEnhancementPersona!,
-                responses
-              });
-            }}
-            onCancel={() => setIsQuestionnaireDialogOpen(false)}
-            isSubmitting={questionnaireMutation.isPending}
-            onProgressChange={setQuestionnaireProgress}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
