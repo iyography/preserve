@@ -455,6 +455,14 @@ export default function Dashboard() {
   const [imageNaturalSize, setImageNaturalSize] = useState({ width: 0, height: 0 });
   const [photoExplicitlyRemoved, setPhotoExplicitlyRemoved] = useState(false);
   
+  // Crop interaction state
+  const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [resizeHandle, setResizeHandle] = useState<string | null>(null);
+  const [imageContainerBounds, setImageContainerBounds] = useState({ x: 0, y: 0, width: 0, height: 0 });
+  const [resizeStartRect, setResizeStartRect] = useState({ x: 0, y: 0, width: 0, height: 0 });
+  
   // Refs for photo editing
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cropImageRef = useRef<HTMLImageElement>(null);
@@ -1262,6 +1270,126 @@ export default function Dashboard() {
   const handleCropCancel = () => {
     setIsCropping(false);
     setCropPreview(null);
+    // Reset interaction state
+    setIsDragging(false);
+    setIsResizing(false);
+    setResizeHandle(null);
+  };
+
+  // Crop interaction handlers
+  const handleCropMouseDown = (e: React.MouseEvent, action: 'drag' | 'resize', handle?: string) => {
+    e.preventDefault();
+    const rect = cropImageRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    setImageContainerBounds({
+      x: rect.left,
+      y: rect.top,
+      width: rect.width,
+      height: rect.height
+    });
+
+    setDragStart({
+      x: e.clientX,
+      y: e.clientY
+    });
+
+    if (action === 'drag') {
+      setIsDragging(true);
+    } else if (action === 'resize' && handle) {
+      setIsResizing(true);
+      setResizeHandle(handle);
+      // Capture the initial crop rectangle for baseline calculations
+      setResizeStartRect({ ...cropArea });
+    }
+  };
+
+  const handleCropMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging && !isResizing) return;
+    e.preventDefault();
+
+    const deltaX = e.clientX - dragStart.x;
+    const deltaY = e.clientY - dragStart.y;
+
+    if (isDragging) {
+      setCropArea(prev => {
+        const newX = Math.max(0, Math.min(prev.x + deltaX, imageContainerBounds.width - prev.width));
+        const newY = Math.max(0, Math.min(prev.y + deltaY, imageContainerBounds.height - prev.height));
+        return { ...prev, x: newX, y: newY };
+      });
+      setDragStart({ x: e.clientX, y: e.clientY });
+    } else if (isResizing && resizeHandle) {
+      setCropArea(prev => {
+        // Calculate from the resize start position to avoid delta accumulation
+        const totalDeltaX = e.clientX - dragStart.x;
+        const totalDeltaY = e.clientY - dragStart.y;
+        
+        let newArea = { ...resizeStartRect };
+        
+        switch (resizeHandle) {
+          case 'se': // bottom-right
+            newArea.width = Math.max(50, Math.min(resizeStartRect.width + totalDeltaX, imageContainerBounds.width - resizeStartRect.x));
+            newArea.height = Math.max(50, Math.min(resizeStartRect.height + totalDeltaY, imageContainerBounds.height - resizeStartRect.y));
+            break;
+          case 'sw': // bottom-left
+            {
+              // Clamp newX to ensure minimum width fits within bounds
+              const minNewX = Math.max(0, (resizeStartRect.x + resizeStartRect.width) - imageContainerBounds.width);
+              const maxNewX = Math.min(resizeStartRect.x + resizeStartRect.width - 50, imageContainerBounds.width - 50);
+              const newX = Math.max(minNewX, Math.min(maxNewX, resizeStartRect.x + totalDeltaX));
+              
+              newArea.width = resizeStartRect.x + resizeStartRect.width - newX;
+              newArea.height = Math.max(50, Math.min(resizeStartRect.height + totalDeltaY, imageContainerBounds.height - resizeStartRect.y));
+              newArea.x = newX;
+            }
+            break;
+          case 'ne': // top-right
+            {
+              // Clamp newY to ensure minimum height fits within bounds
+              const minNewY = Math.max(0, (resizeStartRect.y + resizeStartRect.height) - imageContainerBounds.height);
+              const maxNewY = Math.min(resizeStartRect.y + resizeStartRect.height - 50, imageContainerBounds.height - 50);
+              const newY = Math.max(minNewY, Math.min(maxNewY, resizeStartRect.y + totalDeltaY));
+              
+              newArea.width = Math.max(50, Math.min(resizeStartRect.width + totalDeltaX, imageContainerBounds.width - resizeStartRect.x));
+              newArea.height = resizeStartRect.y + resizeStartRect.height - newY;
+              newArea.y = newY;
+            }
+            break;
+          case 'nw': // top-left
+            {
+              // Clamp newX and newY to ensure minimum dimensions fit within bounds
+              const minNewX = Math.max(0, (resizeStartRect.x + resizeStartRect.width) - imageContainerBounds.width);
+              const maxNewX = Math.min(resizeStartRect.x + resizeStartRect.width - 50, imageContainerBounds.width - 50);
+              const newX = Math.max(minNewX, Math.min(maxNewX, resizeStartRect.x + totalDeltaX));
+              
+              const minNewY = Math.max(0, (resizeStartRect.y + resizeStartRect.height) - imageContainerBounds.height);
+              const maxNewY = Math.min(resizeStartRect.y + resizeStartRect.height - 50, imageContainerBounds.height - 50);
+              const newY = Math.max(minNewY, Math.min(maxNewY, resizeStartRect.y + totalDeltaY));
+              
+              newArea.width = resizeStartRect.x + resizeStartRect.width - newX;
+              newArea.height = resizeStartRect.y + resizeStartRect.height - newY;
+              newArea.x = newX;
+              newArea.y = newY;
+            }
+            break;
+        }
+        
+        // Final boundary check to ensure crop area stays within image bounds
+        newArea.x = Math.max(0, Math.min(newArea.x, imageContainerBounds.width - newArea.width));
+        newArea.y = Math.max(0, Math.min(newArea.y, imageContainerBounds.height - newArea.height));
+        newArea.width = Math.min(newArea.width, imageContainerBounds.width - newArea.x);
+        newArea.height = Math.min(newArea.height, imageContainerBounds.height - newArea.y);
+        
+        return newArea;
+      });
+      // Don't update dragStart during resizing - keep it fixed to the initial position
+    }
+  };
+
+  const handleCropMouseUp = () => {
+    setIsDragging(false);
+    setIsResizing(false);
+    setResizeHandle(null);
   };
 
   // Redirect to sign-in if not authenticated
@@ -2867,12 +2995,12 @@ export default function Dashboard() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
             <h3 className="text-lg font-semibold mb-4">Crop Photo</h3>
-            <div className="relative">
+            <div className="relative select-none">
               <img
                 ref={cropImageRef}
                 src={originalImage}
                 alt="Crop preview"
-                className="max-w-full max-h-96 mx-auto"
+                className="max-w-full max-h-96 mx-auto block"
                 onLoad={(e) => {
                   const img = e.currentTarget;
                   setImageNaturalSize({ 
@@ -2887,8 +3015,13 @@ export default function Dashboard() {
                     height: size
                   });
                 }}
+                onMouseMove={handleCropMouseMove}
+                onMouseUp={handleCropMouseUp}
+                onMouseLeave={handleCropMouseUp}
+                style={{ cursor: isDragging ? 'grabbing' : isResizing ? 'nw-resize' : 'default' }}
               />
-              {/* Simple crop overlay */}
+              
+              {/* Interactive crop overlay */}
               <div
                 className="absolute border-2 border-purple-500 bg-purple-500/20"
                 style={{
@@ -2896,8 +3029,40 @@ export default function Dashboard() {
                   top: cropArea.y,
                   width: cropArea.width,
                   height: cropArea.height,
+                  cursor: 'grab'
                 }}
-              />
+                onMouseDown={(e) => handleCropMouseDown(e, 'drag')}
+              >
+                {/* Resize handles */}
+                <div
+                  className="absolute w-3 h-3 bg-purple-500 border border-white -top-1 -left-1 cursor-nw-resize"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    handleCropMouseDown(e, 'resize', 'nw');
+                  }}
+                />
+                <div
+                  className="absolute w-3 h-3 bg-purple-500 border border-white -top-1 -right-1 cursor-ne-resize"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    handleCropMouseDown(e, 'resize', 'ne');
+                  }}
+                />
+                <div
+                  className="absolute w-3 h-3 bg-purple-500 border border-white -bottom-1 -left-1 cursor-sw-resize"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    handleCropMouseDown(e, 'resize', 'sw');
+                  }}
+                />
+                <div
+                  className="absolute w-3 h-3 bg-purple-500 border border-white -bottom-1 -right-1 cursor-se-resize"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    handleCropMouseDown(e, 'resize', 'se');
+                  }}
+                />
+              </div>
             </div>
             <div className="flex gap-3 mt-6">
               <Button
