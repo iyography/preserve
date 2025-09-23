@@ -2276,12 +2276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     personaId,
                     type: 'legacy_import' as const,
                     content: contentToSave,
-                    source: 'legacy.com',
-                    metadata: { 
-                      originalUrl: url,
-                      extractionMethod: 'scrapingbee',
-                      extractedAt: new Date().toISOString()
-                    }
+                    source: 'legacy.com'
                   });
 
                   res.json({ 

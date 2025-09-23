@@ -168,87 +168,127 @@ export class ScrapingService {
     try {
       const $ = load(html);
       
-      // Remove unwanted elements
-      $('script, style, nav, header, footer, .advertisement, .ad, .sidebar').remove();
-      
-      // Legacy.com specific selectors for obituary content
-      const contentSelectors = [
-        '.obituary-content',
-        '.obit-content', 
-        '.obituary-text',
-        '.obit-text',
-        '.obituary-story',
-        '.story-content',
-        '.obituary-details',
-        '.obit-details',
-        '[data-testid="obituary-content"]',
-        '[data-testid="obit-content"]',
-        '.legacy-obituary',
-        '.obituary-main',
-        '.obituary-body',
-        '.tribute-content',
-        '.memorial-content'
-      ];
+      // Remove unwanted elements but keep main content
+      $('script, style, nav, header, footer, .advertisement, .ad, .sidebar, .social-share, .comments').remove();
       
       let content = '';
       
-      // Try each selector until we find content
-      for (const selector of contentSelectors) {
-        const element = $(selector);
-        if (element.length > 0) {
-          content = element.text().trim();
-          if (content.length > 100) { // Ensure we have substantial content
+      // Strategy 1: Look for text content that looks like an obituary name
+      const obituaryNamePattern = /([A-Z][A-Z\s]+)\s+(Obituary|OBITUARY)/;
+      const bodyText = $('body').text();
+      const nameMatch = bodyText.match(obituaryNamePattern);
+      
+      if (nameMatch) {
+        console.log(`Found obituary name pattern: ${nameMatch[0]}`);
+        
+        // Find the element containing this text and extract surrounding content
+        $('*').each((i, el) => {
+          const elementText = $(el).text();
+          if (elementText.includes(nameMatch[0]) && elementText.length > 200) {
+            // Look for the main obituary content starting with a capital letter
+            const obituaryPattern = /[A-Z][A-Z\s,]+\.\s*(Of\s+[^.]+,?\s*)?[Pp]eacefully[\s\S]*?(?=\n\n|\r\n\r\n|$)/;
+            const obituaryMatch = elementText.match(obituaryPattern);
+            
+            if (obituaryMatch) {
+              content = obituaryMatch[0].trim();
+              console.log(`Extracted obituary content using name pattern: ${content.substring(0, 100)}...`);
+              return false; // Break out of each loop
+            }
+          }
+        });
+      }
+      
+      // Strategy 2: Look for Legacy.com specific patterns
+      if (!content || content.length < 100) {
+        // Look for content starting with typical obituary patterns
+        const obituaryPatterns = [
+          /[A-Z][A-Z\s,]+\.\s*Of\s+[^.]+,?\s*peacefully[\s\S]*?(?=(?:\n\s*\n|\r\n\s*\r\n|Friends are invited|Donations|In lieu|$))/i,
+          /[A-Z][A-Z\s,]+\.\s*Aged\s+\d+[\s\S]*?(?=(?:\n\s*\n|\r\n\s*\r\n|Friends are invited|Donations|In lieu|$))/i,
+          /[A-Z][A-Z\s,]+\.\s*[Pp]assed away[\s\S]*?(?=(?:\n\s*\n|\r\n\s*\r\n|Friends are invited|Donations|In lieu|$))/i,
+          /[A-Z][A-Z\s,]+\.\s*[Bb]eloved[\s\S]*?(?=(?:\n\s*\n|\r\n\s*\r\n|Friends are invited|Donations|In lieu|$))/i
+        ];
+        
+        const fullText = $('body').text().replace(/\s+/g, ' ');
+        
+        for (const pattern of obituaryPatterns) {
+          const match = fullText.match(pattern);
+          if (match && match[0].length > 100) {
+            content = match[0].trim();
+            console.log(`Extracted content using pattern: ${content.substring(0, 100)}...`);
             break;
           }
         }
       }
       
-      // If specific selectors don't work, try broader extraction
+      // Strategy 3: Look for the largest text block with obituary keywords
       if (!content || content.length < 100) {
-        // Look for paragraphs that contain obituary-like content
-        const paragraphs = $('p').filter((i, el) => {
-          const text = $(el).text().trim();
-          return text.length > 50 && (
-            text.toLowerCase().includes('peacefully') ||
-            text.toLowerCase().includes('passed away') ||
-            text.toLowerCase().includes('beloved') ||
-            text.toLowerCase().includes('survived by') ||
-            text.toLowerCase().includes('predeceased') ||
-            text.toLowerCase().includes('memorial') ||
-            text.toLowerCase().includes('funeral') ||
-            text.toLowerCase().includes('celebration of life')
-          );
+        const obituaryKeywords = ['peacefully', 'aged', 'beloved', 'survived by', 'funeral', 'memorial', 'passed away'];
+        let bestContent = '';
+        let bestScore = 0;
+        
+        $('div, section, article, p').each((i, el) => {
+          const elementText = $(el).text().trim();
+          if (elementText.length < 100) return;
+          
+          const keywordCount = obituaryKeywords.filter(keyword => 
+            elementText.toLowerCase().includes(keyword)
+          ).length;
+          
+          const score = keywordCount * 10 + elementText.length / 100;
+          
+          if (score > bestScore) {
+            bestScore = score;
+            bestContent = elementText;
+          }
         });
         
-        if (paragraphs.length > 0) {
-          content = paragraphs.map((i, el) => $(el).text().trim()).get().join('\n\n');
+        if (bestContent && bestScore > 10) {
+          content = bestContent;
+          console.log(`Extracted content using keyword scoring: ${content.substring(0, 100)}...`);
         }
       }
       
-      // Final fallback - get main content area
-      if (!content || content.length < 100) {
-        const mainContent = $('main, .main, #main, .content, #content, .page-content').first();
-        if (mainContent.length > 0) {
-          content = mainContent.text().trim();
+      // Strategy 4: Fallback to any substantial content containing obituary indicators
+      if (!content || content.length < 50) {
+        const bodyText = $('body').text();
+        const sentences = bodyText.split(/[.!?]+/).filter(s => s.trim().length > 20);
+        
+        const obituarySentences = sentences.filter(sentence => {
+          const lowerSentence = sentence.toLowerCase();
+          return lowerSentence.includes('peacefully') || 
+                 lowerSentence.includes('beloved') || 
+                 lowerSentence.includes('aged') ||
+                 lowerSentence.includes('funeral') ||
+                 lowerSentence.includes('memorial');
+        });
+        
+        if (obituarySentences.length > 0) {
+          content = obituarySentences.join('. ').trim();
+          console.log(`Extracted content using sentence filtering: ${content.substring(0, 100)}...`);
         }
       }
       
       // Clean up the content
       if (content) {
-        // Remove excessive whitespace and normalize line breaks
+        // Remove excessive whitespace and normalize
         content = content
           .replace(/\s+/g, ' ')
           .replace(/\n\s*\n/g, '\n\n')
           .trim();
         
-        // Remove common navigation and footer text
+        // Remove common navigation and promotional text
         content = content
+          .replace(/To offer your sympathy[\s\S]*?loved one\./gi, '')
           .replace(/Share.*?Facebook.*?Twitter.*?Email/gi, '')
           .replace(/Navigation.*?Home.*?About.*?Contact/gi, '')
           .replace(/Copyright.*?\d{4}/gi, '')
           .replace(/All rights reserved/gi, '')
+          .replace(/Click here.*?$/gim, '')
+          .replace(/View.*?profile.*?$/gim, '')
           .trim();
       }
+      
+      console.log(`Final extracted content length: ${content.length} characters`);
       
       return content;
       
