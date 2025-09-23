@@ -314,14 +314,15 @@ function AdvancedQuestionnaireForm({ personaName, onSubmit, onCancel, isSubmitti
           >
             Cancel
           </Button>
-          <Button
-            variant="outline"
-            onClick={handlePrevious}
-            disabled={currentStep === 0}
-            data-testid="button-questionnaire-previous"
-          >
-            Previous
-          </Button>
+          {currentStep > 0 && (
+            <Button
+              variant="outline"
+              onClick={handlePrevious}
+              data-testid="button-questionnaire-previous"
+            >
+              Previous
+            </Button>
+          )}
         </div>
         
         <div className="flex space-x-2">
