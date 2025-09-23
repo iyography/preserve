@@ -1671,17 +1671,60 @@ export default function Dashboard() {
                         <CardContent className="space-y-4">
                           {/* Adjectives hidden per UI requirements */}
                           
+                          {/* Enhancement Status Icons */}
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Completeness</span>
-                              <span className="font-medium text-purple-700">
-                                {persona.status === 'completed' ? '100%' : '50%'}
-                              </span>
+                              <span className="text-gray-600">Enhancements</span>
                             </div>
-                            <Progress 
-                              value={persona.status === 'completed' ? 100 : 50} 
-                              className="h-2" 
-                            />
+                            <div className="flex items-center justify-center space-x-4">
+                              {/* Onboarding Status */}
+                              <div className="flex flex-col items-center space-y-1">
+                                <User2 
+                                  className={`w-5 h-5 ${
+                                    (persona as any).enhancementCounts?.onboarding > 0
+                                      ? 'text-purple-600' 
+                                      : 'text-gray-300'
+                                  }`} 
+                                />
+                                <span className="text-xs text-gray-500">Setup</span>
+                              </div>
+                              
+                              {/* Memories Status */}
+                              <div className="flex flex-col items-center space-y-1">
+                                <Heart 
+                                  className={`w-5 h-5 ${
+                                    (persona as any).enhancementCounts?.memories > 0
+                                      ? 'text-purple-600' 
+                                      : 'text-gray-300'
+                                  }`} 
+                                />
+                                <span className="text-xs text-gray-500">Memories</span>
+                              </div>
+                              
+                              {/* Legacy Link Status */}
+                              <div className="flex flex-col items-center space-y-1">
+                                <LinkIcon 
+                                  className={`w-5 h-5 ${
+                                    (persona as any).enhancementCounts?.legacy > 0
+                                      ? 'text-purple-600' 
+                                      : 'text-gray-300'
+                                  }`} 
+                                />
+                                <span className="text-xs text-gray-500">Legacy</span>
+                              </div>
+                              
+                              {/* Questionnaire Status */}
+                              <div className="flex flex-col items-center space-y-1">
+                                <FileText 
+                                  className={`w-5 h-5 ${
+                                    (persona as any).enhancementCounts?.questionnaire > 0
+                                      ? 'text-purple-600' 
+                                      : 'text-gray-300'
+                                  }`} 
+                                />
+                                <span className="text-xs text-gray-500">Survey</span>
+                              </div>
+                            </div>
                           </div>
 
                           <div className="flex gap-2">

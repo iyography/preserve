@@ -28,7 +28,8 @@ import {
   userSettings
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, sql, max, getTableColumns } from "drizzle-orm";
+import { eq, and, desc, asc, sql, max, getTableColumns, count } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { randomUUID } from "crypto";
 
 // modify the interface with any CRUD methods
@@ -107,7 +108,64 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPersonasByUser(userId: string): Promise<Persona[]> {
-    return await db.select().from(personas).where(eq(personas.userId, userId));
+    // Create proper subquery for memory counts using Drizzle query builder
+    const memoryCountsSubquery = db
+      .select({
+        personaId: memories.personaId,
+        memoryCount: count(memories.id).as('memory_count')
+      })
+      .from(memories)
+      .groupBy(memories.personaId)
+      .as('memory_counts');
+    
+    // Create subquery for questionnaire memories (memories with questionnaire tag)
+    const questionnaireCountsSubquery = db
+      .select({
+        personaId: memories.personaId,
+        questionnaireCount: count(memories.id).as('questionnaire_count')
+      })
+      .from(memories)
+      .where(sql`'questionnaire' = ANY(COALESCE(${memories.tags}, '{}'))`)
+      .groupBy(memories.personaId)
+      .as('questionnaire_counts');
+    
+    // Create subquery for legacy memories (memories with legacy.com tag)
+    const legacyCountsSubquery = db
+      .select({
+        personaId: memories.personaId,
+        legacyCount: count(memories.id).as('legacy_count')
+      })
+      .from(memories)
+      .where(sql`'legacy.com' = ANY(COALESCE(${memories.tags}, '{}'))`)
+      .groupBy(memories.personaId)
+      .as('legacy_counts');
+    
+    // Enhanced query to include enhancement completion information
+    const personasData = await db
+      .select({
+        persona: personas,
+        memoryCount: memoryCountsSubquery.memoryCount,
+        questionnaireCount: questionnaireCountsSubquery.questionnaireCount,
+        legacyCount: legacyCountsSubquery.legacyCount,
+      })
+      .from(personas)
+      .leftJoin(memoryCountsSubquery, eq(personas.id, memoryCountsSubquery.personaId))
+      .leftJoin(questionnaireCountsSubquery, eq(personas.id, questionnaireCountsSubquery.personaId))
+      .leftJoin(legacyCountsSubquery, eq(personas.id, legacyCountsSubquery.personaId))
+      .where(eq(personas.userId, userId))
+      .orderBy(desc(personas.createdAt));
+
+    // Transform the result to include enhancement completion information
+    return personasData.map(row => ({
+      ...row.persona,
+      enhancementCounts: {
+        memories: row.memoryCount || 0,
+        onboarding: row.persona.onboardingData && Object.keys(row.persona.onboardingData).length > 0 && 
+                     Object.values(row.persona.onboardingData).some(val => val && typeof val === 'string' && val.trim().length > 0) ? 1 : 0,
+        legacy: row.legacyCount || 0,
+        questionnaire: row.questionnaireCount || 0
+      }
+    }));
   }
 
   async createPersona(insertPersona: InsertPersona): Promise<Persona> {
