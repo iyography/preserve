@@ -1615,7 +1615,7 @@ export default function Dashboard() {
                                     <CardTitle className="text-lg" data-testid={`text-persona-name-${persona.id}`}>
                                       {persona.name}
                                     </CardTitle>
-                                    <CardDescription data-testid={`text-persona-relationship-${persona.id}`}>
+                                    <CardDescription data-testid={`text-persona-relationship-${persona.id}`} className="capitalize">
                                       {persona.relationship}
                                     </CardDescription>
                                   </>
