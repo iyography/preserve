@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   Tooltip,
   TooltipContent,
@@ -61,6 +62,12 @@ export default function Chat() {
   // Track used responses to prevent repetition within 30 minutes (scoped by persona, persisted)
   const [usedResponses, setUsedResponses] = useState<{personaId: string, text: string, timestamp: number}[]>([]);
   const [dedupInitialized, setDedupInitialized] = useState(false);
+  
+  // Extract photo from onboarding data if available
+  const getPersonaPhoto = (persona: Persona) => {
+    const onboardingData = persona.onboardingData as any;
+    return onboardingData?.photoBase64 || null;
+  };
   
   // Feedback mutations
   const submitFeedbackMutation = useMutation({
@@ -830,9 +837,17 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
                 </Button>
               </Link>
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full flex items-center justify-center">
-                  <Heart className="w-5 h-5 text-purple-600" />
-                </div>
+                <Avatar className="w-10 h-10">
+                  <AvatarImage 
+                    src={getPersonaPhoto(persona) || ''} 
+                    alt={persona.name}
+                    className="object-cover"
+                    data-testid={`image-persona-header-${persona.id}`}
+                  />
+                  <AvatarFallback className="bg-gradient-to-br from-purple-100 to-indigo-100 text-purple-600">
+                    {persona.name.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
                 <div>
                   <h1 className="font-semibold text-gray-900" data-testid="text-chat-persona-name">
                     {persona.name}
@@ -957,9 +972,17 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
               <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className="flex items-start space-x-3 max-w-[80%]">
                   {message.sender === 'persona' && (
-                    <div className="w-8 h-8 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Heart className="w-4 h-4 text-purple-600" />
-                    </div>
+                    <Avatar className="w-8 h-8 flex-shrink-0">
+                      <AvatarImage 
+                        src={getPersonaPhoto(persona) || ''} 
+                        alt={persona.name}
+                        className="object-cover"
+                        data-testid={`image-persona-message-${message.id}`}
+                      />
+                      <AvatarFallback className="bg-gradient-to-br from-purple-100 to-indigo-100 text-purple-600">
+                        {persona.name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                   )}
                   <div className="flex flex-col gap-2">
                     <div className={`rounded-2xl px-4 py-3 ${
