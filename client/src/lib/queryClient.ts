@@ -21,6 +21,31 @@ async function getValidSession(retryCount = 0): Promise<any> {
     if (!session) {
       return null;
     }
+
+    // Validate token structure before using it
+    if (!session.access_token || typeof session.access_token !== 'string') {
+      console.warn('Invalid or missing access token in session');
+      return null;
+    }
+
+    // Check if the JWT has proper structure (3 parts separated by dots)
+    const tokenParts = session.access_token.split('.');
+    if (tokenParts.length !== 3) {
+      console.warn('Malformed JWT token - invalid number of segments:', tokenParts.length);
+      // Try to refresh the session to get a new valid token
+      try {
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError || !refreshData.session?.access_token) {
+          console.warn('Failed to refresh malformed session:', refreshError);
+          return null;
+        }
+        console.log('Successfully refreshed malformed session');
+        return refreshData.session;
+      } catch (refreshErr) {
+        console.warn('Error refreshing malformed session:', refreshErr);
+        return null;
+      }
+    }
     
     // Check if token is expired (with 60 second buffer)
     const now = Math.floor(Date.now() / 1000);

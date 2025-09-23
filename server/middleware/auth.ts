@@ -52,11 +52,34 @@ export async function verifyJWT(req: AuthenticatedRequest, res: Response, next: 
       });
     }
 
+    // Validate JWT structure before sending to Supabase
+    const tokenParts = token.split('.');
+    if (tokenParts.length !== 3) {
+      console.error('JWT verification failed: Malformed token - invalid number of segments:', tokenParts.length);
+      return res.status(401).json({ 
+        error: 'Invalid token format',
+        details: 'Please sign in again - token is malformed' 
+      });
+    }
+
+    // Check for empty or invalid token segments
+    if (tokenParts.some(part => !part || part.trim() === '')) {
+      console.error('JWT verification failed: Token contains empty segments');
+      return res.status(401).json({ 
+        error: 'Invalid token format',
+        details: 'Please sign in again - token contains empty segments' 
+      });
+    }
+
     // Verify the JWT token with Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
-      console.error('JWT verification failed:', error);
+      console.error('JWT verification failed:', error?.message || 'Unknown error', {
+        errorCode: error?.status,
+        tokenLength: token.length,
+        tokenPreview: token.substring(0, 20) + '...'
+      });
       return res.status(401).json({ 
         error: 'Invalid or expired token',
         details: 'Please sign in again' 

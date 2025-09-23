@@ -639,10 +639,10 @@ export default function Dashboard() {
   };
 
   // Filter memories based on search term
-  const filteredMemories = memories.filter(memory => 
-    memory.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (memory.tags && memory.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))) ||
-    memory.type.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredMemories = (Array.isArray(memories) ? memories : []).filter(memory => 
+    memory?.content?.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
+    (memory?.tags && Array.isArray(memory.tags) && memory.tags.some(tag => tag?.toLowerCase()?.includes(searchTerm.toLowerCase()))) ||
+    memory?.type?.toLowerCase()?.includes(searchTerm.toLowerCase())
   );
 
   // Get memory type icon
@@ -1166,20 +1166,62 @@ export default function Dashboard() {
                               <MessageCircle className="w-4 h-4 mr-1" />
                               Chat
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="flex-1"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedMemoryPersona(persona.id);
-                                setIsAddMemoryOpen(true);
-                              }}
-                              data-testid={`button-add-memory-${persona.id}`}
-                            >
-                              <Plus className="w-4 h-4 mr-1" />
-                              Memory
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="flex-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                  }}
+                                  data-testid={`button-enhance-persona-${persona.id}`}
+                                >
+                                  <Sparkles className="w-4 h-4 mr-1" />
+                                  Enhance Persona
+                                  <ChevronDown className="w-4 h-4 ml-1" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-56">
+                                <DropdownMenuItem 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedMemoryPersona(persona.id);
+                                    setIsAddMemoryOpen(true);
+                                  }}
+                                  data-testid={`dropdown-add-memory-${persona.id}`}
+                                >
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  Add Memory
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toast({
+                                      title: "Coming Soon",
+                                      description: "Legacy.com obituary import will be available soon",
+                                    });
+                                  }}
+                                  data-testid={`dropdown-import-obituary-${persona.id}`}
+                                >
+                                  <LinkIcon className="w-4 h-4 mr-2" />
+                                  Import from Legacy.com
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toast({
+                                      title: "Coming Soon",
+                                      description: "Advanced questionnaire will be available soon",
+                                    });
+                                  }}
+                                  data-testid={`dropdown-advanced-questionnaire-${persona.id}`}
+                                >
+                                  <FileText className="w-4 h-4 mr-2" />
+                                  Advanced Questionnaire
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </CardContent>
                       </Card>
