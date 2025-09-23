@@ -2093,6 +2093,193 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Persona Enhancement Routes
+  
+  // Legacy.com Integration Endpoint
+  app.post('/api/personas/:id/enhance/legacy', async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const personaId = req.params.id;
+      const { url, extractedContent, reviewedContent } = req.body;
+      
+      // Verify persona belongs to user
+      const persona = await storage.getPersona(personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(404).json({ error: 'Persona not found' });
+      }
+      
+      if (!url && !reviewedContent) {
+        return res.status(400).json({ error: 'URL or reviewed content is required' });
+      }
+      
+      let contentToSave = reviewedContent;
+      
+      // If URL is provided and no reviewed content, try to extract content
+      if (url && !reviewedContent) {
+        try {
+          // For production use, implement proper web scraping with respect to robots.txt
+          // For now, we'll use a simple fetch approach
+          const response = await fetch(url, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (compatible; EvermoreBot/1.0; grief-tech memorial service)'
+            }
+          });
+          
+          if (!response.ok) {
+            return res.status(400).json({ error: 'Unable to fetch content from the provided URL' });
+          }
+          
+          const html = await response.text();
+          
+          // Extract text content - this is a simplified approach
+          // In production, use a proper HTML parser like cheerio or jsdom
+          const textContent = html
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+            .replace(/<[^>]*>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          
+          // Look for obituary-specific content patterns
+          const obituaryMarkers = [
+            'passed away', 'died peacefully', 'beloved', 'funeral', 'memorial', 
+            'survived by', 'preceded in death', 'celebration of life', 'visitation'
+          ];
+          
+          const hasObituaryContent = obituaryMarkers.some(marker => 
+            textContent.toLowerCase().includes(marker)
+          );
+          
+          if (!hasObituaryContent) {
+            return res.status(400).json({ 
+              error: 'The provided URL does not appear to contain obituary content',
+              extractedContent: textContent.substring(0, 500) + '...'
+            });
+          }
+          
+          contentToSave = textContent;
+          
+          return res.json({
+            success: true,
+            extractedContent: textContent,
+            requiresReview: true,
+            message: 'Content extracted successfully. Please review before saving.'
+          });
+          
+        } catch (error) {
+          console.error('Error extracting content from URL:', error);
+          return res.status(500).json({ 
+            error: 'Failed to extract content from URL',
+            details: 'Please check the URL and try again, or manually paste the obituary content.'
+          });
+        }
+      }
+      
+      // Save the reviewed content as memories
+      if (contentToSave) {
+        // Split content into meaningful chunks for better memory management
+        const sentences = contentToSave.split(/[.!?]+/).filter((s: string) => s.trim().length > 10);
+        const memories = [];
+        
+        // Create different types of memories based on content
+        for (const sentence of sentences.slice(0, 10)) { // Limit to first 10 meaningful sentences
+          const content = sentence.trim();
+          if (content.length < 20) continue;
+          
+          const memoryType = content.toLowerCase().includes('born') || content.toLowerCase().includes('early life') ? 'episodic' :
+                           content.toLowerCase().includes('loved') || content.toLowerCase().includes('enjoyed') ? 'preference' :
+                           content.toLowerCase().includes('family') || content.toLowerCase().includes('survived') ? 'relationship' :
+                           'semantic';
+          
+          const memory = await storage.createMemory({
+            personaId,
+            type: memoryType,
+            content,
+            source: 'legacy_import',
+            tags: ['legacy.com', 'obituary'],
+            salience: 1.0
+          });
+          
+          memories.push(memory);
+        }
+        
+        return res.json({
+          success: true,
+          message: `Successfully imported ${memories.length} memories from Legacy.com obituary`,
+          memoriesCreated: memories.length
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error in Legacy.com enhancement:', error);
+      res.status(500).json({ error: 'Failed to process Legacy.com content' });
+    }
+  });
+  
+  // Advanced Questionnaire Enhancement Endpoint
+  app.post('/api/personas/:id/enhance/questionnaire', async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const personaId = req.params.id;
+      const { responses } = req.body;
+      
+      // Verify persona belongs to user
+      const persona = await storage.getPersona(personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(404).json({ error: 'Persona not found' });
+      }
+      
+      if (!responses || !Array.isArray(responses)) {
+        return res.status(400).json({ error: 'Questionnaire responses are required' });
+      }
+      
+      // Save each response as a memory with appropriate categorization
+      const memories = [];
+      
+      for (const response of responses) {
+        const { questionId, question, answer, type } = response;
+        
+        if (!question || !answer) continue;
+        
+        let memoryType = 'semantic';
+        let salience = 1.0;
+        
+        // Categorize based on question type and content
+        if (type === 'personality' || question.toLowerCase().includes('personality')) {
+          memoryType = 'preference';
+          salience = 1.2;
+        } else if (type === 'relationship' || question.toLowerCase().includes('family') || question.toLowerCase().includes('friend')) {
+          memoryType = 'relationship';
+          salience = 1.1;
+        } else if (type === 'behavior' || question.toLowerCase().includes('express') || question.toLowerCase().includes('communicate')) {
+          memoryType = 'boundary';
+          salience = 1.0;
+        }
+        
+        const memory = await storage.createMemory({
+          personaId,
+          type: memoryType,
+          content: `${question}: ${answer}`,
+          source: 'questionnaire',
+          tags: ['questionnaire', type, `question-${questionId}`],
+          salience
+        });
+        
+        memories.push(memory);
+      }
+      
+      res.json({
+        success: true,
+        message: `Successfully saved ${memories.length} questionnaire responses`,
+        memoriesCreated: memories.length
+      });
+      
+    } catch (error) {
+      console.error('Error in questionnaire enhancement:', error);
+      res.status(500).json({ error: 'Failed to save questionnaire responses' });
+    }
+  });
+
   // Comprehensive Protected Chat Endpoint with All Safety Systems
   app.post('/api/chat', async (req: AuthenticatedRequest, res) => {
     try {
