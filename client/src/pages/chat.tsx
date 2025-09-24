@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useLocation, useRoute, Link } from "wouter";
-import { ArrowLeft, Send, Settings, Heart, User, Circle, AlertCircle, ThumbsUp, ThumbsDown, Star, MessageSquare, TrendingUp, Brain, Sparkles, Info } from "lucide-react";
+import { ArrowLeft, Send, Settings, Heart, User, Circle, AlertCircle, ThumbsUp, ThumbsDown, Star, MessageSquare, TrendingUp, Brain, Sparkles, Info, CheckCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -58,6 +59,14 @@ export default function Chat() {
   // API Status tracking
   const [apiStatus, setApiStatus] = useState<'unknown' | 'working' | 'partial' | 'down'>('unknown');
   const [lastApiCheck, setLastApiCheck] = useState<Date | null>(null);
+  
+  // Real-time feedback state
+  const [feedbackNotification, setFeedbackNotification] = useState<{
+    visible: boolean;
+    message: string;
+    type: 'success' | 'info' | 'warning';
+    timestamp: number;
+  } | null>(null);
   
   // Track used responses to prevent repetition within 30 minutes (scoped by persona, persisted)
   const [usedResponses, setUsedResponses] = useState<{personaId: string, text: string, timestamp: number}[]>([]);
@@ -558,6 +567,24 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
         throw new Error('No response content received from API');
       }
       
+      // Handle real-time feedback from API response
+      if (data.feedback && data.feedback.correctionDetected && data.feedback.visualFeedback) {
+        console.log('🔄 Real-time feedback detected:', data.feedback);
+        
+        // Show visual confirmation to user
+        setFeedbackNotification({
+          visible: true,
+          message: data.feedback.visualFeedback,
+          type: 'success',
+          timestamp: Date.now()
+        });
+        
+        // Auto-hide feedback notification after 5 seconds
+        setTimeout(() => {
+          setFeedbackNotification(null);
+        }, 5000);
+      }
+      
       // Check if API response was recently used and mark it as used
       if (persona) {
         const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
@@ -941,6 +968,18 @@ Keep responses natural, authentic, and true to YOUR character (2-4 sentences). U
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Real-time Feedback Notification */}
+      {feedbackNotification && feedbackNotification.visible && (
+        <div className="max-w-4xl mx-auto px-6 mb-4">
+          <Alert className="bg-green-50 border-green-200 shadow-sm animate-in slide-in-from-top-2 duration-300">
+            <CheckCircle className="w-4 h-4 text-green-600" />
+            <AlertDescription className="text-green-800 font-medium">
+              {feedbackNotification.message}
+            </AlertDescription>
+          </Alert>
         </div>
       )}
 

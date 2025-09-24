@@ -55,6 +55,7 @@ import { Storage } from "@google-cloud/storage";
 import { verifyJWT, type AuthenticatedRequest } from "./middleware/auth";
 import { EmailService } from "./services/email";
 import { emailConfirmationService } from "./services/emailConfirmation";
+import { realTimeFeedback } from "./services/realTimeFeedback";
 // Removed Supabase createClient import - using shared client from auth middleware
 import { abuseDetector } from "./services/abuseDetector";
 import { costGuardian } from "./services/costGuardian";
@@ -2831,7 +2832,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // STEP 2: Intelligent Model Routing
+      // STEP 2: Real-Time Feedback Processing
+      const feedbackResult = await realTimeFeedback.processUserMessage(userId, message, personaId);
+      
+      // Store feedback processing result for response metadata
+      const feedbackMetadata = {
+        correctionDetected: feedbackResult.correctionDetected,
+        updateApplied: feedbackResult.updateApplied,
+        processingTimeMs: feedbackResult.processingTimeMs,
+        visualFeedback: feedbackResult.visualFeedback
+      };
+      
+      console.log(`⚡ Real-time feedback processed in ${feedbackResult.processingTimeMs}ms`, feedbackMetadata);
+      
+      // STEP 3: Intelligent Model Routing
       const routingDecision = await modelRouter.routeQuery(
         userId,
         message,
@@ -2902,9 +2916,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // STEP 5: Prepare and Optimize Prompt with Full Persona Context
-      // Use PersonaPromptBuilder to create comprehensive, personalized prompt
+      // Use PersonaPromptBuilder to create comprehensive, personalized prompt (with userId for forbidden terms)
       const promptBuilder = new PersonaPromptBuilder(persona, conversationHistory);
-      const systemPrompt = await promptBuilder.buildSystemPrompt();
+      const systemPrompt = await promptBuilder.buildSystemPrompt(userId);
       
       // Optimize prompt to stay under token limits
       const optimizedMessage = modelRouter.optimizePrompt(message, 4000);
@@ -3014,7 +3028,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // STEP 10: Get Updated Stats
       const userStats = costGuardian.getUserStats(userId, userTier);
       
-      // Return response with metadata
+      // Return response with metadata (including real-time feedback)
       res.json({
         response: aiResponse,
         model: finalModel,
@@ -3025,7 +3039,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           remainingBudget: userStats.remainingBudget,
           usagePercentage: userStats.usagePercentage
         },
-        rateLimits: abuseDetector.getUserRateLimitStatus(userId)
+        rateLimits: abuseDetector.getUserRateLimitStatus(userId),
+        feedback: feedbackMetadata
       });
       
     } catch (error) {
