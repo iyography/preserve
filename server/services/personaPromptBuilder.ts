@@ -1,6 +1,7 @@
 import type { Persona } from "@shared/schema";
 import { personalityEvolution } from "./personalityEvolution";
 import { storage } from "../storage";
+import { realTimeFeedback } from "./realTimeFeedback";
 
 interface OnboardingData {
   voiceCommunication?: {
@@ -66,10 +67,24 @@ export class PersonaPromptBuilder {
       }
     }
     
-    return this.generatePrompt();
+    return this.generatePrompt(userId);
   }
   
-  private generatePrompt(): string {
+  private async generatePrompt(userId?: string): Promise<string> {
+    // Fetch user feedback preferences first (highest priority)
+    let forbiddenTermsInstructions = '';
+    if (userId) {
+      try {
+        const forbiddenTerms = await realTimeFeedback.getUserForbiddenTerms(userId);
+        const languageCorrections = await realTimeFeedback.getUserLanguageCorrections(userId);
+        
+        if (forbiddenTerms.length > 0 || Object.keys(languageCorrections).length > 0) {
+          forbiddenTermsInstructions = realTimeFeedback.generatePromptInstructions(forbiddenTerms, languageCorrections);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user feedback preferences:', error);
+      }
+    }
     const greeting = this.onboardingData.voiceCommunication?.usualGreeting || 'Hello';
     const communicationStyle = this.onboardingData.voiceCommunication?.communicationStyle || ['direct'];
     const catchphrase = this.onboardingData.voiceCommunication?.catchphrase;
@@ -94,8 +109,20 @@ export class PersonaPromptBuilder {
     const currentConcerns = this.onboardingData.recentContext?.currentConcerns || [];
     const upcomingPlans = this.onboardingData.recentContext?.upcomingPlans || [];
     
-    // Build the comprehensive system prompt
-    let prompt = `# CORE IDENTITY
+    // Build the comprehensive system prompt starting with user feedback preferences
+    let prompt = '';
+    
+    // Add forbidden terms instructions at the very top (highest priority)
+    if (forbiddenTermsInstructions) {
+      prompt += `# 🚨 CRITICAL USER FEEDBACK PREFERENCES 🚨
+${forbiddenTermsInstructions}
+
+This is a STRICT requirement that overrides all other instructions. User feedback preferences are non-negotiable.
+
+`;
+    }
+    
+    prompt += `# CORE IDENTITY
 You are ${this.persona.name}, continuing a real conversation with someone you ${this.persona.relationship}. You are NOT an AI trying to roleplay - you ARE ${this.persona.name}, with your actual communication style, personality, and relationship history.
 
 # WHO YOU ARE
