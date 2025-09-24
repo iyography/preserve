@@ -344,7 +344,7 @@ function AdvancedQuestionnaireForm({ personaName, onSubmit, onCancel, isSubmitti
               <span>{currentQuestion.scale!.minLabel}</span>
               <span>{currentQuestion.scale!.maxLabel}</span>
             </div>
-            <div className="flex space-x-2">
+            <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
               {Array.from({ length: currentQuestion.scale!.max }, (_, i) => i + 1).map((value) => (
                 <label key={value} className="flex flex-col items-center space-y-1 cursor-pointer">
                   <input
@@ -375,11 +375,12 @@ function AdvancedQuestionnaireForm({ personaName, onSubmit, onCancel, isSubmitti
       </div>
 
       {/* Navigation */}
-      <div className="flex justify-between pt-6 border-t">
-        <div className="flex space-x-2">
+      <div className="flex flex-col sm:flex-row sm:justify-between pt-6 border-t space-y-2 sm:space-y-0">
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
           <Button
             variant="outline"
             onClick={onCancel}
+            className="w-full sm:w-auto"
             data-testid="button-questionnaire-cancel"
           >
             Cancel
@@ -388,17 +389,19 @@ function AdvancedQuestionnaireForm({ personaName, onSubmit, onCancel, isSubmitti
             variant="outline"
             onClick={handlePrevious}
             disabled={currentStep === 0}
+            className="w-full sm:w-auto"
             data-testid="button-questionnaire-previous"
           >
             Previous
           </Button>
         </div>
         
-        <div className="flex space-x-2">
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
           {currentStep < questions.length - 1 ? (
             <Button
               onClick={handleNext}
               disabled={!isCurrentAnswered}
+              className="w-full sm:w-auto"
               data-testid="button-questionnaire-next"
             >
               Next
@@ -407,6 +410,7 @@ function AdvancedQuestionnaireForm({ personaName, onSubmit, onCancel, isSubmitti
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting || totalAnswered < 5} // Require at least 5 answers
+              className="w-full sm:w-auto"
               data-testid="button-questionnaire-submit"
             >
               {isSubmitting ? (
@@ -2229,9 +2233,9 @@ export default function Dashboard() {
           {activeSection === 'memories' && (
             <div className="space-y-6">
               {/* Memory Archive Header */}
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <h2 className="text-2xl font-bold text-gray-900" style={{textTransform: 'capitalize'}}>Memory Archive</h2>
-                <div className="flex justify-end">
+                <div className="flex justify-start sm:justify-end">
                   <Button 
                     onClick={() => setIsAddMemoryOpen(true)}
                     className="bg-gradient-to-r from-purple-500 to-purple-700 text-white hover:from-purple-600 hover:to-purple-800"
@@ -2586,12 +2590,13 @@ export default function Dashboard() {
             <div className="flex flex-col lg:flex-row h-full gap-6">
               {/* Left Panel - Conversation List */}
               <div className="w-full lg:w-1/3 space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <h2 className="text-2xl font-bold text-gray-900">Conversations</h2>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setSelectedConversation(null)}
+                    className="w-full sm:w-auto"
                     data-testid="button-new-conversation"
                   >
                     <Plus className="w-4 h-4 mr-2" />
