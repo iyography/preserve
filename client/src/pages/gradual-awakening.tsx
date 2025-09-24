@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Heart, Clock, ArrowRight, ChevronLeft, TreePine, Calendar, Sparkles, Upload, MessageCircle, User, CheckCircle2, Loader2, X } from "lucide-react";
+import { Heart, Clock, ArrowRight, ChevronLeft, TreePine, Calendar, Sparkles, Upload, MessageCircle, User, CheckCircle2, Loader2, X, LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,7 @@ import type { InsertPersona } from "@shared/schema";
 
 // Simplified types
 type GradualStep = 'minimal-start' | 'daily-invitations' | 'natural-growth';
-type MinimalSubStep = 'essentials' | 'communication-style' | 'finalize-personality';
+type MinimalSubStep = 'essentials' | 'obituary-link' | 'communication-style' | 'finalize-personality';
 type MemoryCadence = 'daily' | 'every-few-days' | 'weekly';
 type TextingStyle = 'formal' | 'casual' | 'lots-of-emojis' | 'abbreviated' | 'dramatic' | 'dry-humor';
 type ListenerTalker = 'listener' | 'talker' | 'balanced';
@@ -36,6 +36,9 @@ export default function GradualAwakening() {
   const [favoriteMemory, setFavoriteMemory] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  
+  // Obituary link step
+  const [obituaryUrl, setObituaryUrl] = useState('');
   
   // Photo cropping state
   const [isCropping, setIsCropping] = useState(false);
@@ -81,8 +84,9 @@ export default function GradualAwakening() {
   const getStepProgress = () => {
     if (step === 'minimal-start') {
       // Sub-step progress within minimal start (0-33%)
-      if (minimalSubStep === 'essentials') return 11;
-      if (minimalSubStep === 'communication-style') return 22;
+      if (minimalSubStep === 'essentials') return 8;
+      if (minimalSubStep === 'obituary-link') return 16;
+      if (minimalSubStep === 'communication-style') return 24;
       if (minimalSubStep === 'finalize-personality') return 30;
       return 33;
     }
@@ -343,6 +347,8 @@ export default function GradualAwakening() {
   const handleNext = async () => {
     if (step === 'minimal-start') {
       if (minimalSubStep === 'essentials') {
+        setMinimalSubStep('obituary-link');
+      } else if (minimalSubStep === 'obituary-link') {
         setMinimalSubStep('communication-style');
       } else if (minimalSubStep === 'communication-style') {
         setMinimalSubStep('finalize-personality');
@@ -403,7 +409,8 @@ export default function GradualAwakening() {
           additionalNotes: finalNotes
         },
         memoryCadence: cadence,
-        photoBase64: photoPreview // Include photo if uploaded
+        photoBase64: photoPreview, // Include photo if uploaded
+        obituaryUrl: obituaryUrl // Include obituary URL if provided
       };
       
       // Create persona in database
@@ -422,8 +429,10 @@ export default function GradualAwakening() {
 
   const handleBack = () => {
     if (step === 'minimal-start') {
-      if (minimalSubStep === 'communication-style') {
+      if (minimalSubStep === 'obituary-link') {
         setMinimalSubStep('essentials');
+      } else if (minimalSubStep === 'communication-style') {
+        setMinimalSubStep('obituary-link');
       } else if (minimalSubStep === 'finalize-personality') {
         setMinimalSubStep('communication-style');
       }
@@ -491,9 +500,10 @@ export default function GradualAwakening() {
           <div className="flex justify-between text-sm text-gray-500 mb-2">
             <span className={step === 'minimal-start' ? 'text-green-600 font-medium' : ''}>
               Minimal Start
-              {step === 'minimal-start' && minimalSubStep === 'essentials' && ' (1/3)'}
-              {step === 'minimal-start' && minimalSubStep === 'communication-style' && ' (2/3)'}
-              {step === 'minimal-start' && minimalSubStep === 'finalize-personality' && ' (3/3)'}
+              {step === 'minimal-start' && minimalSubStep === 'essentials' && ' (1/4)'}
+              {step === 'minimal-start' && minimalSubStep === 'obituary-link' && ' (2/4)'}
+              {step === 'minimal-start' && minimalSubStep === 'communication-style' && ' (3/4)'}
+              {step === 'minimal-start' && minimalSubStep === 'finalize-personality' && ' (4/4)'}
             </span>
             <span className={step === 'daily-invitations' ? 'text-green-600 font-medium' : ''}>Daily Invitations</span>
             <span className={step === 'natural-growth' ? 'text-green-600 font-medium' : ''}>Natural Growth</span>
@@ -772,6 +782,91 @@ export default function GradualAwakening() {
                     className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-6"
                     data-testid="button-next-essentials"
                   >
+                    Continue to Legacy Information
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Sub-step 2: Legacy Information (Obituary) */}
+            {minimalSubStep === 'obituary-link' && (
+              <div className="space-y-6">
+                <div className="text-center mb-12">
+                  <div className="w-20 h-20 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg">
+                    <LinkIcon className="w-10 h-10 text-amber-600" />
+                  </div>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-4" data-testid="header-title">
+                    Legacy Information
+                  </h1>
+                  <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                    Did your loved one have an obituary? We can use this to gather additional context and memories.
+                  </p>
+                </div>
+
+                <Card className="bg-white/70 backdrop-blur-sm border-amber-100 shadow-lg max-w-2xl mx-auto">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-3">
+                      <LinkIcon className="w-6 h-6 text-amber-600" />
+                      <span>Obituary Information</span>
+                      <Badge variant="outline" className="ml-auto bg-amber-50 text-amber-700 border-amber-200">
+                        <Clock className="w-3 h-3 mr-1" />
+                        Optional
+                      </Badge>
+                    </CardTitle>
+                    <CardDescription>
+                      Sharing an obituary link helps us understand their story better
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="obituaryUrl" className="text-sm font-medium text-gray-700">
+                        Obituary URL (Legacy.com or other)
+                      </Label>
+                      <Input
+                        id="obituaryUrl"
+                        placeholder="https://www.legacy.com/obituaries/..."
+                        value={obituaryUrl}
+                        onChange={(e) => setObituaryUrl(e.target.value)}
+                        className="border-amber-200 focus:border-amber-400"
+                        data-testid="input-obituary-url"
+                      />
+                      <p className="text-xs text-gray-500">
+                        If you have an obituary from Legacy.com, Obituaries.com, or any other site, you can paste the link here
+                      </p>
+                    </div>
+                    
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                      <div className="flex items-start space-x-3">
+                        <div className="text-amber-600 mt-0.5">
+                          <LinkIcon className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium text-amber-800 mb-1">Why add an obituary?</h4>
+                          <p className="text-xs text-amber-700">
+                            Obituaries often contain rich details about someone's life, achievements, and personality that can help us create a more authentic representation of your loved one.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <div className="flex justify-between mt-8">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleBack}
+                    className="border-gray-300 text-gray-600 hover:bg-gray-50"
+                    data-testid="button-back-obituary"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-2" />
+                    Back
+                  </Button>
+                  <Button 
+                    onClick={handleNext}
+                    className="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white px-6"
+                    data-testid="button-next-obituary"
+                  >
                     Continue to Communication Style
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
@@ -779,7 +874,7 @@ export default function GradualAwakening() {
               </div>
             )}
 
-            {/* Sub-step 2: Communication Style */}
+            {/* Sub-step 3: Communication Style */}
             {minimalSubStep === 'communication-style' && (
               <div className="space-y-6">
                 <div className="text-center mb-12">
