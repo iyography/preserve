@@ -162,6 +162,9 @@ export const userSettings = pgTable("user_settings", {
   theme: text("theme").default("system"), // 'light', 'dark', 'system'
   compactMode: boolean("compact_mode").default(false),
   sidebarCollapsed: boolean("sidebar_collapsed").default(false),
+  // AI Feedback and Preferences
+  forbiddenTerms: text("forbidden_terms").array().default(sql`'{}'::text[]`), // Terms user wants AI to avoid
+  languageCorrections: jsonb("language_corrections").default({}), // Map of unwanted phrases to preferred alternatives
   // Advanced Settings (stored as JSON for flexibility)
   advancedSettings: jsonb("advanced_settings").default({}),
   createdAt: timestamp("created_at").defaultNow().notNull(),
