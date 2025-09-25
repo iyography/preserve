@@ -1053,8 +1053,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Real-time feedback processing endpoint (MUST be before global JWT middleware)
+  app.post('/api/feedback/real-time', async (req: express.Request, res: express.Response) => {
+    try {
+      console.log('📝 Real-time feedback request:', { body: req.body, sessionType: req.body?.sessionType });
+      
+      const { message, sessionType = 'authenticated', personaId } = req.body;
+      
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({ error: 'Message is required' });
+      }
+
+      // Import real-time feedback service
+      const { realTimeFeedback } = await import('./services/realTimeFeedback');
+
+      // Handle demo sessions differently (use localStorage on frontend)
+      if (sessionType === 'demo') {
+        // For demo sessions, we still process the message but don't persist to database
+        // The frontend will handle localStorage persistence
+        const startTime = Date.now();
+        
+        // Use the feedback processor to detect corrections
+        const tempResult = await realTimeFeedback.processUserMessage('demo-user', message, personaId);
+        
+        // Return the detection result without database persistence
+        return res.json({
+          correctionDetected: tempResult.correctionDetected,
+          message: tempResult.visualFeedback,
+          processingTimeMs: Date.now() - startTime,
+          sessionType: 'demo'
+        });
+      }
+
+      // For authenticated users, use verifyJWT middleware logic inline
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      const token = authHeader.substring(7);
+      
+      // Import Supabase client setup from auth middleware
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+      const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      
+      // Verify token with Supabase
+      const { data: { user }, error } = await supabase.auth.getUser(token);
+      
+      if (error || !user) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      }
+      
+      const userId = user.id;
+
+      // Process the feedback for authenticated users
+      const result = await realTimeFeedback.processUserMessage(userId, message, personaId);
+
+      res.json({
+        correctionDetected: result.correctionDetected,
+        message: result.visualFeedback,
+        processingTimeMs: result.processingTimeMs,
+        updateApplied: result.updateApplied,
+        sessionType: 'authenticated'
+      });
+
+    } catch (error) {
+      console.error('Real-time feedback error:', error);
+      res.status(500).json({ 
+        error: 'Failed to process feedback',
+        correctionDetected: false,
+        message: '',
+        processingTimeMs: 0
+      });
+    }
+  });
+  
   // Apply JWT verification to all protected routes (except confirmation endpoints and demo)
   app.use('/api/*', (req, res, next) => {
+    console.log('🔐 JWT middleware check - Path:', req.path, 'Method:', req.method);
+    
     // Skip JWT verification for specific routes
     const skipAuthRoutes = [
       '/api',
@@ -1062,6 +1141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       '/api/send-confirmation', 
       '/api/confirm-email', 
       '/api/chat/demo',
+      '/api/feedback/real-time', // Real-time feedback for both demo and authenticated users
       '/api/test-email',
       '/api/waitlist/partner',
       '/api/waitlist/family',
@@ -1071,9 +1151,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ];
     
     if (skipAuthRoutes.includes(req.path)) {
+      console.log('✅ Skipping JWT for:', req.path);
       return next();
     }
     
+    console.log('🔒 Applying JWT verification for:', req.path);
     return verifyJWT(req as AuthenticatedRequest, res, next);
   });
   
@@ -3539,80 +3621,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Real-time feedback processing endpoint
-  app.post('/api/feedback/real-time', async (req: express.Request, res: express.Response) => {
-    try {
-      const { message, sessionType = 'authenticated', personaId } = req.body;
-      
-      if (!message || typeof message !== 'string') {
-        return res.status(400).json({ error: 'Message is required' });
-      }
-
-      // Import real-time feedback service
-      const { realTimeFeedback } = await import('./services/realTimeFeedback');
-
-      // Handle demo sessions differently (use localStorage on frontend)
-      if (sessionType === 'demo') {
-        // For demo sessions, we still process the message but don't persist to database
-        // The frontend will handle localStorage persistence
-        const startTime = Date.now();
-        
-        // Use the feedback processor to detect corrections
-        const tempResult = await realTimeFeedback.processUserMessage('demo-user', message, personaId);
-        
-        // Return the detection result without database persistence
-        return res.json({
-          correctionDetected: tempResult.correctionDetected,
-          message: tempResult.visualFeedback,
-          processingTimeMs: Date.now() - startTime,
-          sessionType: 'demo'
-        });
-      }
-
-      // For authenticated users, use verifyJWT middleware logic inline
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith('Bearer ')) {
-        return res.status(401).json({ error: 'Authentication required' });
-      }
-
-      const token = authHeader.substring(7);
-      
-      // Import Supabase client setup from auth middleware
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
-      const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
-      
-      // Verify token with Supabase
-      const { data: { user }, error } = await supabase.auth.getUser(token);
-      
-      if (error || !user) {
-        return res.status(401).json({ error: 'Invalid or expired token' });
-      }
-      
-      const userId = user.id;
-
-      // Process the feedback for authenticated users
-      const result = await realTimeFeedback.processUserMessage(userId, message, personaId);
-
-      res.json({
-        correctionDetected: result.correctionDetected,
-        message: result.visualFeedback,
-        processingTimeMs: result.processingTimeMs,
-        updateApplied: result.updateApplied,
-        sessionType: 'authenticated'
-      });
-
-    } catch (error) {
-      console.error('Real-time feedback error:', error);
-      res.status(500).json({ 
-        error: 'Failed to process feedback',
-        correctionDetected: false,
-        message: '',
-        processingTimeMs: 0
-      });
-    }
-  });
 
   // Update pattern metrics for a persona
   app.post('/api/personas/:personaId/metrics', verifyJWT, async (req: AuthenticatedRequest, res: Response) => {
