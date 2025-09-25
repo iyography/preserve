@@ -2145,7 +2145,7 @@ export default function Dashboard() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="flex-1"
+                              className="flex-1 md:flex-auto md:min-w-0"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 // Find existing conversation for this persona or create new one
@@ -2164,23 +2164,23 @@ export default function Dashboard() {
                               }}
                               data-testid={`button-chat-${persona.id}`}
                             >
-                              <MessageCircle className="w-4 h-4 mr-1" />
-                              Chat
+                              <MessageCircle className="w-4 h-4 md:mr-1" />
+                              <span className="hidden md:inline">Chat</span>
                             </Button>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="flex-1"
+                                  className="flex-1 md:flex-auto md:min-w-0"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                   }}
                                   data-testid={`button-enhance-persona-${persona.id}`}
                                 >
-                                  <Sparkles className="w-4 h-4 mr-1" />
-                                  Enhance Persona
-                                  <ChevronDown className="w-4 h-4 ml-1" />
+                                  <Sparkles className="w-4 h-4 md:mr-1" />
+                                  <span className="hidden md:inline">Enhance Persona</span>
+                                  <ChevronDown className="w-4 h-4 md:ml-1" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-56">
