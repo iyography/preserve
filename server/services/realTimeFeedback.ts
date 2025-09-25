@@ -196,6 +196,11 @@ export class RealTimeFeedbackProcessor {
    */
   private async applyCorrection(userId: string, correction: UserCorrection): Promise<boolean> {
     try {
+      // Skip database operations for demo users
+      if (userId === 'demo-user') {
+        return true; // Demo sessions don't persist to database
+      }
+      
       // Get current user settings
       const currentSettings = await storage.getUserSettings(userId);
       
@@ -280,6 +285,11 @@ export class RealTimeFeedbackProcessor {
    */
   async getUserForbiddenTerms(userId: string): Promise<string[]> {
     try {
+      // Demo users don't have persistent settings
+      if (userId === 'demo-user') {
+        return [];
+      }
+      
       const settings = await storage.getUserSettings(userId);
       return settings?.forbiddenTerms || [];
     } catch (error) {
@@ -293,6 +303,11 @@ export class RealTimeFeedbackProcessor {
    */
   async getUserLanguageCorrections(userId: string): Promise<Record<string, string>> {
     try {
+      // Demo users don't have persistent settings
+      if (userId === 'demo-user') {
+        return {};
+      }
+      
       const settings = await storage.getUserSettings(userId);
       return (settings?.languageCorrections as Record<string, string>) || {};
     } catch (error) {

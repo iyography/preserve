@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { Play, Crown, Heart, Mic, MessageCircle, Volume2, Infinity, Twitter, Facebook, Instagram, Menu, Star, ChevronDown, ArrowRight, X, Send, Upload, FileText, MessageSquare, Settings, ChevronDown as ChevronDownIcon } from "lucide-react";
+import { Play, Crown, Heart, Mic, MessageCircle, Volume2, Infinity, Twitter, Facebook, Instagram, Menu, Star, ChevronDown, ArrowRight, X, Send, Upload, FileText, MessageSquare, Settings, ChevronDown as ChevronDownIcon, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,12 @@ type ChatMessage = {
   sender: 'user' | 'grandma';
   text: string;
   isLimitReached?: boolean;
+  messageId?: string; // API message ID for feedback tracking
+};
+
+type FeedbackNotification = {
+  visible: boolean;
+  message: string;
 };
 
 export default function Home() {
@@ -27,6 +34,7 @@ export default function Home() {
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedbackNotification, setFeedbackNotification] = useState<FeedbackNotification>({ visible: false, message: '' });
   const [currentImproveModule, setCurrentImproveModule] = useState<string | null>(null);
   const [improveData, setImproveData] = useState({
     facebookUrl: '',
@@ -53,6 +61,38 @@ export default function Home() {
       setChatMessages(prev => [...prev, userMessage]);
       setError(null);
       setIsLoading(true);
+      
+      // Process real-time feedback for user corrections
+      try {
+        await fetch('/api/feedback/real-time', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: newMessage,
+            sessionType: 'demo'
+          })
+        }).then(async (response) => {
+          if (response.ok) {
+            const feedbackData = await response.json();
+            if (feedbackData.correctionDetected) {
+              setFeedbackNotification({
+                visible: true,
+                message: `✓ Feedback applied - ${feedbackData.message}`
+              });
+              // Hide notification after 3 seconds
+              setTimeout(() => {
+                setFeedbackNotification({ visible: false, message: '' });
+              }, 3000);
+            }
+          }
+        }).catch(() => {
+          // Silent fail for demo feedback processing
+        });
+      } catch {
+        // Silent fail for demo feedback processing
+      }
       
       try {
         // Call the demo API endpoint
@@ -676,6 +716,16 @@ export default function Home() {
             </DialogTitle>
           </DialogHeader>
           
+          {/* Real-time Feedback Notification */}
+          {feedbackNotification && feedbackNotification.visible && (
+            <Alert className="mx-6 mt-4 bg-green-50 border-green-200 shadow-sm animate-in slide-in-from-top-2 duration-300">
+              <CheckCircle className="w-4 h-4 text-green-600" />
+              <AlertDescription className="text-green-800 font-medium">
+                {feedbackNotification.message}
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="flex flex-col h-[500px]">
             {/* Chat Messages */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
