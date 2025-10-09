@@ -5,6 +5,8 @@ import {
   type InsertPersonaMedia,
   type OnboardingSession,
   type InsertOnboardingSession,
+  type QuestionnaireProgress,
+  type InsertQuestionnaireProgress,
   type Conversation,
   type InsertConversation,
   type Message,
@@ -20,6 +22,7 @@ import {
   personas,
   personaMedia,
   onboardingSessions,
+  questionnaireProgress,
   conversations,
   messages,
   memories,
@@ -56,6 +59,11 @@ export interface IStorage {
   getOnboardingSessionsByUser(userId: string): Promise<OnboardingSession[]>;
   createOnboardingSession(session: InsertOnboardingSession): Promise<OnboardingSession>;
   updateOnboardingSession(id: string, userId: string, updates: Partial<OnboardingSession>): Promise<OnboardingSession | undefined>;
+
+  // Questionnaire progress methods
+  getQuestionnaireProgress(personaId: string, userId: string): Promise<QuestionnaireProgress | undefined>;
+  saveQuestionnaireProgress(progress: InsertQuestionnaireProgress): Promise<QuestionnaireProgress>;
+  deleteQuestionnaireProgress(personaId: string, userId: string): Promise<boolean>;
 
   // Conversation methods
   getConversation(id: string, userId: string): Promise<Conversation | undefined>;
@@ -324,6 +332,73 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(onboardingSessions.id, id), eq(onboardingSessions.userId, userId)))
       .returning();
     return session || undefined;
+  }
+
+  // Questionnaire progress methods
+  async getQuestionnaireProgress(personaId: string, userId: string): Promise<QuestionnaireProgress | undefined> {
+    // First verify the persona belongs to the user
+    const personaCheck = await db
+      .select({ id: personas.id })
+      .from(personas)
+      .where(and(eq(personas.id, personaId), eq(personas.userId, userId)));
+    
+    if (personaCheck.length === 0) {
+      return undefined; // Persona doesn't exist or doesn't belong to user
+    }
+
+    const [progress] = await db
+      .select()
+      .from(questionnaireProgress)
+      .where(and(
+        eq(questionnaireProgress.personaId, personaId),
+        eq(questionnaireProgress.userId, userId)
+      ));
+    return progress || undefined;
+  }
+
+  async saveQuestionnaireProgress(progress: InsertQuestionnaireProgress): Promise<QuestionnaireProgress> {
+    // Check if progress already exists for this user and persona
+    const existing = await db
+      .select()
+      .from(questionnaireProgress)
+      .where(and(
+        eq(questionnaireProgress.personaId, progress.personaId),
+        eq(questionnaireProgress.userId, progress.userId)
+      ));
+
+    if (existing.length > 0) {
+      // Update existing progress
+      const [updated] = await db
+        .update(questionnaireProgress)
+        .set({ 
+          ...progress, 
+          updatedAt: new Date() 
+        })
+        .where(and(
+          eq(questionnaireProgress.personaId, progress.personaId),
+          eq(questionnaireProgress.userId, progress.userId)
+        ))
+        .returning();
+      return updated;
+    } else {
+      // Create new progress
+      const [created] = await db
+        .insert(questionnaireProgress)
+        .values(progress)
+        .returning();
+      return created;
+    }
+  }
+
+  async deleteQuestionnaireProgress(personaId: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(questionnaireProgress)
+      .where(and(
+        eq(questionnaireProgress.personaId, personaId),
+        eq(questionnaireProgress.userId, userId)
+      ))
+      .returning();
+    return result.length > 0;
   }
 
   // Conversation methods

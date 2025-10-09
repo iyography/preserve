@@ -2916,6 +2916,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get Questionnaire Progress
+  app.get('/api/personas/:id/questionnaire/progress', async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const personaId = req.params.id;
+      
+      // Verify persona belongs to user
+      const persona = await storage.getPersona(personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(404).json({ error: 'Persona not found' });
+      }
+      
+      // Get saved progress
+      const progress = await storage.getQuestionnaireProgress(personaId, userId);
+      
+      if (!progress) {
+        // No saved progress, return empty state
+        return res.json({
+          currentStep: 0,
+          responses: {},
+          isCompleted: false
+        });
+      }
+      
+      res.json({
+        currentStep: progress.currentStep,
+        responses: progress.responses,
+        isCompleted: progress.isCompleted
+      });
+      
+    } catch (error) {
+      console.error('Error getting questionnaire progress:', error);
+      res.status(500).json({ error: 'Failed to get questionnaire progress' });
+    }
+  });
+
+  // Save Questionnaire Progress
+  app.post('/api/personas/:id/questionnaire/progress', async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const personaId = req.params.id;
+      const { currentStep, responses, isCompleted } = req.body;
+      
+      // Verify persona belongs to user
+      const persona = await storage.getPersona(personaId);
+      if (!persona || persona.userId !== userId) {
+        return res.status(404).json({ error: 'Persona not found' });
+      }
+      
+      // Save progress
+      const progress = await storage.saveQuestionnaireProgress({
+        userId,
+        personaId,
+        currentStep: currentStep || 0,
+        responses: responses || {},
+        isCompleted: isCompleted || false
+      });
+      
+      res.json({
+        success: true,
+        message: 'Progress saved successfully',
+        progress: {
+          currentStep: progress.currentStep,
+          responses: progress.responses,
+          isCompleted: progress.isCompleted
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error saving questionnaire progress:', error);
+      res.status(500).json({ error: 'Failed to save questionnaire progress' });
+    }
+  });
+
   // Advanced Questionnaire Enhancement Endpoint
   app.post('/api/personas/:id/enhance/questionnaire', async (req: AuthenticatedRequest, res) => {
     try {
