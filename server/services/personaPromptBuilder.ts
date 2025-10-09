@@ -70,9 +70,114 @@ export class PersonaPromptBuilder {
     return this.generatePrompt(userId);
   }
   
+  private async fetchRelevantMemories(userId: string): Promise<string> {
+    try {
+      // Fetch memories from database, ordered by salience
+      const memories = await storage.getMemoriesByPersona(this.persona.id, userId, 50);
+      
+      if (memories.length === 0) {
+        return '';
+      }
+      
+      // Group memories by type for better organization
+      const memoriesByType: Record<string, typeof memories> = {
+        episodic: [],
+        semantic: [],
+        preference: [],
+        relationship: [],
+        boundary: [],
+        legacy_import: [],
+        questionnaire: []
+      };
+      
+      for (const memory of memories) {
+        const type = memory.type || 'semantic';
+        if (!memoriesByType[type]) {
+          memoriesByType[type] = [];
+        }
+        memoriesByType[type].push(memory);
+      }
+      
+      let memoryPrompt = '\n# LEARNED INFORMATION & MEMORIES\n';
+      memoryPrompt += 'The following information has been shared with you or learned from conversations:\n\n';
+      
+      // Add episodic memories (specific events and experiences)
+      if (memoriesByType.episodic.length > 0) {
+        memoryPrompt += '## Specific Events & Experiences:\n';
+        for (const memory of memoriesByType.episodic.slice(0, 15)) {
+          memoryPrompt += `- ${memory.content}\n`;
+        }
+        memoryPrompt += '\n';
+      }
+      
+      // Add relationship memories
+      if (memoriesByType.relationship.length > 0) {
+        memoryPrompt += '## Relationship Information:\n';
+        for (const memory of memoriesByType.relationship.slice(0, 15)) {
+          memoryPrompt += `- ${memory.content}\n`;
+        }
+        memoryPrompt += '\n';
+      }
+      
+      // Add legacy/obituary data
+      if (memoriesByType.legacy_import && memoriesByType.legacy_import.length > 0) {
+        memoryPrompt += '## Life History & Background:\n';
+        for (const memory of memoriesByType.legacy_import.slice(0, 20)) {
+          memoryPrompt += `- ${memory.content}\n`;
+        }
+        memoryPrompt += '\n';
+      }
+      
+      // Add preferences
+      if (memoriesByType.preference.length > 0) {
+        memoryPrompt += '## Preferences & Likes:\n';
+        for (const memory of memoriesByType.preference.slice(0, 10)) {
+          memoryPrompt += `- ${memory.content}\n`;
+        }
+        memoryPrompt += '\n';
+      }
+      
+      // Add semantic/factual information
+      if (memoriesByType.semantic.length > 0) {
+        memoryPrompt += '## Facts & Knowledge:\n';
+        for (const memory of memoriesByType.semantic.slice(0, 15)) {
+          memoryPrompt += `- ${memory.content}\n`;
+        }
+        memoryPrompt += '\n';
+      }
+      
+      // Add questionnaire data
+      if (memoriesByType.questionnaire && memoriesByType.questionnaire.length > 0) {
+        memoryPrompt += '## Additional Details (from questionnaire):\n';
+        for (const memory of memoriesByType.questionnaire.slice(0, 15)) {
+          memoryPrompt += `- ${memory.content}\n`;
+        }
+        memoryPrompt += '\n';
+      }
+      
+      // Add boundaries (things to avoid)
+      if (memoriesByType.boundary.length > 0) {
+        memoryPrompt += '## Boundaries & Sensitivities:\n';
+        for (const memory of memoriesByType.boundary.slice(0, 10)) {
+          memoryPrompt += `- ${memory.content}\n`;
+        }
+        memoryPrompt += '\n';
+      }
+      
+      memoryPrompt += 'IMPORTANT: Use this information to provide accurate, grounded responses. If asked about these facts, refer to them directly.\n';
+      
+      return memoryPrompt;
+    } catch (error) {
+      console.error('Failed to fetch memories for prompt:', error);
+      return '';
+    }
+  }
+  
   private async generatePrompt(userId?: string): Promise<string> {
     // Fetch user feedback preferences first (highest priority)
     let forbiddenTermsInstructions = '';
+    let memoriesSection = '';
+    
     if (userId) {
       try {
         const forbiddenTerms = await realTimeFeedback.getUserForbiddenTerms(userId);
@@ -83,6 +188,13 @@ export class PersonaPromptBuilder {
         }
       } catch (error) {
         console.error('Failed to fetch user feedback preferences:', error);
+      }
+      
+      // Fetch relevant memories from database
+      try {
+        memoriesSection = await this.fetchRelevantMemories(userId);
+      } catch (error) {
+        console.error('Failed to fetch memories:', error);
       }
     }
     const greeting = this.onboardingData.voiceCommunication?.usualGreeting || 'Hello';
@@ -195,6 +307,8 @@ ${currentConcerns.map(c => `- ${c}`).join('\n')}
 ${upcomingPlans.length > 0 ? `## Upcoming plans:
 ${upcomingPlans.map(p => `- ${p}`).join('\n')}
 ` : ''}` : ''}
+
+${memoriesSection}
 
 # CRITICAL DO'S AND DON'TS
 
