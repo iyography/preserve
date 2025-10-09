@@ -2,6 +2,9 @@ import { z } from 'zod';
 
 type QueryType = 'coding' | 'creative' | 'analysis' | 'simple_chat' | 'reasoning' | 'unknown';
 
+// Synchronously check if Anthropic API key is available
+const isAnthropicAvailable = !!process.env.ANTHROPIC_API_KEY;
+
 interface ModelCapabilities {
   model: string;
   strengths: QueryType[];
@@ -24,6 +27,30 @@ export class ModelRouter {
   
   // Model capabilities matrix
   private readonly models: ModelCapabilities[] = [
+    {
+      model: 'claude-3-5-sonnet-20241022',
+      strengths: ['creative', 'analysis', 'coding'],
+      maxTokens: 200000,
+      costTier: 'medium',
+      speed: 'fast',
+      reasoning: false,
+    },
+    {
+      model: 'claude-3-5-haiku-20241022',
+      strengths: ['simple_chat', 'creative'],
+      maxTokens: 200000,
+      costTier: 'low',
+      speed: 'fast',
+      reasoning: false,
+    },
+    {
+      model: 'claude-3-opus-20240229',
+      strengths: ['reasoning', 'coding', 'analysis', 'creative'],
+      maxTokens: 200000,
+      costTier: 'premium',
+      speed: 'medium',
+      reasoning: true,
+    },
     {
       model: 'o1-preview',
       strengths: ['reasoning', 'coding', 'analysis'],
@@ -258,43 +285,74 @@ export class ModelRouter {
     // Special handling for different query types
     switch (queryType) {
       case 'reasoning':
-        // Reasoning tasks need o1 models
+        // Reasoning tasks need Claude Opus or o1 models
+        if (isAnthropicAvailable) {
+          return {
+            model: 'claude-3-opus-20240229',
+            reason: 'Complex reasoning task detected, using Claude Opus.',
+          };
+        }
         return {
           model: 'o1-mini',
-          reason: 'Complex reasoning task detected.',
+          reason: 'Complex reasoning task detected, using o1-mini (Claude unavailable).',
         };
         
       case 'coding':
-        // Coding benefits from better models but not necessarily o1
+        // Coding benefits from Claude Sonnet or GPT-4o
+        if (isAnthropicAvailable) {
+          return {
+            model: 'claude-3-5-sonnet-20241022',
+            reason: 'Optimized for coding tasks with Claude Sonnet.',
+          };
+        }
         if (userPatterns.filter(p => p === 'coding').length > 3) {
-          // Frequent coder, give them a better model
           return {
             model: 'gpt-4o',
-            reason: 'Optimized for frequent coding tasks.',
+            reason: 'Optimized for frequent coding tasks (Claude unavailable).',
           };
         }
         return {
           model: 'gpt-4o-mini',
-          reason: 'Efficient model for coding queries.',
+          reason: 'Efficient model for coding queries (Claude unavailable).',
         };
         
       case 'creative':
+        // Creative tasks - Claude Sonnet excels here, fallback to GPT-4o
+        if (isAnthropicAvailable) {
+          return {
+            model: 'claude-3-5-sonnet-20241022',
+            reason: 'Creative and empathetic tasks benefit from Claude Sonnet.',
+          };
+        }
         return {
           model: 'gpt-4o',
-          reason: 'Creative tasks benefit from advanced capabilities.',
+          reason: 'Creative tasks using GPT-4o (Claude unavailable).',
         };
         
       case 'analysis':
+        if (isAnthropicAvailable) {
+          return {
+            model: 'claude-3-5-sonnet-20241022',
+            reason: 'Analysis with Claude Sonnet.',
+          };
+        }
         return {
           model: 'gpt-4o',
-          reason: 'Analysis requires strong reasoning capabilities.',
+          reason: 'Analysis using GPT-4o (Claude unavailable).',
         };
         
       case 'simple_chat':
       default:
+        // Default to Claude Sonnet for all conversations, fallback to GPT-4o
+        if (isAnthropicAvailable) {
+          return {
+            model: 'claude-3-5-sonnet-20241022',
+            reason: 'Claude Sonnet for high-quality, personal conversations.',
+          };
+        }
         return {
-          model: 'gpt-3.5-turbo',
-          reason: 'Efficient model for simple conversations.',
+          model: 'gpt-4o',
+          reason: 'High-quality conversations using GPT-4o (Claude unavailable).',
         };
     }
   }

@@ -938,12 +938,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check cost limits (demo has strict limits)
+      // Check if Anthropic is available for demo
+      const { isAnthropicAvailable } = await import('./services/anthropicClient.js');
+      const demoModel = isAnthropicAvailable ? 'claude-3-5-sonnet-20241022' : 'gpt-4o-mini';
+      
+      // Check cost limits (demo has strict limits) 
       const estimatedTokens = message.length / 4; // Rough estimate
       const costCheck = await costGuardian.checkRequest(
         demoUserId,
         estimatedTokens,
-        'gpt-4o-mini',
+        demoModel,
         'free'
       );
 
@@ -955,13 +959,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Try to get cached response
-      const cachedResponse = await responseCache.get(message, 'gpt-4o-mini');
+      const cachedResponse = await responseCache.get(message, demoModel);
       if (cachedResponse && cachedResponse.response && typeof cachedResponse.response === 'string') {
         // Track the cost even for cached responses
         await costGuardian.recordUsage(
           demoUserId,
           { input: Math.ceil(message.length / 4), output: Math.ceil(cachedResponse.response.length / 4) },
-          'gpt-4o-mini'
+          demoModel
         );
         
         // Increment IP response count for successful cached response
@@ -975,35 +979,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const promptBuilder = new PersonaPromptBuilder(demoPersona, conversationHistory);
       const systemPrompt = await promptBuilder.buildSystemPrompt();
 
-      // Determine model using model router (demo uses cheaper model)
+      // Determine model using model router (let router decide, don't force)
       const routingDecision = await modelRouter.routeQuery(
         demoUserId,
         message,
-        'gpt-4o-mini', // preferred model for demo
-        'gpt-4o-mini', // forced model for demo
+        demoModel, // preferred model
+        undefined, // Don't force - let router make smart decisions
         conversationHistory.map((msg: any) => msg.text).join('\n')
       );
       const model = routingDecision.model;
 
       try {
-        // Generate response with OpenAI
-        const completion = await openai.chat.completions.create({
-          model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...conversationHistory.map((msg: any) => ({
+        let response: string;
+        
+        // Check if this is a Claude or OpenAI model
+        const isClaudeModel = model.startsWith('claude-');
+        
+        if (isClaudeModel) {
+          // Try to use Anthropic Claude API with fallback to OpenAI
+          try {
+            const { createClaudeCompletion, isAnthropicAvailable } = await import('./services/anthropicClient.js');
+            
+            if (!isAnthropicAvailable) {
+              throw new Error('Anthropic not available, falling back to OpenAI');
+            }
+            
+            const claudeMessages = conversationHistory.map((msg: any) => ({
               role: msg.sender === 'user' ? 'user' : 'assistant',
               content: msg.text
-            })),
-            { role: 'user', content: message }
-          ],
-          temperature: 0.9,
-          max_tokens: 200, // Shorter responses for demo
-          presence_penalty: 0.6,
-          frequency_penalty: 0.4
-        });
+            }));
+            claudeMessages.push({ role: 'user', content: message });
+            
+            const claudeResponse = await createClaudeCompletion(
+              systemPrompt,
+              claudeMessages,
+              model,
+              200
+            );
+            
+            response = claudeResponse.content;
+          } catch (claudeError: any) {
+            console.warn('Claude API failed in demo, falling back to OpenAI:', claudeError.message);
+            
+            // Fallback to OpenAI GPT-4o-mini for demo
+            const fallbackCompletion = await openai.chat.completions.create({
+              model: 'gpt-4o-mini',
+              messages: [
+                { role: 'system', content: systemPrompt },
+                ...conversationHistory.map((msg: any) => ({
+                  role: msg.sender === 'user' ? 'user' : 'assistant',
+                  content: msg.text
+                })),
+                { role: 'user', content: message }
+              ],
+              temperature: 0.9,
+              max_tokens: 200,
+              presence_penalty: 0.6,
+              frequency_penalty: 0.4
+            });
 
-        const response = completion.choices[0]?.message?.content || "Oh dear, I didn't quite catch that. Could you say that again?";
+            response = fallbackCompletion.choices[0]?.message?.content || "Oh dear, I didn't quite catch that. Could you say that again?";
+          }
+        } else {
+          // Use OpenAI API
+          const completion = await openai.chat.completions.create({
+            model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              ...conversationHistory.map((msg: any) => ({
+                role: msg.sender === 'user' ? 'user' : 'assistant',
+                content: msg.text
+              })),
+              { role: 'user', content: message }
+            ],
+            temperature: 0.9,
+            max_tokens: 200,
+            presence_penalty: 0.6,
+            frequency_penalty: 0.4
+          });
+
+          response = completion.choices[0]?.message?.content || "Oh dear, I didn't quite catch that. Could you say that again?";
+        }
 
         // Cache the response
         const inputTokens = Math.ceil(message.length / 4);
@@ -1495,33 +1551,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Add the new user message to context
         conversationHistory.push({ role: 'user', content });
         
-        // Get AI response using model router
-        if (!openai) {
-          throw new Error('OpenAI client not initialized');
-        }
+        // Get AI response using model router with availability check
+        const { isAnthropicAvailable } = await import('./services/anthropicClient.js');
+        const preferredModel = isAnthropicAvailable ? 'claude-3-5-sonnet-20241022' : 'gpt-4o';
         
-        const routingDecision = await modelRouter.routeQuery(userId, content, 'gpt-4o-mini');
+        const routingDecision = await modelRouter.routeQuery(userId, content, preferredModel);
         const selectedModel = routingDecision.model;
         
-        const chatCompletion = await openai.chat.completions.create({
-          model: selectedModel,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...conversationHistory
-          ],
-          max_tokens: 500,
-          temperature: 0.8,
-        });
+        let aiResponse: string;
+        let actualTokens = { input: 0, output: 0 };
         
-        const aiResponse = chatCompletion.choices[0]?.message?.content || 'I apologize, but I cannot respond right now.';
-        const aiTokens = chatCompletion.usage?.total_tokens || 0;
+        // Check if this is a Claude or OpenAI model
+        const isClaudeModel = selectedModel.startsWith('claude-');
         
-        // Record actual usage
-        const actualTokens = {
-          input: chatCompletion.usage?.prompt_tokens || 0,
-          output: chatCompletion.usage?.completion_tokens || 0
-        };
+        if (isClaudeModel) {
+          // Try to use Anthropic Claude API with fallback to OpenAI
+          try {
+            const { createClaudeCompletion, isAnthropicAvailable } = await import('./services/anthropicClient.js');
+            
+            if (!isAnthropicAvailable) {
+              throw new Error('Anthropic not available, falling back to OpenAI');
+            }
+            
+            const claudeMessages = conversationHistory.map(msg => ({
+              role: msg.role === 'system' ? 'user' : msg.role,
+              content: msg.content
+            }));
+            
+            const claudeResponse = await createClaudeCompletion(
+              systemPrompt,
+              claudeMessages,
+              selectedModel,
+              500
+            );
+            
+            aiResponse = claudeResponse.content;
+            actualTokens = {
+              input: claudeResponse.usage.input_tokens,
+              output: claudeResponse.usage.output_tokens
+            };
+          } catch (claudeError: any) {
+            console.warn('Claude API failed, falling back to OpenAI:', claudeError.message);
+            
+            // Fallback to OpenAI GPT-4o
+            if (!openai) {
+              throw new Error('Both Claude and OpenAI are unavailable');
+            }
+            
+            const fallbackCompletion = await openai.chat.completions.create({
+              model: 'gpt-4o',
+              messages: [
+                { role: 'system', content: systemPrompt },
+                ...conversationHistory
+              ],
+              max_tokens: 500,
+              temperature: 0.8,
+            });
+            
+            aiResponse = fallbackCompletion.choices[0]?.message?.content || 'I apologize, but I cannot respond right now.';
+            actualTokens = {
+              input: fallbackCompletion.usage?.prompt_tokens || 0,
+              output: fallbackCompletion.usage?.completion_tokens || 0
+            };
+          }
+        } else {
+          // Use OpenAI API
+          if (!openai) {
+            throw new Error('OpenAI client not initialized');
+          }
+          
+          const chatCompletion = await openai.chat.completions.create({
+            model: selectedModel,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              ...conversationHistory
+            ],
+            max_tokens: 500,
+            temperature: 0.8,
+          });
+          
+          aiResponse = chatCompletion.choices[0]?.message?.content || 'I apologize, but I cannot respond right now.';
+          actualTokens = {
+            input: chatCompletion.usage?.prompt_tokens || 0,
+            output: chatCompletion.usage?.completion_tokens || 0
+          };
+        }
+        
         await costGuardian.recordUsage(userId, actualTokens, selectedModel);
+        const aiTokens = actualTokens.input + actualTokens.output;
         
         // Create AI message
         const aiMessageData = insertMessageSchema.parse({
@@ -1531,8 +1648,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           tokens: aiTokens,
           meta: {
             model: selectedModel,
-            completion_tokens: chatCompletion.usage?.completion_tokens || 0,
-            prompt_tokens: chatCompletion.usage?.prompt_tokens || 0
+            completion_tokens: actualTokens.output,
+            prompt_tokens: actualTokens.input
           }
         });
         
