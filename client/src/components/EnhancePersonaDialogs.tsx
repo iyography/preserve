@@ -17,6 +17,7 @@ interface QuestionnaireResponse {
 }
 
 interface AdvancedQuestionnaireFormProps {
+  personaId: string;
   personaName: string;
   onSubmit: (responses: QuestionnaireResponse[]) => void;
   onCancel: () => void;
@@ -25,9 +26,12 @@ interface AdvancedQuestionnaireFormProps {
 }
 
 // Advanced Questionnaire Form Component
-function AdvancedQuestionnaireForm({ personaName, onSubmit, onCancel, isSubmitting, onProgressChange }: AdvancedQuestionnaireFormProps) {
+function AdvancedQuestionnaireForm({ personaId, personaName, onSubmit, onCancel, isSubmitting, onProgressChange }: AdvancedQuestionnaireFormProps) {
+  const { toast } = useToast();
   const [currentStep, setCurrentStep] = React.useState(0);
   const [responses, setResponses] = React.useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(true);
   
   // Define the 30 relationship-focused questions
   const questions = [
@@ -230,8 +234,72 @@ function AdvancedQuestionnaireForm({ personaName, onSubmit, onCancel, isSubmitti
     }
   ];
 
+  // Load saved progress on mount
+  React.useEffect(() => {
+    const loadProgress = async () => {
+      try {
+        const response = await fetch(`/api/personas/${personaId}/questionnaire/progress`, {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.responses && Object.keys(data.responses).length > 0) {
+            setResponses(data.responses);
+            setCurrentStep(data.currentStep || 0);
+            toast({
+              title: "Progress Loaded",
+              description: "Your previously saved progress has been restored.",
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error loading progress:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadProgress();
+  }, [personaId, toast]);
+
   const updateResponse = (questionId: string, answer: string) => {
     setResponses(prev => ({ ...prev, [questionId]: answer }));
+  };
+
+  const saveProgress = async () => {
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/personas/${personaId}/questionnaire/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          currentStep,
+          responses,
+          isCompleted: false
+        })
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Progress Saved",
+          description: "You can continue this questionnaire later from where you left off.",
+        });
+        onCancel(); // Close the dialog after saving
+      } else {
+        throw new Error('Failed to save progress');
+      }
+    } catch (error) {
+      console.error('Error saving progress:', error);
+      toast({
+        title: "Save Failed",
+        description: "Unable to save your progress. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const currentQuestion = questions[currentStep];
@@ -268,6 +336,15 @@ function AdvancedQuestionnaireForm({ personaName, onSubmit, onCancel, isSubmitti
 
   const isCurrentAnswered = responses[currentQuestion.id]?.trim().length > 0;
   const totalAnswered = Object.keys(responses).filter(key => responses[key]?.trim()).length;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+        <span className="ml-3 text-gray-600">Loading your progress...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -327,6 +404,25 @@ function AdvancedQuestionnaireForm({ personaName, onSubmit, onCancel, isSubmitti
         </div>
         
         <div className="flex space-x-2">
+          <Button
+            variant="outline"
+            onClick={saveProgress}
+            disabled={isSaving || totalAnswered === 0}
+            data-testid="button-questionnaire-save"
+          >
+            {isSaving ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600 mr-2"></div>
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Save & Continue Later
+              </>
+            )}
+          </Button>
+          
           {currentStep < questions.length - 1 ? (
             <Button
               onClick={handleNext}
@@ -573,6 +669,7 @@ export default function EnhancePersonaDialogs({
           </DialogHeader>
           
           <AdvancedQuestionnaireForm
+            personaId={selectedEnhancementPersona!}
             personaName={personas.find((p: Persona) => p.id === selectedEnhancementPersona)?.name || "your loved one"}
             onSubmit={(responses) => {
               questionnaireMutation.mutate({
