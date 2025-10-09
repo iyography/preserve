@@ -3042,6 +3042,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         memories.push(memory);
       }
       
+      // Clear the saved progress since questionnaire is now complete
+      await storage.deleteQuestionnaireProgress(personaId, userId);
+
       res.json({
         success: true,
         message: `Successfully saved ${memories.length} questionnaire responses`,
