@@ -2,6 +2,20 @@
 
 This is a grief-tech platform called "Preserving Connections" that creates AI personas of deceased loved ones using comprehensive personality data and authentic conversation patterns. The application features a modern, celestial-themed UI with interactive elements like particle systems and audio players. It's built using a client-server architecture with Express.js on the backend and React with Vite on the frontend.
 
+## Recent Updates (Oct 9, 2025)
+
+### Critical Memory Retrieval Fix
+- **Fixed**: PersonaPromptBuilder now retrieves memories from database
+- **Impact**: AI personas now have access to obituary data, questionnaire responses, and conversation history
+- **Implementation**: Added `fetchRelevantMemories()` method that pulls up to 50 memories organized by type
+- **Memory types**: episodic, semantic, preference, relationship, legacy_import, questionnaire, boundary
+
+### Documentation & Local Development
+- **Updated README.md**: Comprehensive setup guide for running locally
+- **Created .env.example**: Template for environment variables
+- **Security**: Removed hardcoded admin email, now uses `ADMIN_EMAIL` env variable
+- **Instructions**: Full walkthrough for cloning from Replit and running on local machine
+
 ## Grief-Tech Features
 
 ### Response Deduplication System

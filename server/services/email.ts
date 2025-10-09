@@ -178,10 +178,12 @@ export class EmailService {
       return { success: false, error: 'Email service not configured' };
     }
 
+    const adminEmail = process.env.ADMIN_EMAIL || 'support@preservingconnections.com';
+
     try {
       const { data, error } = await resend.emails.send({
         from: 'support@preservingconnections.com',
-        to: ['davidiya3@gmail.com'],
+        to: [adminEmail],
         subject: `New Partner Application - ${this.escapeHTML(formData.businessName)}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
@@ -254,10 +256,12 @@ export class EmailService {
       return { success: false, error: 'Email service not configured' };
     }
 
+    const adminEmail = process.env.ADMIN_EMAIL || 'support@preservingconnections.com';
+
     try {
       const { data, error } = await resend.emails.send({
         from: 'support@preservingconnections.com',
-        to: ['davidiya3@gmail.com'],
+        to: [adminEmail],
         subject: `New Waitlist Application - ${this.escapeHTML(formData.name)}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
