@@ -48,6 +48,21 @@ export const onboardingSessions = pgTable("onboarding_sessions", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Questionnaire progress to save partial responses
+export const questionnaireProgress = pgTable("questionnaire_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(), // Supabase auth user UUID
+  personaId: varchar("persona_id").notNull().references(() => personas.id),
+  currentStep: integer("current_step").notNull().default(0),
+  responses: jsonb("responses").notNull().default({}), // Map of questionId to answer
+  isCompleted: boolean("is_completed").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  // Only one progress per user per persona
+  userPersonaUnique: uniqueIndex("questionnaire_progress_user_persona_unique").on(table.userId, table.personaId),
+}));
+
 // Conversations table for persistent chat sessions
 export const conversations = pgTable("conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -178,6 +193,7 @@ export const userSettings = pgTable("user_settings", {
 export const personasRelations = relations(personas, ({ many }) => ({
   media: many(personaMedia),
   onboardingSessions: many(onboardingSessions),
+  questionnaireProgress: many(questionnaireProgress),
   conversations: many(conversations),
   memories: many(memories),
   feedback: many(feedback),
@@ -256,6 +272,13 @@ export const onboardingSessionsRelations = relations(onboardingSessions, ({ one 
   }),
 }));
 
+export const questionnaireProgressRelations = relations(questionnaireProgress, ({ one }) => ({
+  persona: one(personas, {
+    fields: [questionnaireProgress.personaId],
+    references: [personas.id],
+  }),
+}));
+
 // Insert schemas
 export const insertPersonaSchema = createInsertSchema(personas).omit({
   id: true,
@@ -306,6 +329,12 @@ export const insertUserSettingsSchema = createInsertSchema(userSettings).omit({
   updatedAt: true,
 });
 
+export const insertQuestionnaireProgressSchema = createInsertSchema(questionnaireProgress).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type InsertPersona = z.infer<typeof insertPersonaSchema>;
 export type Persona = typeof personas.$inferSelect;
@@ -313,6 +342,8 @@ export type InsertPersonaMedia = z.infer<typeof insertPersonaMediaSchema>;
 export type PersonaMedia = typeof personaMedia.$inferSelect;
 export type InsertOnboardingSession = z.infer<typeof insertOnboardingSessionSchema>;
 export type OnboardingSession = typeof onboardingSessions.$inferSelect;
+export type InsertQuestionnaireProgress = z.infer<typeof insertQuestionnaireProgressSchema>;
+export type QuestionnaireProgress = typeof questionnaireProgress.$inferSelect;
 
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type Conversation = typeof conversations.$inferSelect;
