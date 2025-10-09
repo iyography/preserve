@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import type { Persona, Memory, Conversation, Message, UserSettings } from "@shared/schema";
 import { insertMemorySchema, insertUserSettingsSchema } from "@shared/schema";
-import { Heart, Plus, Upload, MessageCircle, Clock, Shield, Calendar, Settings, Play, Bookmark, Share, Download, Mic, FileText, Video, Camera, Sparkles, Users, CheckCircle, Moon, Sun, Edit, Trash2, X, Menu, User2, LogOut, Bell, Home, ChevronRight, Brain, Archive, HelpCircle, CreditCard, Search, Tag, MicOff, Save, Hash, Link as LinkIcon, ChevronDown, ThumbsUp, ThumbsDown, Star, MessageSquare } from "lucide-react";
+import { Heart, Plus, Upload, MessageCircle, Clock, Shield, Calendar, Settings, Play, Bookmark, Share, Download, Mic, FileText, Video, Camera, Sparkles, Users, CheckCircle, Edit, Trash2, X, Menu, User2, LogOut, Bell, Home, ChevronRight, Brain, Archive, HelpCircle, CreditCard, Search, Tag, MicOff, Save, Hash, Link as LinkIcon, ChevronDown, ThumbsUp, ThumbsDown, Star, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -433,16 +433,6 @@ function AdvancedQuestionnaireForm({ personaName, onSubmit, onCancel, isSubmitti
 }
 
 export default function Dashboard() {
-  // Theme management state
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-      const systemPreference = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      return savedTheme || systemPreference;
-    }
-    return 'light';
-  });
-
   const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState('personas');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -1089,16 +1079,12 @@ export default function Dashboard() {
     });
   };
 
-  // Theme management
+  // Force light mode (dark mode should never be enabled)
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+    root.classList.remove('dark');
+    localStorage.removeItem('theme');
+  }, []);
 
   // Auto scroll to bottom when new messages arrive
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
