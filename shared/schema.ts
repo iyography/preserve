@@ -87,10 +87,21 @@ export const messages = pgTable("messages", {
   content: text("content").notNull(),
   tokens: integer("tokens"),
   meta: jsonb("meta").default({}), // Additional metadata like retrieved memories, feedback, etc.
+  // Crisis detection fields (Tier 1 Safety - 25 Commandments)
+  flaggedForReview: boolean("flagged_for_review").default(false).notNull(),
+  crisisLevel: text("crisis_level"), // null, 'low', 'medium', 'high'
+  crisisKeywords: text("crisis_keywords").array(), // Detected crisis phrases for human review
+  interventionDelivered: boolean("intervention_delivered").default(false).notNull(), // Whether crisis resources were provided
+  reviewStatus: text("review_status").default("pending"), // 'pending', 'reviewed', 'escalated', 'resolved'
+  reviewedBy: varchar("reviewed_by"), // Admin user ID who reviewed
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
   // Performance indexes for pagination and ordering
   conversationTimeIdx: index("messages_conversation_time_idx").on(table.conversationId, table.createdAt, table.id),
+  // Crisis monitoring index for admin dashboard
+  crisisReviewIdx: index("messages_crisis_review_idx").on(table.flaggedForReview, table.reviewStatus, table.crisisLevel),
 }));
 
 // Memories table for storing learned information about personas
