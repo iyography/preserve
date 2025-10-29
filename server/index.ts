@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -99,11 +100,20 @@ app.use((req, res, next) => {
   const isProduction = process.env.NODE_ENV === 'production';
   const defaultPort = isProduction ? '80' : '5000';
   const port = parseInt(process.env.PORT || defaultPort, 10);
-  server.listen({
+
+  // reusePort is only supported in certain environments (e.g., Replit)
+  // On macOS and other systems, it causes ENOTSUP errors
+  const listenOptions: any = {
     port,
     host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
+  };
+
+  // Only use reusePort in Replit or production environments where it's supported
+  if (process.env.REPLIT_DEPLOYMENT || (isProduction && process.platform === 'linux')) {
+    listenOptions.reusePort = true;
+  }
+
+  server.listen(listenOptions, () => {
     log(`serving on port ${port}`);
   });
 })();

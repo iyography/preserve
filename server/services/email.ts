@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 
-// Initialize Resend with API key from environment
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Initialize Resend with API key from environment (only if key is present)
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export class EmailService {
   /**
@@ -22,7 +22,7 @@ export class EmailService {
    * Send a welcome email to new users
    */
   static async sendWelcomeEmail(to: string, userName: string) {
-    if (!process.env.RESEND_API_KEY) {
+    if (!process.env.RESEND_API_KEY || !resend) {
       console.warn('RESEND_API_KEY not configured, skipping welcome email');
       return;
     }
@@ -60,7 +60,7 @@ export class EmailService {
    * Send a notification email
    */
   static async sendNotificationEmail(to: string, subject: string, content: string) {
-    if (!process.env.RESEND_API_KEY) {
+    if (!process.env.RESEND_API_KEY || !resend) {
       console.warn('RESEND_API_KEY not configured, skipping notification email');
       return;
     }
@@ -89,7 +89,7 @@ export class EmailService {
    * Send an email confirmation link
    */
   static async sendConfirmationEmail(to: string, confirmationToken: string) {
-    if (!process.env.RESEND_API_KEY) {
+    if (!process.env.RESEND_API_KEY || !resend) {
       console.warn('RESEND_API_KEY not configured, skipping confirmation email');
       return { success: false, error: 'Email service not configured' };
     }
@@ -173,7 +173,7 @@ export class EmailService {
    * Send partner application notification to admin
    */
   static async sendPartnerApplicationNotification(formData: any) {
-    if (!process.env.RESEND_API_KEY) {
+    if (!process.env.RESEND_API_KEY || !resend) {
       console.warn('RESEND_API_KEY not configured, skipping partner notification email');
       return { success: false, error: 'Email service not configured' };
     }
@@ -251,7 +251,7 @@ export class EmailService {
    * Send waitlist application notification to admin
    */
   static async sendWaitlistApplicationNotification(formData: any) {
-    if (!process.env.RESEND_API_KEY) {
+    if (!process.env.RESEND_API_KEY || !resend) {
       console.warn('RESEND_API_KEY not configured, skipping waitlist notification email');
       return { success: false, error: 'Email service not configured' };
     }
@@ -324,7 +324,7 @@ export class EmailService {
    * Send partner application confirmation to applicant
    */
   static async sendPartnerApplicationConfirmation(to: string, businessName: string) {
-    if (!process.env.RESEND_API_KEY) {
+    if (!process.env.RESEND_API_KEY || !resend) {
       console.warn('RESEND_API_KEY not configured, skipping partner confirmation email');
       return { success: false, error: 'Email service not configured' };
     }
@@ -392,7 +392,7 @@ export class EmailService {
    * Send password reset email to user
    */
   static async sendPasswordResetEmail(to: string, resetToken: string) {
-    if (!process.env.RESEND_API_KEY) {
+    if (!process.env.RESEND_API_KEY || !resend) {
       console.warn('RESEND_API_KEY not configured, skipping password reset email');
       return { success: false, error: 'Email service not configured' };
     }
@@ -476,7 +476,7 @@ export class EmailService {
    * Send waitlist application confirmation to applicant
    */
   static async sendWaitlistApplicationConfirmation(to: string, userName: string) {
-    if (!process.env.RESEND_API_KEY) {
+    if (!process.env.RESEND_API_KEY || !resend) {
       console.warn('RESEND_API_KEY not configured, skipping waitlist confirmation email');
       return { success: false, error: 'Email service not configured' };
     }

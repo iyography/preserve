@@ -69,12 +69,16 @@ export interface IStorage {
   getConversation(id: string, userId: string): Promise<Conversation | undefined>;
   getConversationsByUser(userId: string): Promise<Conversation[]>;
   getConversationsByPersona(personaId: string, userId: string): Promise<Conversation[]>;
+  getConversationCount(personaId: string, userId: string): Promise<number>;
+  getTotalMessageCount(personaId: string, userId: string): Promise<number>;
   createConversation(conversation: InsertConversation): Promise<Conversation>;
   updateConversation(id: string, userId: string, updates: Partial<Conversation>): Promise<Conversation | undefined>;
   deleteConversation(id: string, userId: string): Promise<boolean>;
 
   // Message methods
   getMessagesByConversation(conversationId: string, userId: string): Promise<Message[]>;
+  getMessagesByConversationPaginated(conversationId: string, userId: string, limit: number, offset: number, sortBy: string, sortOrder: 'asc' | 'desc'): Promise<Message[]>;
+  getMessageCount(conversationId: string, userId: string): Promise<number>;
   createMessage(message: InsertMessage): Promise<Message>;
   updateMessage(id: string, userId: string, updates: Partial<Message>): Promise<Message | undefined>;
   deleteMessage(id: string, userId: string): Promise<boolean>;
@@ -83,6 +87,8 @@ export interface IStorage {
   getMemoriesByPersona(personaId: string, userId: string, limit?: number): Promise<Memory[]>;
   getMemoryById(id: string, userId: string): Promise<Memory | undefined>;
   searchMemoriesByTag(personaId: string, userId: string, tags: string[]): Promise<Memory[]>;
+  getMemoryCount(personaId: string, userId: string): Promise<number>;
+  getMemoriesBySource(personaId: string, userId: string, source: string): Promise<Memory[]>;
   createMemory(memory: InsertMemory): Promise<Memory>;
   updateMemory(id: string, userId: string, updates: Partial<Memory>): Promise<Memory | undefined>;
   deleteMemory(id: string, userId: string): Promise<boolean>;
@@ -830,14 +836,174 @@ export class DatabaseStorage implements IStorage {
   async updateUserSettings(userId: string, updates: Partial<UserSettings>): Promise<UserSettings | undefined> {
     const [updated] = await db
       .update(userSettings)
-      .set({ 
-        ...updates, 
-        updatedAt: new Date() 
+      .set({
+        ...updates,
+        updatedAt: new Date()
       })
       .where(eq(userSettings.userId, userId))
       .returning();
-    
+
     return updated;
+  }
+
+  // =====================================================
+  // ENHANCED QUERY METHODS FOR API
+  // =====================================================
+
+  /**
+   * Get message count for a conversation
+   */
+  async getMessageCount(conversationId: string, userId: string): Promise<number> {
+    // Verify conversation belongs to user
+    const conversationCheck = await db
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(and(eq(conversations.id, conversationId), eq(conversations.userId, userId)));
+
+    if (conversationCheck.length === 0) {
+      return 0;
+    }
+
+    const [result] = await db
+      .select({ count: count(messages.id) })
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId));
+
+    return result?.count || 0;
+  }
+
+  /**
+   * Get paginated messages for a conversation
+   */
+  async getMessagesByConversationPaginated(
+    conversationId: string,
+    userId: string,
+    limit: number,
+    offset: number,
+    sortBy: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'asc'
+  ): Promise<Message[]> {
+    // Verify conversation belongs to user
+    const conversationCheck = await db
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(and(eq(conversations.id, conversationId), eq(conversations.userId, userId)));
+
+    if (conversationCheck.length === 0) {
+      return [];
+    }
+
+    const orderFn = sortOrder === 'asc' ? asc : desc;
+    const orderColumn = sortBy === 'createdAt' ? messages.createdAt : messages.createdAt;
+
+    return await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(orderFn(orderColumn))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  /**
+   * Get memory count for a persona
+   */
+  async getMemoryCount(personaId: string, userId: string): Promise<number> {
+    // Verify persona belongs to user
+    const personaCheck = await db
+      .select({ id: personas.id })
+      .from(personas)
+      .where(and(eq(personas.id, personaId), eq(personas.userId, userId)));
+
+    if (personaCheck.length === 0) {
+      return 0;
+    }
+
+    const [result] = await db
+      .select({ count: count(memories.id) })
+      .from(memories)
+      .where(eq(memories.personaId, personaId));
+
+    return result?.count || 0;
+  }
+
+  /**
+   * Get conversation count for a persona
+   */
+  async getConversationCount(personaId: string, userId: string): Promise<number> {
+    // Verify persona belongs to user
+    const personaCheck = await db
+      .select({ id: personas.id })
+      .from(personas)
+      .where(and(eq(personas.id, personaId), eq(personas.userId, userId)));
+
+    if (personaCheck.length === 0) {
+      return 0;
+    }
+
+    const [result] = await db
+      .select({ count: count(conversations.id) })
+      .from(conversations)
+      .where(and(
+        eq(conversations.personaId, personaId),
+        eq(conversations.userId, userId)
+      ));
+
+    return result?.count || 0;
+  }
+
+  /**
+   * Get total message count across all conversations for a persona
+   */
+  async getTotalMessageCount(personaId: string, userId: string): Promise<number> {
+    // Verify persona belongs to user
+    const personaCheck = await db
+      .select({ id: personas.id })
+      .from(personas)
+      .where(and(eq(personas.id, personaId), eq(personas.userId, userId)));
+
+    if (personaCheck.length === 0) {
+      return 0;
+    }
+
+    const [result] = await db
+      .select({ count: count(messages.id) })
+      .from(messages)
+      .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+      .where(and(
+        eq(conversations.personaId, personaId),
+        eq(conversations.userId, userId)
+      ));
+
+    return result?.count || 0;
+  }
+
+  /**
+   * Get memories filtered by source
+   */
+  async getMemoriesBySource(
+    personaId: string,
+    userId: string,
+    source: string
+  ): Promise<Memory[]> {
+    // Verify persona belongs to user
+    const personaCheck = await db
+      .select({ id: personas.id })
+      .from(personas)
+      .where(and(eq(personas.id, personaId), eq(personas.userId, userId)));
+
+    if (personaCheck.length === 0) {
+      return [];
+    }
+
+    return await db
+      .select()
+      .from(memories)
+      .where(and(
+        eq(memories.personaId, personaId),
+        eq(memories.source, source)
+      ))
+      .orderBy(desc(memories.salience), desc(memories.createdAt));
   }
 }
 

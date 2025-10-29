@@ -62,6 +62,7 @@ import { costGuardian } from "./services/costGuardian";
 import { modelRouter } from "./services/modelRouter";
 import { responseCache } from "./services/responseCache";
 import { PersonaPromptBuilder } from "./services/personaPromptBuilder";
+import { detectCrisisLanguage, logCrisisDetection, requiresImmediateIntervention, getCrisisResources } from "./services/crisisDetector";
 import { conversationAnalyzer } from "./services/conversationAnalyzer";
 import OpenAI from 'openai';
 
@@ -99,10 +100,10 @@ const upload = multer({
   },
 });
 
-// Initialize Google Cloud Storage for object storage
-const gcs = new Storage();
+// Initialize Google Cloud Storage for object storage (optional)
 const bucketName = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
-const bucket = gcs.bucket(bucketName || '');
+const gcs = bucketName ? new Storage() : null;
+const bucket = bucketName && gcs ? gcs.bucket(bucketName) : null;
 
 // Note: Using Supabase client from auth middleware to avoid duplication
 // No need for separate admin client for current operations
@@ -2118,9 +2119,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const personaId = req.params.personaId;
       const userId = req.user!.id;
       const file = req.file;
-      
+
       if (!file) {
         return res.status(400).json({ error: 'No file uploaded' });
+      }
+
+      // Check if object storage is configured
+      if (!bucket) {
+        console.warn('Object storage not configured, media upload unavailable');
+        return res.status(503).json({ error: 'Media upload service not configured' });
       }
       
       // First verify the persona belongs to the authenticated user
@@ -3080,14 +3087,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get conversation history for context
       let conversationHistory: string[] = [];
+      let conversationMessages: any[] = [];
       if (conversationId) {
         const conversation = await storage.getConversation(conversationId, userId);
         if (conversation) {
-          const messages = await storage.getMessagesByConversation(conversationId, userId);
-          conversationHistory = messages.map(m => m.content).slice(-10); // Last 10 messages
+          conversationMessages = await storage.getMessagesByConversation(conversationId, userId);
+          conversationHistory = conversationMessages.map(m => m.content).slice(-10); // Last 10 messages
         }
       }
-      
+
+      // STEP 0: TIER 1 SAFETY - Crisis Detection (25 Commandments Rule 1)
+      // This MUST run before ANY other processing to catch life-threatening situations
+      const crisisDetection = detectCrisisLanguage(message);
+
+      if (crisisDetection.isCrisis) {
+        // Log for audit trail
+        logCrisisDetection(userId, personaId, conversationId || 'no-conversation', message, crisisDetection);
+
+        // If high-severity crisis, BLOCK AI response and provide immediate resources
+        if (requiresImmediateIntervention(crisisDetection)) {
+          console.warn(`🚨 CRISIS INTERVENTION TRIGGERED - User ${userId}, Level: ${crisisDetection.crisisLevel}`);
+
+          // Store the flagged message for human review
+          if (conversationId) {
+            try {
+              await storage.createMessage({
+                conversationId,
+                role: 'user',
+                content: message,
+                tokens: 0,
+                meta: { crisisDetection: true },
+                flaggedForReview: true,
+                crisisLevel: crisisDetection.crisisLevel,
+                crisisKeywords: crisisDetection.detectedPhrases,
+                interventionDelivered: true,
+                reviewStatus: 'pending'
+              });
+            } catch (error) {
+              console.error('Failed to store crisis message:', error);
+            }
+          }
+
+          // Return crisis intervention response immediately
+          return res.json({
+            response: crisisDetection.recommendedResponse,
+            crisisIntervention: true,
+            crisisLevel: crisisDetection.crisisLevel,
+            resources: getCrisisResources(),
+            aiResponseBlocked: true
+          });
+        }
+
+        // For low-medium severity, continue but include warning in AI response
+        console.log(`⚠️ Crisis language detected (${crisisDetection.crisisLevel}): ${crisisDetection.detectedPhrases.join(', ')}`);
+      }
+
       // STEP 1: Abuse Detection
       const abusePattern = await abuseDetector.detectAbuse(userId, message, conversationHistory);
       
@@ -3273,13 +3327,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // STEP 9: Store Message in Database (if conversation exists)
       if (conversationId) {
         try {
-          // Store user message
+          // Store user message with crisis metadata if applicable
           await storage.createMessage({
             conversationId,
             role: 'user',
             content: message,
             tokens: actualTokens.input,
-            meta: { model: finalModel }
+            meta: {
+              model: finalModel,
+              crisisDetected: crisisDetection.isCrisis,
+              crisisLevel: crisisDetection.crisisLevel || undefined
+            },
+            flaggedForReview: crisisDetection.isCrisis && crisisDetection.crisisLevel !== 'low',
+            crisisLevel: crisisDetection.crisisLevel || null,
+            crisisKeywords: crisisDetection.isCrisis ? crisisDetection.detectedPhrases : null,
+            interventionDelivered: false, // AI response was allowed
+            reviewStatus: crisisDetection.isCrisis ? 'pending' : 'reviewed'
           });
           
           // Store AI response
